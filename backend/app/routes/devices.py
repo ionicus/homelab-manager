@@ -53,7 +53,7 @@ def create_device():
             status=DeviceStatus(data.get("status", "active")),
             ip_address=data.get("ip_address"),
             mac_address=data.get("mac_address"),
-            metadata=data.get("metadata", {}),
+            device_metadata=data.get("metadata", {}),
         )
 
         db.add(device)
@@ -90,7 +90,7 @@ def update_device(device_id: int):
         if "mac_address" in data:
             device.mac_address = data["mac_address"]
         if "metadata" in data:
-            device.metadata = data["metadata"]
+            device.device_metadata = data["metadata"]
 
         db.commit()
         db.refresh(device)

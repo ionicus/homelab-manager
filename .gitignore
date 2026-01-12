@@ -116,3 +116,7 @@ Thumbs.db
 *.temp
 *.bak
 *.backup
+
+# Claude settings
+.claude/
+!.claude/instructions.md

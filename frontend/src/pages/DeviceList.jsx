@@ -43,6 +43,10 @@ function DeviceList() {
   if (loading) return <LoadingSkeleton type="device-list" count={6} />;
   if (error) return <ErrorDisplay error={error} onRetry={fetchDevices} />;
 
+  const activeDevices = devices.filter(d => d.status === 'active').length;
+  const maintenanceDevices = devices.filter(d => d.status === 'maintenance').length;
+  const inactiveDevices = devices.filter(d => d.status === 'inactive').length;
+
   const getDeviceIcon = (type) => {
     const icons = {
       server: '🖥️',
@@ -60,6 +64,39 @@ function DeviceList() {
         <h1>All Devices ({devices.length})</h1>
         <Link to="/devices/new" className="btn btn-primary">Add Device</Link>
       </div>
+
+      {devices.length > 0 && (
+        <div className="stats-grid">
+          <div className="stat-card stat-card-primary">
+            <div className="stat-icon">📊</div>
+            <div className="stat-content">
+              <h3>Total Devices</h3>
+              <p className="stat-value">{devices.length}</p>
+            </div>
+          </div>
+          <div className="stat-card stat-card-success">
+            <div className="stat-icon">✓</div>
+            <div className="stat-content">
+              <h3>Active</h3>
+              <p className="stat-value">{activeDevices}</p>
+            </div>
+          </div>
+          <div className="stat-card stat-card-warning">
+            <div className="stat-icon">⚠</div>
+            <div className="stat-content">
+              <h3>Maintenance</h3>
+              <p className="stat-value">{maintenanceDevices}</p>
+            </div>
+          </div>
+          <div className="stat-card stat-card-danger">
+            <div className="stat-icon">⏸</div>
+            <div className="stat-content">
+              <h3>Inactive</h3>
+              <p className="stat-value">{inactiveDevices}</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {devices.length === 0 ? (
         <div className="empty-state">

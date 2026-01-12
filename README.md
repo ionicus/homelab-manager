@@ -5,6 +5,7 @@ A comprehensive system for managing homelab infrastructure with inventory tracki
 ## Features
 
 - **Inventory Management**: Track all physical servers, VMs, containers, and network devices
+- **Network Interface Management**: Multi-homed device support with multiple NICs, MAC addresses, VLANs, and IP addresses
 - **Automated Provisioning**: Deploy and configure systems using Ansible playbooks
 - **Real-time Monitoring**: Monitor CPU, memory, disk usage, and network traffic
 - **Service Management**: Track and control running services across your infrastructure
@@ -103,19 +104,23 @@ docker-compose up -d
 homelab-manager/
 ├── backend/              # Flask backend application
 │   ├── app/
-│   │   ├── models/      # SQLAlchemy models
-│   │   ├── routes/      # API endpoints
+│   │   ├── models/      # SQLAlchemy models (Device, NetworkInterface, Service, etc.)
+│   │   ├── routes/      # API endpoints (devices, interfaces, services, metrics)
 │   │   ├── services/    # Business logic
-│   │   └── utils/       # Helper functions
+│   │   ├── utils/       # Helper functions (validators, etc.)
+│   │   ├── main.py      # Application entry point
+│   │   ├── config.py    # Configuration
+│   │   └── database.py  # Database connection
 │   ├── migrations/      # Alembic migrations
 │   ├── tests/           # Backend tests
 │   └── pyproject.toml   # Python dependencies
 ├── frontend/            # React frontend application
 │   ├── src/
-│   │   ├── components/  # Reusable components
-│   │   ├── pages/       # Page components
-│   │   ├── services/    # API client
-│   │   └── utils/       # Utilities
+│   │   ├── pages/       # Page & components (Dashboard, DeviceDetail, InterfaceList, etc.)
+│   │   ├── services/    # API client (api.js)
+│   │   ├── App.jsx      # Main app component
+│   │   ├── App.css      # Global styles
+│   │   └── main.jsx     # Entry point
 │   └── package.json     # Node dependencies
 ├── ansible/             # Ansible playbooks
 │   ├── playbooks/       # Provisioning scripts
@@ -133,12 +138,80 @@ The API documentation is available at `http://localhost:5000/api/docs` when runn
 
 ### Key Endpoints
 
+**Devices**:
 - `GET /api/devices` - List all devices
 - `POST /api/devices` - Create new device
+- `GET /api/devices/:id` - Get device details
+- `PUT /api/devices/:id` - Update device
+- `DELETE /api/devices/:id` - Delete device
+
+**Network Interfaces**:
+- `GET /api/devices/:id/interfaces` - List device interfaces
+- `POST /api/devices/:id/interfaces` - Create interface
+- `PUT /api/devices/:id/interfaces/:iid` - Update interface
+- `DELETE /api/devices/:id/interfaces/:iid` - Delete interface
+- `PUT /api/devices/:id/interfaces/:iid/set-primary` - Set as primary
+- `GET /api/interfaces/by-mac/:mac` - Find by MAC address
+- `GET /api/interfaces/by-ip/:ip` - Find by IP address
+
+**Services & Metrics**:
+- `GET /api/devices/:id/services` - List device services
 - `GET /api/devices/:id/metrics` - Get device metrics
 - `POST /api/provision` - Trigger provisioning job
 
 ## Development
+
+### Developer Environment Setup
+
+This project uses specific tools and paths that may vary by environment:
+
+**Node.js Setup (nvm)**:
+- Node.js is managed via nvm (Node Version Manager)
+- Before running npm commands, load nvm: `source ~/.nvm/nvm.sh`
+- Current version: Node v22.21.1, npm 10.9.4
+- Vite binary location: `frontend/node_modules/.bin/vite`
+
+**Backend Entry Point**:
+- Main application: `backend/app/main.py`
+- Start backend: `cd backend && source .venv/bin/activate && python -m app.main`
+- Backend runs on: http://localhost:5000
+
+**Frontend Entry Point**:
+- Start frontend: `cd frontend && source ~/.nvm/nvm.sh && npm run dev`
+- Frontend runs on: http://localhost:5173
+- Vite dev server binds to 0.0.0.0 for network access
+
+**Database**:
+- PostgreSQL connection: Remote host at 10.255.1.2
+- Database name: homelab_db
+- Migrations: `cd backend && source .venv/bin/activate && alembic upgrade head`
+
+### Quick Start Commands
+
+**Using convenience scripts** (recommended):
+```bash
+# Start both backend and frontend
+./dev.sh
+
+# Stop all development servers
+./dev-stop.sh
+```
+
+**Manual start** (if needed):
+```bash
+# Start backend
+cd backend && source .venv/bin/activate && python -m app.main
+
+# Start frontend (in new terminal)
+cd frontend && source ~/.nvm/nvm.sh && npm run dev
+
+# Run database migration
+cd backend && source .venv/bin/activate && alembic upgrade head
+```
+
+**Logs**:
+- Backend logs: `/tmp/homelab-backend.log`
+- Frontend logs: `/tmp/homelab-frontend.log`
 
 ### Running Tests
 

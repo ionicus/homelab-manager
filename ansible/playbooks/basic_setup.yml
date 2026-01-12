@@ -1,0 +1,38 @@
+---
+- name: Basic Server Setup
+  hosts: all
+  become: yes
+  vars:
+    packages_to_install:
+      - vim
+      - git
+      - htop
+      - curl
+      - wget
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+      when: ansible_os_family == "Debian"
+
+    - name: Install basic packages
+      apt:
+        name: "{{ packages_to_install }}"
+        state: present
+      when: ansible_os_family == "Debian"
+
+    - name: Set hostname
+      hostname:
+        name: "{{ inventory_hostname }}"
+
+    - name: Configure timezone
+      timezone:
+        name: "{{ timezone | default('UTC') }}"
+
+    - name: Ensure SSH is running
+      service:
+        name: ssh
+        state: started
+        enabled: yes

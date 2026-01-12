@@ -182,9 +182,9 @@ This project uses specific tools and paths that may vary by environment:
 - Vite dev server binds to 0.0.0.0 for network access
 
 **Database**:
-- PostgreSQL connection: Remote host at 10.255.1.2
-- Database name: homelab_db
+- PostgreSQL connection configured in `backend/.env` (DATABASE_URL)
 - Migrations: `cd backend && source .venv/bin/activate && alembic upgrade head`
+- See `backend/.env.example` for configuration template
 
 ### Quick Start Commands
 
@@ -242,24 +242,44 @@ alembic downgrade -1
 
 ## Configuration
 
+All sensitive configuration (database credentials, API keys, host addresses) is managed through `.env` files that are **excluded from git** via `.gitignore`.
+
 ### Backend Environment Variables
 
-Create a `.env` file in the `backend/` directory:
+Copy the example file and customize for your environment:
 
+```bash
+cd backend
+cp .env.example .env
+# Edit .env with your actual configuration
+```
+
+Key variables in `backend/.env`:
 ```env
-DATABASE_URL=postgresql://user:password@localhost:5432/homelab
+DATABASE_URL=postgresql://user:password@host:5432/dbname
 SECRET_KEY=your-secret-key-here
 FLASK_ENV=development
+HOST=0.0.0.0
+PORT=5000
 CORS_ORIGINS=http://localhost:5173
 ```
 
 ### Frontend Environment Variables
 
-Create a `.env` file in the `frontend/` directory:
+Copy the example file and customize:
 
+```bash
+cd frontend
+cp .env.example .env
+# Edit .env with your backend API URL
+```
+
+Key variables in `frontend/.env`:
 ```env
 VITE_API_URL=http://localhost:5000/api
 ```
+
+**Important**: Never commit `.env` files to git. They contain environment-specific and sensitive information.
 
 ## Contributing
 

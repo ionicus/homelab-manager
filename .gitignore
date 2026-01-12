@@ -117,6 +117,5 @@ Thumbs.db
 *.bak
 *.backup
 
-# Claude settings
+# AI assistant settings
 .claude/
-!.claude/instructions.md

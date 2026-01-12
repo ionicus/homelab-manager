@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { getDevices } from '../services/api';
+import { safeGetArray } from '../utils/validation';
+import ErrorDisplay from '../components/ErrorDisplay';
+import LoadingSkeleton from '../components/LoadingSkeleton';
 
 function Dashboard() {
   const [devices, setDevices] = useState([]);
@@ -12,18 +15,21 @@ function Dashboard() {
   }, []);
 
   const fetchDevices = async () => {
+    setLoading(true);
+    setError(null);
     try {
       const response = await getDevices();
-      setDevices(response.data);
+      const devicesData = safeGetArray(response);
+      setDevices(devicesData);
       setLoading(false);
     } catch (err) {
-      setError('Failed to fetch devices');
+      setError(err);
       setLoading(false);
     }
   };
 
-  if (loading) return <div className="loading">Loading...</div>;
-  if (error) return <div className="error">{error}</div>;
+  if (loading) return <LoadingSkeleton type="dashboard" />;
+  if (error) return <ErrorDisplay error={error} onRetry={fetchDevices} />;
 
   const activeDevices = devices.filter(d => d.status === 'active').length;
   const maintenanceDevices = devices.filter(d => d.status === 'maintenance').length;

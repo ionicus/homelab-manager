@@ -1007,3 +1007,173 @@
   font-size: 0.875rem;
   color: #ddd;
 }
+
+/* Error Display Styles */
+.error-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  padding: 2rem;
+  text-align: center;
+}
+
+.error-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+}
+
+.error-title {
+  color: #ff6b6b;
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.error-message {
+  color: #ddd;
+  font-size: 1.1rem;
+  margin-bottom: 1.5rem;
+  max-width: 600px;
+}
+
+.error-details {
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 4px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  color: #ff6b6b;
+  font-size: 0.875rem;
+  text-align: left;
+  max-width: 600px;
+  overflow-x: auto;
+}
+
+/* Error Boundary Styles */
+.error-boundary {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0a0a0a;
+}
+
+.error-boundary-content {
+  text-align: center;
+  padding: 2rem;
+  max-width: 600px;
+}
+
+.error-boundary-content h2 {
+  color: #ff6b6b;
+  margin-bottom: 1rem;
+}
+
+.error-boundary-content p {
+  color: #ddd;
+  margin-bottom: 2rem;
+}
+
+/* Loading Skeleton Styles */
+.loading-skeleton {
+  padding: 2rem;
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    #1a1a1a 25%,
+    #2a2a2a 50%,
+    #1a1a1a 75%
+  );
+  background-size: 200% 100%;
+  animation: loading 1.5s ease-in-out infinite;
+  border-radius: 4px;
+}
+
+@keyframes loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.skeleton-line {
+  height: 20px;
+  margin-bottom: 1rem;
+}
+
+.skeleton-title {
+  height: 40px;
+  width: 300px;
+  margin-bottom: 2rem;
+}
+
+.skeleton-subtitle {
+  height: 30px;
+  width: 200px;
+  margin-bottom: 1rem;
+}
+
+.skeleton-text {
+  height: 16px;
+  width: 120px;
+  margin-bottom: 0.5rem;
+}
+
+.skeleton-number {
+  height: 32px;
+  width: 80px;
+}
+
+.skeleton-button {
+  height: 40px;
+  width: 120px;
+}
+
+.skeleton-icon {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+}
+
+.skeleton-card {
+  height: 80px;
+  margin-bottom: 1rem;
+}
+
+.skeleton-card-header {
+  height: 60px;
+  margin-bottom: 1rem;
+}
+
+.skeleton-card-body {
+  height: 100px;
+  margin-bottom: 1rem;
+}
+
+.skeleton-card-footer {
+  height: 40px;
+}
+
+.skeleton-list-item {
+  height: 60px;
+  margin-bottom: 1rem;
+}
+
+.skeleton-content {
+  height: 200px;
+  margin-top: 1rem;
+}
+
+/* Dashboard Skeleton Adjustments */
+.stats-grid .skeleton {
+  height: 120px;
+}
+
+.type-grid .skeleton {
+  height: 60px;
+}

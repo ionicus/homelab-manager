@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { getDevice, getDeviceServices, getDeviceMetrics, getDeviceInterfaces } from '../services/api';
+import { safeGetArray } from '../utils/validation';
+import ErrorDisplay from '../components/ErrorDisplay';
+import LoadingSkeleton from '../components/LoadingSkeleton';
 import InterfaceList from './InterfaceList';
 import InterfaceForm from './InterfaceForm';
 
@@ -19,6 +22,8 @@ function DeviceDetail() {
   }, [id]);
 
   const fetchDeviceData = async () => {
+    setLoading(true);
+    setError(null);
     try {
       const [deviceRes, servicesRes, metricsRes, interfacesRes] = await Promise.all([
         getDevice(id),
@@ -27,13 +32,13 @@ function DeviceDetail() {
         getDeviceInterfaces(id),
       ]);
 
-      setDevice(deviceRes.data);
-      setServices(servicesRes.data);
-      setMetrics(metricsRes.data);
-      setInterfaces(interfacesRes.data);
+      setDevice(deviceRes.data || deviceRes);
+      setServices(safeGetArray(servicesRes));
+      setMetrics(safeGetArray(metricsRes));
+      setInterfaces(safeGetArray(interfacesRes));
       setLoading(false);
     } catch (err) {
-      setError('Failed to fetch device details');
+      setError(err);
       setLoading(false);
     }
   };
@@ -43,9 +48,9 @@ function DeviceDetail() {
     await fetchDeviceData();
   };
 
-  if (loading) return <div className="loading">Loading...</div>;
-  if (error) return <div className="error">{error}</div>;
-  if (!device) return <div className="not-found">Device not found</div>;
+  if (loading) return <LoadingSkeleton type="device-detail" />;
+  if (error) return <ErrorDisplay error={error} onRetry={fetchDeviceData} />;
+  if (!device) return <ErrorDisplay error="Device not found" onRetry={fetchDeviceData} />;
 
   const hasMetadata = device.metadata && Object.keys(device.metadata).length > 0;
 

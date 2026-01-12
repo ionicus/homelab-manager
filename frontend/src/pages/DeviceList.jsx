@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { getDevices, deleteDevice } from '../services/api';
+import { safeGetArray } from '../utils/validation';
+import ErrorDisplay from '../components/ErrorDisplay';
+import LoadingSkeleton from '../components/LoadingSkeleton';
 
 function DeviceList() {
   const [devices, setDevices] = useState([]);
@@ -12,12 +15,15 @@ function DeviceList() {
   }, []);
 
   const fetchDevices = async () => {
+    setLoading(true);
+    setError(null);
     try {
       const response = await getDevices();
-      setDevices(response.data);
+      const devicesData = safeGetArray(response);
+      setDevices(devicesData);
       setLoading(false);
     } catch (err) {
-      setError('Failed to fetch devices');
+      setError(err);
       setLoading(false);
     }
   };
@@ -28,13 +34,14 @@ function DeviceList() {
         await deleteDevice(id);
         fetchDevices();
       } catch (err) {
-        alert('Failed to delete device');
+        const message = err.userMessage || 'Failed to delete device';
+        alert(message);
       }
     }
   };
 
-  if (loading) return <div className="loading">Loading...</div>;
-  if (error) return <div className="error">{error}</div>;
+  if (loading) return <LoadingSkeleton type="device-list" count={6} />;
+  if (error) return <ErrorDisplay error={error} onRetry={fetchDevices} />;
 
   const getDeviceIcon = (type) => {
     const icons = {

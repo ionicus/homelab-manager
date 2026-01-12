@@ -9,7 +9,42 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  timeout: 10000, // 10 second timeout
 });
+
+// Response interceptor for consistent error handling
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    // Network error (backend down, CORS issues, etc.)
+    if (!error.response) {
+      error.isNetworkError = true;
+      error.userMessage = 'Cannot connect to backend server. Please check that the server is running.';
+      console.error('Network error:', error.message);
+      return Promise.reject(error);
+    }
+
+    // Server returned an error response
+    const status = error.response.status;
+    const data = error.response.data;
+
+    // Add user-friendly messages based on status code
+    if (status === 404) {
+      error.userMessage = data?.error || 'Resource not found';
+    } else if (status === 400) {
+      error.userMessage = data?.error || 'Invalid request';
+    } else if (status === 409) {
+      error.userMessage = data?.error || 'Resource already exists';
+    } else if (status === 500) {
+      error.userMessage = 'Server error occurred';
+    } else {
+      error.userMessage = data?.error || 'An error occurred';
+    }
+
+    console.error(`API Error (${status}):`, data?.error || error.message);
+    return Promise.reject(error);
+  }
+);
 
 // Devices
 export const getDevices = () => api.get('/devices');

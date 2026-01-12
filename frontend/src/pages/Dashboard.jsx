@@ -71,7 +71,7 @@ function Dashboard() {
           </div>
         </div>
         <div className="stat-card stat-card-danger">
-          <div className="stat-icon">✕</div>
+          <div className="stat-icon">⏸</div>
           <div className="stat-content">
             <h3>Inactive</h3>
             <p className="stat-value">{inactiveDevices}</p>

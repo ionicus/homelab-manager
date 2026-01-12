@@ -108,18 +108,18 @@ function Services() {
       </div>
 
       <div className="stats-grid">
+        <div className="stat-card stat-card-primary">
+          <div className="stat-icon">📊</div>
+          <div className="stat-content">
+            <h3>Total Services</h3>
+            <p className="stat-value">{services.length}</p>
+          </div>
+        </div>
         <div className="stat-card stat-card-success">
           <div className="stat-icon">✓</div>
           <div className="stat-content">
             <h3>Running</h3>
             <p className="stat-value">{servicesByStatus.running}</p>
-          </div>
-        </div>
-        <div className="stat-card stat-card-danger">
-          <div className="stat-icon">✕</div>
-          <div className="stat-content">
-            <h3>Stopped</h3>
-            <p className="stat-value">{servicesByStatus.stopped}</p>
           </div>
         </div>
         <div className="stat-card stat-card-warning">
@@ -129,11 +129,11 @@ function Services() {
             <p className="stat-value">{servicesByStatus.error}</p>
           </div>
         </div>
-        <div className="stat-card stat-card-primary">
-          <div className="stat-icon">📊</div>
+        <div className="stat-card stat-card-danger">
+          <div className="stat-icon">⏸</div>
           <div className="stat-content">
-            <h3>Total Services</h3>
-            <p className="stat-value">{services.length}</p>
+            <h3>Stopped</h3>
+            <p className="stat-value">{servicesByStatus.stopped}</p>
           </div>
         </div>
       </div>

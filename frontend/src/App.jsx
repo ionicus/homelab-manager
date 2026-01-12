@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom'
 import Dashboard from './pages/Dashboard'
 import DeviceList from './pages/DeviceList'
 import DeviceDetail from './pages/DeviceDetail'
+import DeviceForm from './pages/DeviceForm'
 import './App.css'
 
 function App() {
@@ -22,6 +23,8 @@ function App() {
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/devices" element={<DeviceList />} />
+            <Route path="/devices/new" element={<DeviceForm />} />
+            <Route path="/devices/:id/edit" element={<DeviceForm />} />
             <Route path="/devices/:id" element={<DeviceDetail />} />
           </Routes>
         </main>

@@ -40,7 +40,10 @@ function DeviceDetail() {
     <div className="device-detail">
       <div className="page-header">
         <h1>{device.name}</h1>
-        <Link to="/devices" className="btn">Back to Devices</Link>
+        <div>
+          <Link to={`/devices/${device.id}/edit`} className="btn btn-primary">Edit</Link>
+          <Link to="/devices" className="btn">Back to Devices</Link>
+        </div>
       </div>
 
       <div className="detail-grid">

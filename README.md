@@ -144,30 +144,23 @@ homelab-manager/
 
 ## API Documentation
 
-The API documentation is available at `http://localhost:5000/api/docs` when running the backend.
+📖 **[Complete API Documentation](docs/API.md)**
 
-### Key Endpoints
+Comprehensive documentation covering all API endpoints, request/response formats, error handling, and examples.
 
-**Devices**:
-- `GET /api/devices` - List all devices
-- `POST /api/devices` - Create new device
-- `GET /api/devices/:id` - Get device details
-- `PUT /api/devices/:id` - Update device
-- `DELETE /api/devices/:id` - Delete device
+###  Quick Reference
 
-**Network Interfaces**:
-- `GET /api/devices/:id/interfaces` - List device interfaces
-- `POST /api/devices/:id/interfaces` - Create interface
-- `PUT /api/devices/:id/interfaces/:iid` - Update interface
-- `DELETE /api/devices/:id/interfaces/:iid` - Delete interface
-- `PUT /api/devices/:id/interfaces/:iid/set-primary` - Set as primary
-- `GET /api/interfaces/by-mac/:mac` - Find by MAC address
-- `GET /api/interfaces/by-ip/:ip` - Find by IP address
+**Base URL**: `http://localhost:5000/api`
 
-**Services & Metrics**:
-- `GET /api/devices/:id/services` - List device services
-- `GET /api/devices/:id/metrics` - Get device metrics
-- `POST /api/provision` - Trigger provisioning job
+**Key Endpoints**:
+
+- **Devices**: `GET/POST/PUT/DELETE /api/devices` - Device management
+- **Network Interfaces**: `/api/devices/{id}/interfaces` - Multi-homed network support
+- **Services**: `/api/services` - Service tracking and monitoring
+- **Metrics**: `/api/metrics` - Performance metrics collection
+- **Provisioning**: `/api/provisioning` - Ansible job triggering
+
+**Error Handling**: All errors return JSON with proper HTTP status codes (400, 404, 409, 500)
 
 ## Development
 

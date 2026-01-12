@@ -93,9 +93,19 @@ npm run dev
 ### 4. Using Docker (Alternative)
 
 ```bash
-# From project root
+# Set up Docker environment variables
 cd docker
+cp .env.example .env
+# Edit .env with your configuration (especially passwords!)
+
+# Start all services
 docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Stop services
+docker-compose down
 ```
 
 ## Project Structure
@@ -280,6 +290,33 @@ VITE_API_URL=http://localhost:5000/api
 ```
 
 **Important**: Never commit `.env` files to git. They contain environment-specific and sensitive information.
+
+### Docker Environment Variables
+
+For Docker Compose deployments, copy the example file:
+
+```bash
+cd docker
+cp .env.example .env
+# Edit .env with your configuration
+```
+
+Key variables in `docker/.env`:
+```env
+# PostgreSQL
+POSTGRES_USER=homelab
+POSTGRES_PASSWORD=secure-password-here
+POSTGRES_DB=homelab_db
+POSTGRES_PORT=5432
+
+# Backend
+FLASK_ENV=production
+SECRET_KEY=your-secret-key-min-32-chars
+JWT_SECRET_KEY=your-jwt-secret-min-32-chars
+CORS_ORIGINS=http://localhost:3000,http://localhost:5173
+```
+
+**Security Note**: Always change default passwords in production!
 
 ## Contributing
 

@@ -5,6 +5,7 @@ from app.models.hardware_spec import HardwareSpec
 from app.models.service import Service, ServiceStatus
 from app.models.metric import Metric
 from app.models.provisioning_job import ProvisioningJob, JobStatus
+from app.models.network_interface import NetworkInterface, InterfaceStatus
 
 __all__ = [
     "Device",
@@ -16,4 +17,6 @@ __all__ = [
     "Metric",
     "ProvisioningJob",
     "JobStatus",
+    "NetworkInterface",
+    "InterfaceStatus",
 ]

@@ -109,13 +109,22 @@ def success_response(
     Returns:
         Tuple of (response_dict, status_code)
     """
+    # Return data directly (including lists) - don't wrap in extra object
     if data is not None:
-        response = data if isinstance(data, dict) else {"data": data}
+        if isinstance(data, (dict, list)):
+            response = data
+        else:
+            response = {"data": data}
     else:
         response = {}
 
-    if message:
-        response["message"] = message
+    # If there's only a message, wrap it in an object
+    if message and not data:
+        response = {"message": message}
+    elif message and isinstance(data, (dict, list)) and not isinstance(data, list):
+        # Add message to dict responses
+        if isinstance(response, dict):
+            response["message"] = message
 
     return jsonify(response), status_code
 

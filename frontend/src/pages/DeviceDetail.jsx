@@ -4,6 +4,8 @@ import { getDevice, getDeviceServices, getDeviceMetrics, getDeviceInterfaces } f
 import { safeGetArray } from '../utils/validation';
 import ErrorDisplay from '../components/ErrorDisplay';
 import LoadingSkeleton from '../components/LoadingSkeleton';
+import ServiceList from '../components/ServiceList';
+import ServiceForm from '../components/ServiceForm';
 import InterfaceList from './InterfaceList';
 import InterfaceForm from './InterfaceForm';
 
@@ -14,6 +16,7 @@ function DeviceDetail() {
   const [metrics, setMetrics] = useState([]);
   const [interfaces, setInterfaces] = useState([]);
   const [showInterfaceForm, setShowInterfaceForm] = useState(false);
+  const [showServiceForm, setShowServiceForm] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -45,6 +48,11 @@ function DeviceDetail() {
 
   const handleInterfaceUpdate = async () => {
     setShowInterfaceForm(false);
+    await fetchDeviceData();
+  };
+
+  const handleServiceUpdate = async () => {
+    setShowServiceForm(false);
     await fetchDeviceData();
   };
 
@@ -146,47 +154,27 @@ function DeviceDetail() {
         <div className="detail-section">
           <div className="section-header">
             <h2>Services ({services.length})</h2>
-            <Link to={`/devices/${device.id}/services/new`} className="btn btn-sm btn-primary">Add Service</Link>
+            <button
+              className="btn btn-sm btn-primary"
+              onClick={() => setShowServiceForm(true)}
+            >
+              Add Service
+            </button>
           </div>
-          {services.length > 0 ? (
-            <div className="service-grid">
-              {services.map(service => (
-                <div key={service.id} className="service-card">
-                  <div className="service-header">
-                    <h3>{service.name}</h3>
-                    <span className={`status-badge status-${service.status}`}>
-                      {service.status}
-                    </span>
-                  </div>
-                  <div className="service-details">
-                    {service.port && (
-                      <div className="service-detail">
-                        <span className="detail-label">Port:</span>
-                        <span className="detail-value">{service.port}</span>
-                      </div>
-                    )}
-                    {service.protocol && (
-                      <div className="service-detail">
-                        <span className="detail-label">Protocol:</span>
-                        <span className="detail-value">{service.protocol}</span>
-                      </div>
-                    )}
-                    {service.health_check_url && (
-                      <div className="service-detail">
-                        <span className="detail-label">Health Check:</span>
-                        <span className="detail-value health-url">{service.health_check_url}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="empty-state">
-              <p>No services configured for this device</p>
-              <Link to={`/devices/${device.id}/services/new`} className="btn btn-primary">Add First Service</Link>
-            </div>
+
+          {showServiceForm && (
+            <ServiceForm
+              deviceId={id}
+              onSuccess={handleServiceUpdate}
+              onCancel={() => setShowServiceForm(false)}
+            />
           )}
+
+          <ServiceList
+            services={services}
+            deviceId={id}
+            onUpdate={fetchDeviceData}
+          />
         </div>
 
         <div className="detail-section">

@@ -53,17 +53,16 @@ function InterfaceForm({ deviceId, onSuccess, onCancel }) {
   };
 
   return (
-    <div className="interface-form-container">
-      <div className="interface-form-header">
-        <h3>Add Network Interface</h3>
-        <button className="btn-close" onClick={onCancel}>
+    <div className="form-modal-content">
+      <div className="form-header">
+        <h2>Add Network Interface</h2>
+        <button className="close-btn" onClick={onCancel}>
           ✕
         </button>
       </div>
 
-      {error && <div className="error">{error}</div>}
-
-      <form onSubmit={handleSubmit} className="interface-form">
+      <form onSubmit={handleSubmit} className="interface-form" style={{ padding: '1.5rem' }}>
+        {error && <div className="form-error">{error}</div>}
         <div className="form-row">
           <div className="form-group">
             <label htmlFor="interface_name">Interface Name *</label>

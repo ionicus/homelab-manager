@@ -59,9 +59,14 @@ export const getDeviceMetrics = (deviceId, limit = 100) =>
 export const submitMetrics = (data) => api.post('/metrics', data);
 
 // Services
-export const getDeviceServices = (deviceId) => 
+export const getServices = () => api.get('/services');
+export const getService = (id) => api.get(`/services/${id}`);
+export const getDeviceServices = (deviceId) =>
   api.get(`/devices/${deviceId}/services`);
-export const updateServiceStatus = (serviceId, status) => 
+export const createService = (data) => api.post('/services', data);
+export const updateService = (id, data) => api.put(`/services/${id}`, data);
+export const deleteService = (id) => api.delete(`/services/${id}`);
+export const updateServiceStatus = (serviceId, status) =>
   api.put(`/services/${serviceId}/status`, { status });
 
 // Provisioning

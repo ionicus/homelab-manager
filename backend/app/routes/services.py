@@ -1,9 +1,15 @@
-"""Service routes."""
+"""Service routes with improved error handling and validation."""
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request
 
-from app.database import Session
 from app.models import Service, ServiceStatus, Device
+from app.schemas.service import ServiceCreate, ServiceUpdate, ServiceStatusUpdate
+from app.utils.errors import (
+    DatabaseSession,
+    NotFoundError,
+    success_response,
+)
+from app.utils.validation import validate_request
 
 services_bp = Blueprint("services", __name__)
 
@@ -11,99 +17,105 @@ services_bp = Blueprint("services", __name__)
 @services_bp.route("", methods=["GET"])
 def list_services():
     """List all services."""
-    db = Session()
-    try:
+    with DatabaseSession() as db:
         services = db.query(Service).all()
-        return jsonify([service.to_dict() for service in services]), 200
-    finally:
-        db.close()
+        return success_response([service.to_dict() for service in services])
 
 
 @services_bp.route("/<int:service_id>", methods=["GET"])
 def get_service(service_id: int):
     """Get a specific service."""
-    db = Session()
-    try:
+    with DatabaseSession() as db:
         service = db.query(Service).filter(Service.id == service_id).first()
         if not service:
-            return jsonify({"error": "Service not found"}), 404
-        return jsonify(service.to_dict()), 200
-    finally:
-        db.close()
+            raise NotFoundError("Service", service_id)
+        return success_response(service.to_dict())
 
 
 @services_bp.route("", methods=["POST"])
+@validate_request(ServiceCreate)
 def create_service():
     """Create a new service."""
-    data = request.get_json()
+    data = request.validated_data
 
-    if not data or "device_id" not in data or "name" not in data:
-        return jsonify({"error": "Missing required fields: device_id, name"}), 400
-
-    db = Session()
-    try:
+    with DatabaseSession() as db:
         # Verify device exists
-        device = db.query(Device).filter(Device.id == data["device_id"]).first()
+        device = db.query(Device).filter(Device.id == data.device_id).first()
         if not device:
-            return jsonify({"error": "Device not found"}), 404
+            raise NotFoundError("Device", data.device_id)
 
         service = Service(
-            device_id=data["device_id"],
-            name=data["name"],
-            port=data.get("port"),
-            protocol=data.get("protocol"),
-            status=ServiceStatus(data.get("status", "stopped")),
-            health_check_url=data.get("health_check_url"),
+            device_id=data.device_id,
+            name=data.name,
+            port=data.port,
+            protocol=data.protocol,
+            status=ServiceStatus(data.status) if data.status else ServiceStatus.STOPPED,
+            health_check_url=data.health_check_url,
         )
 
         db.add(service)
         db.commit()
         db.refresh(service)
 
-        return jsonify(service.to_dict()), 201
-    except ValueError as e:
-        return jsonify({"error": f"Invalid enum value: {str(e)}"}), 400
-    finally:
-        db.close()
+        return success_response(service.to_dict(), status_code=201)
+
+
+@services_bp.route("/<int:service_id>", methods=["PUT"])
+@validate_request(ServiceUpdate)
+def update_service(service_id: int):
+    """Update a service."""
+    data = request.validated_data
+
+    with DatabaseSession() as db:
+        service = db.query(Service).filter(Service.id == service_id).first()
+        if not service:
+            raise NotFoundError("Service", service_id)
+
+        # Update fields (only if provided in request)
+        if data.name is not None:
+            service.name = data.name
+        if data.port is not None:
+            service.port = data.port
+        if data.protocol is not None:
+            service.protocol = data.protocol
+        if data.status is not None:
+            service.status = ServiceStatus(data.status)
+        if data.health_check_url is not None:
+            service.health_check_url = data.health_check_url
+
+        db.commit()
+        db.refresh(service)
+
+        return success_response(service.to_dict())
 
 
 @services_bp.route("/<int:service_id>", methods=["DELETE"])
 def delete_service(service_id: int):
     """Delete a service."""
-    db = Session()
-    try:
+    with DatabaseSession() as db:
         service = db.query(Service).filter(Service.id == service_id).first()
         if not service:
-            return jsonify({"error": "Service not found"}), 404
+            raise NotFoundError("Service", service_id)
 
         db.delete(service)
         db.commit()
 
-        return jsonify({"message": "Service deleted successfully"}), 200
-    finally:
-        db.close()
+        return success_response(message="Service deleted successfully")
 
 
 @services_bp.route("/<int:service_id>/status", methods=["PUT"])
+@validate_request(ServiceStatusUpdate)
 def update_service_status(service_id: int):
     """Update service status."""
-    data = request.get_json()
+    data = request.validated_data
 
-    if not data or "status" not in data:
-        return jsonify({"error": "Missing required field: status"}), 400
-
-    db = Session()
-    try:
+    with DatabaseSession() as db:
         service = db.query(Service).filter(Service.id == service_id).first()
         if not service:
-            return jsonify({"error": "Service not found"}), 404
+            raise NotFoundError("Service", service_id)
 
-        service.status = ServiceStatus(data["status"])
+        service.status = ServiceStatus(data.status)
         db.commit()
         db.refresh(service)
 
-        return jsonify(service.to_dict()), 200
-    except ValueError as e:
-        return jsonify({"error": f"Invalid status value: {str(e)}"}), 400
-    finally:
-        db.close()
+        return success_response(service.to_dict())

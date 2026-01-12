@@ -1,41 +1,42 @@
-"""Metrics routes."""
+"""Metrics routes with improved error handling and validation."""
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request
 
-from app.database import Session
 from app.models import Metric, Device
+from app.schemas.metric import MetricCreate
+from app.utils.errors import (
+    DatabaseSession,
+    NotFoundError,
+    success_response,
+)
+from app.utils.validation import validate_request
 
 metrics_bp = Blueprint("metrics", __name__)
 
 
 @metrics_bp.route("", methods=["POST"])
+@validate_request(MetricCreate)
 def submit_metrics():
     """Submit new metrics."""
-    data = request.get_json()
+    data = request.validated_data
 
-    if not data or "device_id" not in data:
-        return jsonify({"error": "Missing required field: device_id"}), 400
-
-    db = Session()
-    try:
+    with DatabaseSession() as db:
         # Verify device exists
-        device = db.query(Device).filter(Device.id == data["device_id"]).first()
+        device = db.query(Device).filter(Device.id == data.device_id).first()
         if not device:
-            return jsonify({"error": "Device not found"}), 404
+            raise NotFoundError("Device", data.device_id)
 
         metric = Metric(
-            device_id=data["device_id"],
-            cpu_usage=data.get("cpu_usage"),
-            memory_usage=data.get("memory_usage"),
-            disk_usage=data.get("disk_usage"),
-            network_rx_bytes=data.get("network_rx_bytes"),
-            network_tx_bytes=data.get("network_tx_bytes"),
+            device_id=data.device_id,
+            cpu_usage=data.cpu_usage,
+            memory_usage=data.memory_usage,
+            disk_usage=data.disk_usage,
+            network_rx_bytes=data.network_rx_bytes,
+            network_tx_bytes=data.network_tx_bytes,
         )
 
         db.add(metric)
         db.commit()
         db.refresh(metric)
 
-        return jsonify(metric.to_dict()), 201
-    finally:
-        db.close()
+        return success_response(metric.to_dict(), status_code=201)

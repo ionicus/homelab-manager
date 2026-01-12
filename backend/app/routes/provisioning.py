@@ -1,32 +1,34 @@
-"""Provisioning routes."""
+"""Provisioning routes with improved error handling and validation."""
 
-from flask import Blueprint, request, jsonify
-from datetime import datetime
+from flask import Blueprint, request
 
-from app.database import Session
 from app.models import ProvisioningJob, JobStatus, Device
+from app.schemas.provisioning import ProvisioningTaskCreate
+from app.utils.errors import (
+    DatabaseSession,
+    NotFoundError,
+    success_response,
+)
+from app.utils.validation import validate_request
 
 provisioning_bp = Blueprint("provisioning", __name__)
 
 
 @provisioning_bp.route("", methods=["POST"])
+@validate_request(ProvisioningTaskCreate)
 def trigger_provisioning():
     """Trigger a provisioning job."""
-    data = request.get_json()
+    data = request.validated_data
 
-    if not data or "device_id" not in data or "playbook_name" not in data:
-        return jsonify({"error": "Missing required fields: device_id, playbook_name"}), 400
-
-    db = Session()
-    try:
+    with DatabaseSession() as db:
         # Verify device exists
-        device = db.query(Device).filter(Device.id == data["device_id"]).first()
+        device = db.query(Device).filter(Device.id == data.device_id).first()
         if not device:
-            return jsonify({"error": "Device not found"}), 404
+            raise NotFoundError("Device", data.device_id)
 
         job = ProvisioningJob(
-            device_id=data["device_id"],
-            playbook_name=data["playbook_name"],
+            device_id=data.device_id,
+            playbook_name=data.playbook_name,
             status=JobStatus.PENDING,
         )
 
@@ -36,34 +38,26 @@ def trigger_provisioning():
 
         # TODO: Trigger actual Ansible playbook execution asynchronously
 
-        return jsonify(job.to_dict()), 201
-    finally:
-        db.close()
+        return success_response(job.to_dict(), status_code=201)
 
 
 @provisioning_bp.route("/<int:job_id>", methods=["GET"])
 def get_job_status(job_id: int):
     """Get provisioning job status."""
-    db = Session()
-    try:
+    with DatabaseSession() as db:
         job = db.query(ProvisioningJob).filter(ProvisioningJob.id == job_id).first()
         if not job:
-            return jsonify({"error": "Job not found"}), 404
+            raise NotFoundError("Job", job_id)
 
-        return jsonify(job.to_dict()), 200
-    finally:
-        db.close()
+        return success_response(job.to_dict())
 
 
 @provisioning_bp.route("/<int:job_id>/logs", methods=["GET"])
 def get_job_logs(job_id: int):
     """Get provisioning job logs."""
-    db = Session()
-    try:
+    with DatabaseSession() as db:
         job = db.query(ProvisioningJob).filter(ProvisioningJob.id == job_id).first()
         if not job:
-            return jsonify({"error": "Job not found"}), 404
+            raise NotFoundError("Job", job_id)
 
-        return jsonify({"job_id": job.id, "log_output": job.log_output or ""}), 200
-    finally:
-        db.close()
+        return success_response({"job_id": job.id, "log_output": job.log_output or ""})

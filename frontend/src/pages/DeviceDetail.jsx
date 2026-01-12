@@ -1,12 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { getDevice, getDeviceServices, getDeviceMetrics } from '../services/api';
+import { getDevice, getDeviceServices, getDeviceMetrics, getDeviceInterfaces } from '../services/api';
+import InterfaceList from './InterfaceList';
+import InterfaceForm from './InterfaceForm';
 
 function DeviceDetail() {
   const { id } = useParams();
   const [device, setDevice] = useState(null);
   const [services, setServices] = useState([]);
   const [metrics, setMetrics] = useState([]);
+  const [interfaces, setInterfaces] = useState([]);
+  const [showInterfaceForm, setShowInterfaceForm] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -16,20 +20,27 @@ function DeviceDetail() {
 
   const fetchDeviceData = async () => {
     try {
-      const [deviceRes, servicesRes, metricsRes] = await Promise.all([
+      const [deviceRes, servicesRes, metricsRes, interfacesRes] = await Promise.all([
         getDevice(id),
         getDeviceServices(id),
         getDeviceMetrics(id, 10),
+        getDeviceInterfaces(id),
       ]);
-      
+
       setDevice(deviceRes.data);
       setServices(servicesRes.data);
       setMetrics(metricsRes.data);
+      setInterfaces(interfacesRes.data);
       setLoading(false);
     } catch (err) {
       setError('Failed to fetch device details');
       setLoading(false);
     }
+  };
+
+  const handleInterfaceUpdate = async () => {
+    setShowInterfaceForm(false);
+    await fetchDeviceData();
   };
 
   if (loading) return <div className="loading">Loading...</div>;
@@ -98,6 +109,34 @@ function DeviceDetail() {
             </div>
           </div>
         )}
+
+        <div className="detail-section">
+          <div className="section-header">
+            <h2>Network Interfaces ({interfaces.length})</h2>
+            <button
+              className="btn btn-sm btn-primary"
+              onClick={() => setShowInterfaceForm(true)}
+            >
+              Add Interface
+            </button>
+          </div>
+
+          {showInterfaceForm && (
+            <div className="interface-form-overlay">
+              <InterfaceForm
+                deviceId={id}
+                onSuccess={handleInterfaceUpdate}
+                onCancel={() => setShowInterfaceForm(false)}
+              />
+            </div>
+          )}
+
+          <InterfaceList
+            interfaces={interfaces}
+            deviceId={id}
+            onUpdate={fetchDeviceData}
+          />
+        </div>
 
         <div className="detail-section">
           <div className="section-header">

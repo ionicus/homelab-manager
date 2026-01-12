@@ -37,7 +37,7 @@ class Device(Base):
     status = Column(Enum(DeviceStatus), default=DeviceStatus.ACTIVE)
     ip_address = Column(String(45), nullable=True)  # IPv6 compatible
     mac_address = Column(String(17), nullable=True)
-    metadata = Column(JSON, default=dict)
+    device_metadata = Column(JSON, default=dict)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
@@ -50,7 +50,7 @@ class Device(Base):
             "status": self.status.value if self.status else None,
             "ip_address": self.ip_address,
             "mac_address": self.mac_address,
-            "metadata": self.metadata,
+            "metadata": self.device_metadata,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }

@@ -2,7 +2,6 @@
 name = "homelab-manager"
 version = "0.1.0"
 description = "Homelab infrastructure management system"
-readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
     "flask>=3.0.0",
@@ -30,6 +29,9 @@ dev = [
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
 
 [tool.black]
 line-length = 100

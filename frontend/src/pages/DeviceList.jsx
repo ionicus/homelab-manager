@@ -33,52 +33,77 @@ function DeviceList() {
     }
   };
 
-  if (loading) return <div>Loading...</div>;
+  if (loading) return <div className="loading">Loading...</div>;
   if (error) return <div className="error">{error}</div>;
+
+  const getDeviceIcon = (type) => {
+    const icons = {
+      server: '🖥️',
+      vm: '💻',
+      container: '📦',
+      network: '🌐',
+      storage: '💾'
+    };
+    return icons[type] || '🖥️';
+  };
 
   return (
     <div className="device-list-page">
       <div className="page-header">
-        <h1>Devices</h1>
+        <h1>All Devices ({devices.length})</h1>
         <Link to="/devices/new" className="btn btn-primary">Add Device</Link>
       </div>
 
-      <div className="devices-table">
-        <table>
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Type</th>
-              <th>Status</th>
-              <th>IP Address</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {devices.map(device => (
-              <tr key={device.id}>
-                <td><Link to={`/devices/${device.id}`}>{device.name}</Link></td>
-                <td>{device.type}</td>
-                <td>
+      {devices.length === 0 ? (
+        <div className="empty-state">
+          <p>No devices found</p>
+          <Link to="/devices/new" className="btn btn-primary">Add Your First Device</Link>
+        </div>
+      ) : (
+        <div className="devices-grid">
+          {devices.map(device => (
+            <div key={device.id} className="device-card">
+              <Link to={`/devices/${device.id}`} className="device-card-link">
+                <div className="device-card-header">
+                  <div className="device-card-title">
+                    <span className="device-card-icon">{getDeviceIcon(device.type)}</span>
+                    <h3>{device.name}</h3>
+                  </div>
                   <span className={`status-badge status-${device.status}`}>
                     {device.status}
                   </span>
-                </td>
-                <td>{device.ip_address || 'N/A'}</td>
-                <td>
-                  <Link to={`/devices/${device.id}`} className="btn btn-sm">View</Link>
-                  <button 
-                    onClick={() => handleDelete(device.id)} 
-                    className="btn btn-sm btn-danger"
-                  >
-                    Delete
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+                </div>
+                <div className="device-card-body">
+                  <div className="device-card-info">
+                    <span className="info-label">Type</span>
+                    <span className="info-value">{device.type}</span>
+                  </div>
+                  <div className="device-card-info">
+                    <span className="info-label">IP Address</span>
+                    <span className="info-value">{device.ip_address || 'Not set'}</span>
+                  </div>
+                  {device.mac_address && (
+                    <div className="device-card-info">
+                      <span className="info-label">MAC Address</span>
+                      <span className="info-value">{device.mac_address}</span>
+                    </div>
+                  )}
+                </div>
+              </Link>
+              <div className="device-card-actions">
+                <Link to={`/devices/${device.id}`} className="btn btn-sm">View Details</Link>
+                <Link to={`/devices/${device.id}/edit`} className="btn btn-sm">Edit</Link>
+                <button
+                  onClick={() => handleDelete(device.id)}
+                  className="btn btn-sm btn-danger"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

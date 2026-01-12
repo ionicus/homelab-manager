@@ -3,6 +3,7 @@ import Dashboard from './pages/Dashboard'
 import DeviceList from './pages/DeviceList'
 import DeviceDetail from './pages/DeviceDetail'
 import DeviceForm from './pages/DeviceForm'
+import Services from './pages/Services'
 import ErrorBoundary from './components/ErrorBoundary'
 import './App.css'
 
@@ -17,6 +18,7 @@ function App() {
               <ul className="nav-menu">
                 <li><Link to="/">Dashboard</Link></li>
                 <li><Link to="/devices">Devices</Link></li>
+                <li><Link to="/services">Services</Link></li>
               </ul>
             </div>
           </nav>
@@ -28,6 +30,7 @@ function App() {
               <Route path="/devices/new" element={<DeviceForm />} />
               <Route path="/devices/:id/edit" element={<DeviceForm />} />
               <Route path="/devices/:id" element={<DeviceDetail />} />
+              <Route path="/services" element={<Services />} />
             </Routes>
           </main>
         </div>

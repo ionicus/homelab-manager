@@ -1317,3 +1317,112 @@
   max-height: 90vh;
   overflow-y: auto;
 }
+
+/* Services Page */
+.services-page {
+  width: 100%;
+}
+
+.filters-bar {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  padding: 1.5rem;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.filter-group label {
+  color: #ddd;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.filter-select {
+  padding: 0.5rem 1rem;
+  background: #0a0a0a;
+  border: 1px solid #333;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.filter-select:hover {
+  border-color: #4a9eff;
+}
+
+.filter-select:focus {
+  outline: none;
+  border-color: #4a9eff;
+}
+
+.filter-results {
+  margin-left: auto;
+  color: #999;
+  font-size: 0.875rem;
+}
+
+/* Service Card Enhancements for Services Page */
+.services-page .service-card {
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 1.5rem;
+  transition: all 0.2s;
+}
+
+.services-page .service-card:hover {
+  border-color: #4a9eff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(74, 158, 255, 0.1);
+}
+
+.service-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.device-link {
+  font-size: 0.75rem;
+  color: #999;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.device-link:hover {
+  color: #4a9eff;
+}
+
+/* Responsive filters */
+@media (max-width: 768px) {
+  .filters-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filter-group {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filter-select {
+    width: 100%;
+  }
+
+  .filter-results {
+    margin-left: 0;
+    text-align: center;
+  }
+}

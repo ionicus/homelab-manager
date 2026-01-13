@@ -122,6 +122,8 @@ homelab-manager/
 │   │   ├── config.py    # Configuration
 │   │   └── database.py  # Database connection
 │   ├── migrations/      # Alembic migrations
+│   ├── automation/      # Automation resources
+│   │   └── ansible/     # Ansible playbooks and config
 │   ├── tests/           # Backend tests
 │   └── pyproject.toml   # Python dependencies
 ├── frontend/            # React frontend application
@@ -136,9 +138,6 @@ homelab-manager/
 │   │   ├── App.css      # Global styles
 │   │   └── main.jsx     # Entry point
 │   └── package.json     # Node dependencies
-├── ansible/             # Ansible automation
-│   ├── playbooks/       # Automation playbooks
-│   └── inventory/       # Inventory files
 ├── docker/              # Docker configuration
 │   ├── docker-compose.yml
 │   ├── Dockerfile.backend

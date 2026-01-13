@@ -13,7 +13,7 @@ Thank you for your interest in contributing! This guide will help you get starte
 
 ### Prerequisites
 
-- Python 3.11+
+- Python 3.14+
 - Node.js 18+
 - PostgreSQL (or SQLite for development)
 

@@ -1,6 +1,6 @@
 # Ansible Playbooks
 
-This directory contains Ansible playbooks used by the Homelab Manager for device provisioning and management.
+This directory contains Ansible playbooks used by the Homelab Manager for device automation and management.
 
 ## Available Playbooks
 
@@ -82,7 +82,7 @@ All playbooks assume:
 
 Playbooks are executed via the Homelab Manager API:
 ```
-POST /api/provisioning
+POST /api/provision
 {
   "device_id": 1,
   "playbook_name": "ping"

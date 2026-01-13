@@ -710,10 +710,54 @@ Trigger Ansible playbook executions for automated device configuration.
 - `completed` - Job finished successfully
 - `failed` - Job failed
 
+### List Available Playbooks
+
+```http
+GET /api/provision/playbooks
+```
+
+Returns a list of available Ansible playbooks.
+
+**Response** `200 OK`:
+```json
+[
+  {
+    "name": "ping",
+    "description": "Simple connectivity test"
+  },
+  {
+    "name": "system_info",
+    "description": "Gather system information"
+  }
+]
+```
+
+### List Provisioning Jobs
+
+```http
+GET /api/provision/jobs?device_id=1
+```
+
+**Query Parameters** (all optional):
+- `device_id` (integer) - Filter jobs by device ID
+
+**Response** `200 OK`:
+```json
+[
+  {
+    "id": 1,
+    "device_id": 1,
+    "playbook_name": "ping",
+    "status": "completed",
+    "created_at": "2026-01-12T10:00:00"
+  }
+]
+```
+
 ### Trigger Provisioning Job
 
 ```http
-POST /api/provisioning
+POST /api/provision
 ```
 
 **Request Body**:
@@ -726,18 +770,16 @@ POST /api/provisioning
 
 **Response** `201 Created`
 
-**Note**: Actual Ansible playbook execution is not yet implemented.
-
 ### Get Job Status
 
 ```http
-GET /api/provisioning/{job_id}
+GET /api/provision/{job_id}
 ```
 
 ### Get Job Logs
 
 ```http
-GET /api/provisioning/{job_id}/logs
+GET /api/provision/{job_id}/logs
 ```
 
 **Response**:

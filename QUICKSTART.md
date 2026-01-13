@@ -152,7 +152,7 @@ curl -X POST http://localhost:5000/api/devices \
 
 1. **Configure Environment Variables**: Update `.env` files with your settings
 2. **Add Devices**: Start adding your homelab devices
-3. **Setup Ansible**: Configure Ansible playbooks for provisioning
+3. **Setup Ansible**: Configure Ansible playbooks for automation
 4. **Configure Monitoring**: Set up metrics collection agents
 5. **Customize UI**: Modify the frontend to match your preferences
 

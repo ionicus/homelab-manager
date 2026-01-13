@@ -17,7 +17,59 @@ metrics_bp = Blueprint("metrics", __name__)
 @metrics_bp.route("", methods=["POST"])
 @validate_request(MetricCreate)
 def submit_metrics():
-    """Submit new metrics."""
+    """Submit new metrics for a device.
+    ---
+    tags:
+      - Metrics
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          required:
+            - device_id
+          properties:
+            device_id:
+              type: integer
+              description: ID of the device
+              example: 1
+            cpu_usage:
+              type: number
+              format: float
+              description: CPU usage percentage (0-100)
+              example: 45.2
+            memory_usage:
+              type: number
+              format: float
+              description: Memory usage percentage (0-100)
+              example: 67.8
+            disk_usage:
+              type: number
+              format: float
+              description: Disk usage percentage (0-100)
+              example: 82.1
+            network_rx_bytes:
+              type: integer
+              description: Network received bytes
+              example: 1048576
+            network_tx_bytes:
+              type: integer
+              description: Network transmitted bytes
+              example: 524288
+    responses:
+      201:
+        description: Metrics submitted successfully
+        schema:
+          type: object
+          properties:
+            data:
+              $ref: '#/definitions/Metric'
+      400:
+        description: Validation error
+      404:
+        description: Device not found
+    """
     data = request.validated_data
 
     with DatabaseSession() as db:

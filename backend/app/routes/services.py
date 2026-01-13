@@ -16,7 +16,21 @@ services_bp = Blueprint("services", __name__)
 
 @services_bp.route("", methods=["GET"])
 def list_services():
-    """List all services."""
+    """List all services.
+    ---
+    tags:
+      - Services
+    responses:
+      200:
+        description: List of all services
+        schema:
+          type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/definitions/Service'
+    """
     with DatabaseSession() as db:
         services = db.query(Service).all()
         return success_response([service.to_dict() for service in services])
@@ -24,7 +38,27 @@ def list_services():
 
 @services_bp.route("/<int:service_id>", methods=["GET"])
 def get_service(service_id: int):
-    """Get a specific service."""
+    """Get a specific service.
+    ---
+    tags:
+      - Services
+    parameters:
+      - name: service_id
+        in: path
+        type: integer
+        required: true
+        description: Service ID
+    responses:
+      200:
+        description: Service details
+        schema:
+          type: object
+          properties:
+            data:
+              $ref: '#/definitions/Service'
+      404:
+        description: Service not found
+    """
     with DatabaseSession() as db:
         service = db.query(Service).filter(Service.id == service_id).first()
         if not service:
@@ -35,7 +69,52 @@ def get_service(service_id: int):
 @services_bp.route("", methods=["POST"])
 @validate_request(ServiceCreate)
 def create_service():
-    """Create a new service."""
+    """Create a new service.
+    ---
+    tags:
+      - Services
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          required:
+            - device_id
+            - name
+          properties:
+            device_id:
+              type: integer
+              description: ID of the device running this service
+              example: 1
+            name:
+              type: string
+              description: Service name
+              example: nginx
+            port:
+              type: integer
+              description: Port number
+              example: 80
+            protocol:
+              type: string
+              description: Protocol
+              example: http
+            status:
+              type: string
+              enum: [running, stopped, error]
+              default: stopped
+            health_check_url:
+              type: string
+              description: Health check endpoint
+              example: http://localhost:80/health
+    responses:
+      201:
+        description: Service created successfully
+      400:
+        description: Validation error
+      404:
+        description: Device not found
+    """
     data = request.validated_data
 
     with DatabaseSession() as db:
@@ -63,7 +142,41 @@ def create_service():
 @services_bp.route("/<int:service_id>", methods=["PUT"])
 @validate_request(ServiceUpdate)
 def update_service(service_id: int):
-    """Update a service."""
+    """Update a service.
+    ---
+    tags:
+      - Services
+    parameters:
+      - name: service_id
+        in: path
+        type: integer
+        required: true
+        description: Service ID
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          properties:
+            name:
+              type: string
+            port:
+              type: integer
+            protocol:
+              type: string
+            status:
+              type: string
+              enum: [running, stopped, error]
+            health_check_url:
+              type: string
+    responses:
+      200:
+        description: Service updated successfully
+      404:
+        description: Service not found
+      400:
+        description: Validation error
+    """
     data = request.validated_data
 
     with DatabaseSession() as db:
@@ -91,7 +204,28 @@ def update_service(service_id: int):
 
 @services_bp.route("/<int:service_id>", methods=["DELETE"])
 def delete_service(service_id: int):
-    """Delete a service."""
+    """Delete a service.
+    ---
+    tags:
+      - Services
+    parameters:
+      - name: service_id
+        in: path
+        type: integer
+        required: true
+        description: Service ID
+    responses:
+      200:
+        description: Service deleted successfully
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+              example: Service deleted successfully
+      404:
+        description: Service not found
+    """
     with DatabaseSession() as db:
         service = db.query(Service).filter(Service.id == service_id).first()
         if not service:
@@ -106,7 +240,34 @@ def delete_service(service_id: int):
 @services_bp.route("/<int:service_id>/status", methods=["PUT"])
 @validate_request(ServiceStatusUpdate)
 def update_service_status(service_id: int):
-    """Update service status."""
+    """Update service status.
+    ---
+    tags:
+      - Services
+    parameters:
+      - name: service_id
+        in: path
+        type: integer
+        required: true
+        description: Service ID
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          required:
+            - status
+          properties:
+            status:
+              type: string
+              enum: [running, stopped, error]
+              description: New service status
+    responses:
+      200:
+        description: Status updated successfully
+      404:
+        description: Service not found
+    """
     data = request.validated_data
 
     with DatabaseSession() as db:

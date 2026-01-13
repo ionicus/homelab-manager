@@ -17,7 +17,21 @@ devices_bp = Blueprint("devices", __name__)
 
 @devices_bp.route("", methods=["GET"])
 def list_devices():
-    """List all devices."""
+    """List all devices.
+    ---
+    tags:
+      - Devices
+    responses:
+      200:
+        description: List of all devices
+        schema:
+          type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/definitions/Device'
+    """
     with DatabaseSession() as db:
         devices = db.query(Device).all()
         return success_response([device.to_dict() for device in devices])
@@ -25,7 +39,27 @@ def list_devices():
 
 @devices_bp.route("/<int:device_id>", methods=["GET"])
 def get_device(device_id: int):
-    """Get a specific device."""
+    """Get a specific device.
+    ---
+    tags:
+      - Devices
+    parameters:
+      - name: device_id
+        in: path
+        type: integer
+        required: true
+        description: Device ID
+    responses:
+      200:
+        description: Device details
+        schema:
+          type: object
+          properties:
+            data:
+              $ref: '#/definitions/Device'
+      404:
+        description: Device not found
+    """
     with DatabaseSession() as db:
         device = db.query(Device).filter(Device.id == device_id).first()
         if not device:
@@ -36,7 +70,58 @@ def get_device(device_id: int):
 @devices_bp.route("", methods=["POST"])
 @validate_request(DeviceCreate)
 def create_device():
-    """Create a new device."""
+    """Create a new device.
+    ---
+    tags:
+      - Devices
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          required:
+            - name
+            - type
+          properties:
+            name:
+              type: string
+              description: Unique device name
+              example: server-01
+            type:
+              type: string
+              enum: [server, vm, container, network, storage]
+              description: Device type
+              example: server
+            status:
+              type: string
+              enum: [active, inactive, maintenance]
+              description: Device status
+              example: active
+            ip_address:
+              type: string
+              description: Primary IP address
+              example: 192.168.1.10
+            mac_address:
+              type: string
+              description: Primary MAC address
+              example: "AA:BB:CC:DD:EE:FF"
+            metadata:
+              type: object
+              description: Additional key-value metadata
+    responses:
+      201:
+        description: Device created successfully
+        schema:
+          type: object
+          properties:
+            data:
+              $ref: '#/definitions/Device'
+      400:
+        description: Validation error
+      409:
+        description: Device with this name already exists
+    """
     data = request.validated_data
 
     with DatabaseSession() as db:
@@ -64,7 +149,50 @@ def create_device():
 @devices_bp.route("/<int:device_id>", methods=["PUT"])
 @validate_request(DeviceUpdate)
 def update_device(device_id: int):
-    """Update a device."""
+    """Update a device.
+    ---
+    tags:
+      - Devices
+    parameters:
+      - name: device_id
+        in: path
+        type: integer
+        required: true
+        description: Device ID
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          properties:
+            name:
+              type: string
+              description: Device name
+            type:
+              type: string
+              enum: [server, vm, container, network, storage]
+            status:
+              type: string
+              enum: [active, inactive, maintenance]
+            ip_address:
+              type: string
+            mac_address:
+              type: string
+            metadata:
+              type: object
+    responses:
+      200:
+        description: Device updated successfully
+        schema:
+          type: object
+          properties:
+            data:
+              $ref: '#/definitions/Device'
+      404:
+        description: Device not found
+      400:
+        description: Validation error
+    """
     data = request.validated_data
 
     with DatabaseSession() as db:
@@ -94,7 +222,28 @@ def update_device(device_id: int):
 
 @devices_bp.route("/<int:device_id>", methods=["DELETE"])
 def delete_device(device_id: int):
-    """Delete a device."""
+    """Delete a device.
+    ---
+    tags:
+      - Devices
+    parameters:
+      - name: device_id
+        in: path
+        type: integer
+        required: true
+        description: Device ID
+    responses:
+      200:
+        description: Device deleted successfully
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+              example: Device deleted successfully
+      404:
+        description: Device not found
+    """
     with DatabaseSession() as db:
         device = db.query(Device).filter(Device.id == device_id).first()
         if not device:
@@ -108,7 +257,29 @@ def delete_device(device_id: int):
 
 @devices_bp.route("/<int:device_id>/services", methods=["GET"])
 def get_device_services(device_id: int):
-    """Get all services for a device."""
+    """Get all services for a device.
+    ---
+    tags:
+      - Devices
+    parameters:
+      - name: device_id
+        in: path
+        type: integer
+        required: true
+        description: Device ID
+    responses:
+      200:
+        description: List of services running on the device
+        schema:
+          type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/definitions/Service'
+      404:
+        description: Device not found
+    """
     with DatabaseSession() as db:
         device = db.query(Device).filter(Device.id == device_id).first()
         if not device:
@@ -120,7 +291,34 @@ def get_device_services(device_id: int):
 
 @devices_bp.route("/<int:device_id>/metrics", methods=["GET"])
 def get_device_metrics(device_id: int):
-    """Get metrics for a device."""
+    """Get metrics for a device.
+    ---
+    tags:
+      - Devices
+    parameters:
+      - name: device_id
+        in: path
+        type: integer
+        required: true
+        description: Device ID
+      - name: limit
+        in: query
+        type: integer
+        default: 100
+        description: Maximum number of metrics to return
+    responses:
+      200:
+        description: List of device metrics
+        schema:
+          type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/definitions/Metric'
+      404:
+        description: Device not found
+    """
     with DatabaseSession() as db:
         device = db.query(Device).filter(Device.id == device_id).first()
         if not device:

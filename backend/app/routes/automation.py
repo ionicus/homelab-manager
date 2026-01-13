@@ -20,8 +20,47 @@ automation_bp = Blueprint("automation", __name__)
 @validate_request(AutomationJobCreate)
 def trigger_automation():
     """Trigger an automation job.
-
-    Supports multiple executor backends via the executor_type field.
+    ---
+    tags:
+      - Automation
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          required:
+            - device_id
+            - action_name
+          properties:
+            device_id:
+              type: integer
+              description: ID of the target device
+              example: 1
+            executor_type:
+              type: string
+              description: Executor backend type
+              default: ansible
+              example: ansible
+            action_name:
+              type: string
+              description: Action/playbook to execute
+              example: ping
+            action_config:
+              type: object
+              description: Action-specific configuration
+    responses:
+      201:
+        description: Automation job created and started
+        schema:
+          type: object
+          properties:
+            data:
+              $ref: '#/definitions/AutomationJob'
+      400:
+        description: Validation error (invalid executor, action, or device has no IP)
+      404:
+        description: Device not found
     """
     data = request.validated_data
 
@@ -75,7 +114,27 @@ def trigger_automation():
 
 @automation_bp.route("/<int:job_id>", methods=["GET"])
 def get_job_status(job_id: int):
-    """Get automation job status."""
+    """Get automation job status.
+    ---
+    tags:
+      - Automation
+    parameters:
+      - name: job_id
+        in: path
+        type: integer
+        required: true
+        description: Job ID
+    responses:
+      200:
+        description: Job details
+        schema:
+          type: object
+          properties:
+            data:
+              $ref: '#/definitions/AutomationJob'
+      404:
+        description: Job not found
+    """
     with DatabaseSession() as db:
         job = db.query(AutomationJob).filter(AutomationJob.id == job_id).first()
         if not job:
@@ -86,7 +145,32 @@ def get_job_status(job_id: int):
 
 @automation_bp.route("/<int:job_id>/logs", methods=["GET"])
 def get_job_logs(job_id: int):
-    """Get automation job logs."""
+    """Get automation job logs.
+    ---
+    tags:
+      - Automation
+    parameters:
+      - name: job_id
+        in: path
+        type: integer
+        required: true
+        description: Job ID
+    responses:
+      200:
+        description: Job logs
+        schema:
+          type: object
+          properties:
+            data:
+              type: object
+              properties:
+                job_id:
+                  type: integer
+                log_output:
+                  type: string
+      404:
+        description: Job not found
+    """
     with DatabaseSession() as db:
         job = db.query(AutomationJob).filter(AutomationJob.id == job_id).first()
         if not job:
@@ -97,7 +181,31 @@ def get_job_logs(job_id: int):
 
 @automation_bp.route("/executors", methods=["GET"])
 def list_executors():
-    """List available executor types."""
+    """List available executor types.
+    ---
+    tags:
+      - Automation
+    responses:
+      200:
+        description: List of available executors
+        schema:
+          type: object
+          properties:
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  type:
+                    type: string
+                    example: ansible
+                  display_name:
+                    type: string
+                    example: Ansible
+                  description:
+                    type: string
+                    example: Execute Ansible playbooks for configuration management
+    """
     executors = registry.list_executor_types()
     return success_response(
         [
@@ -113,7 +221,41 @@ def list_executors():
 
 @automation_bp.route("/executors/<executor_type>/actions", methods=["GET"])
 def list_executor_actions(executor_type: str):
-    """List available actions for an executor type."""
+    """List available actions for an executor type.
+    ---
+    tags:
+      - Automation
+    parameters:
+      - name: executor_type
+        in: path
+        type: string
+        required: true
+        description: Executor type identifier
+    responses:
+      200:
+        description: List of available actions
+        schema:
+          type: object
+          properties:
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                    example: ping
+                  display_name:
+                    type: string
+                    example: Ping
+                  description:
+                    type: string
+                    example: Test connectivity to device
+                  config_schema:
+                    type: object
+      404:
+        description: Executor type not found
+    """
     executor = registry.get_executor(executor_type)
     if not executor:
         raise NotFoundError("Executor", executor_type)
@@ -134,7 +276,32 @@ def list_executor_actions(executor_type: str):
 
 @automation_bp.route("/jobs", methods=["GET"])
 def list_jobs():
-    """List automation jobs, optionally filtered by device_id or executor_type."""
+    """List automation jobs with optional filtering.
+    ---
+    tags:
+      - Automation
+    parameters:
+      - name: device_id
+        in: query
+        type: integer
+        description: Filter by device ID
+      - name: executor_type
+        in: query
+        type: string
+        description: Filter by executor type
+    responses:
+      200:
+        description: List of automation jobs
+        schema:
+          type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/definitions/AutomationJob'
+      404:
+        description: Device not found (if device_id filter specified)
+    """
     device_id = request.args.get("device_id", type=int)
     executor_type = request.args.get("executor_type", type=str)
 

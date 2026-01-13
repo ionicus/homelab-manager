@@ -2,6 +2,7 @@
 
 import logging
 
+from flasgger import Swagger
 from flask import Flask, jsonify
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
@@ -13,6 +14,43 @@ from app.utils.errors import APIError, handle_database_exception
 
 logger = logging.getLogger(__name__)
 
+SWAGGER_TEMPLATE = {
+    "info": {
+        "title": "Homelab Manager API",
+        "description": "API for managing homelab infrastructure including devices, "
+        "network interfaces, services, metrics, and automation.",
+        "version": "0.2.0",
+        "contact": {
+            "name": "Homelab Manager",
+            "url": "https://github.com/ionicus/homelab-manager",
+        },
+    },
+    "basePath": "/api",
+    "schemes": ["http", "https"],
+    "tags": [
+        {"name": "Devices", "description": "Device management operations"},
+        {"name": "Network Interfaces", "description": "Network interface operations"},
+        {"name": "Services", "description": "Service tracking operations"},
+        {"name": "Metrics", "description": "Performance metrics operations"},
+        {"name": "Automation", "description": "Automation and playbook execution"},
+    ],
+}
+
+SWAGGER_CONFIG = {
+    "headers": [],
+    "specs": [
+        {
+            "endpoint": "apispec",
+            "route": "/apispec.json",
+            "rule_filter": lambda rule: True,
+            "model_filter": lambda tag: True,
+        }
+    ],
+    "static_url_path": "/flasgger_static",
+    "swagger_ui": True,
+    "specs_route": "/apidocs/",
+}
+
 
 def create_app(config_class=Config):
     """Create and configure the Flask application."""
@@ -22,6 +60,7 @@ def create_app(config_class=Config):
     # Initialize extensions
     CORS(app, origins=app.config["CORS_ORIGINS"])
     JWTManager(app)
+    Swagger(app, template=SWAGGER_TEMPLATE, config=SWAGGER_CONFIG)
 
     # Register blueprints
     register_blueprints(app)

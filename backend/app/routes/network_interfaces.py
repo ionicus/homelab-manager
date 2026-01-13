@@ -30,7 +30,29 @@ interfaces_bp = Blueprint("interfaces", __name__)
 
 @interfaces_bp.route("/devices/<int:device_id>/interfaces", methods=["GET"])
 def list_device_interfaces(device_id: int):
-    """List all interfaces for a device."""
+    """List all interfaces for a device.
+    ---
+    tags:
+      - Network Interfaces
+    parameters:
+      - name: device_id
+        in: path
+        type: integer
+        required: true
+        description: Device ID
+    responses:
+      200:
+        description: List of network interfaces
+        schema:
+          type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/definitions/NetworkInterface'
+      404:
+        description: Device not found
+    """
     with DatabaseSession() as db:
         # Verify device exists
         device = db.query(Device).filter(Device.id == device_id).first()
@@ -53,7 +75,32 @@ def list_device_interfaces(device_id: int):
     "/devices/<int:device_id>/interfaces/<int:interface_id>", methods=["GET"]
 )
 def get_device_interface(device_id: int, interface_id: int):
-    """Get a specific interface for a device."""
+    """Get a specific interface for a device.
+    ---
+    tags:
+      - Network Interfaces
+    parameters:
+      - name: device_id
+        in: path
+        type: integer
+        required: true
+        description: Device ID
+      - name: interface_id
+        in: path
+        type: integer
+        required: true
+        description: Interface ID
+    responses:
+      200:
+        description: Interface details
+        schema:
+          type: object
+          properties:
+            data:
+              $ref: '#/definitions/NetworkInterface'
+      404:
+        description: Interface not found
+    """
     with DatabaseSession() as db:
         interface = (
             db.query(NetworkInterface)
@@ -73,7 +120,60 @@ def get_device_interface(device_id: int, interface_id: int):
 @interfaces_bp.route("/devices/<int:device_id>/interfaces", methods=["POST"])
 @validate_request(NetworkInterfaceCreate)
 def create_device_interface(device_id: int):
-    """Create a new interface for a device."""
+    """Create a new interface for a device.
+    ---
+    tags:
+      - Network Interfaces
+    parameters:
+      - name: device_id
+        in: path
+        type: integer
+        required: true
+        description: Device ID
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          required:
+            - interface_name
+            - mac_address
+          properties:
+            interface_name:
+              type: string
+              example: eth0
+            mac_address:
+              type: string
+              example: "AA:BB:CC:DD:EE:FF"
+            ip_address:
+              type: string
+              example: 192.168.1.10
+            subnet_mask:
+              type: string
+              example: 255.255.255.0
+            gateway:
+              type: string
+              example: 192.168.1.1
+            vlan_id:
+              type: integer
+              example: 100
+            is_primary:
+              type: boolean
+              default: false
+            status:
+              type: string
+              enum: [up, down, disabled]
+              default: up
+    responses:
+      201:
+        description: Interface created successfully
+      400:
+        description: Validation error
+      404:
+        description: Device not found
+      409:
+        description: Interface with this MAC address already exists
+    """
     data = request.validated_data
 
     with DatabaseSession() as db:
@@ -135,7 +235,50 @@ def create_device_interface(device_id: int):
 )
 @validate_request(NetworkInterfaceUpdate)
 def update_device_interface(device_id: int, interface_id: int):
-    """Update an interface."""
+    """Update an interface.
+    ---
+    tags:
+      - Network Interfaces
+    parameters:
+      - name: device_id
+        in: path
+        type: integer
+        required: true
+      - name: interface_id
+        in: path
+        type: integer
+        required: true
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          properties:
+            interface_name:
+              type: string
+            mac_address:
+              type: string
+            ip_address:
+              type: string
+            subnet_mask:
+              type: string
+            gateway:
+              type: string
+            vlan_id:
+              type: integer
+            is_primary:
+              type: boolean
+            status:
+              type: string
+              enum: [up, down, disabled]
+    responses:
+      200:
+        description: Interface updated successfully
+      404:
+        description: Interface not found
+      409:
+        description: MAC address conflict
+    """
     data = request.validated_data
 
     with DatabaseSession() as db:
@@ -198,7 +341,27 @@ def update_device_interface(device_id: int, interface_id: int):
     "/devices/<int:device_id>/interfaces/<int:interface_id>", methods=["DELETE"]
 )
 def delete_device_interface(device_id: int, interface_id: int):
-    """Delete an interface."""
+    """Delete an interface.
+    ---
+    tags:
+      - Network Interfaces
+    parameters:
+      - name: device_id
+        in: path
+        type: integer
+        required: true
+      - name: interface_id
+        in: path
+        type: integer
+        required: true
+    responses:
+      200:
+        description: Interface deleted successfully
+      400:
+        description: Cannot delete the only interface
+      404:
+        description: Interface not found
+    """
     with DatabaseSession() as db:
         interface = (
             db.query(NetworkInterface)
@@ -242,7 +405,25 @@ def delete_device_interface(device_id: int, interface_id: int):
     methods=["PUT"],
 )
 def set_primary_interface(device_id: int, interface_id: int):
-    """Set an interface as the primary interface for the device."""
+    """Set an interface as the primary interface for the device.
+    ---
+    tags:
+      - Network Interfaces
+    parameters:
+      - name: device_id
+        in: path
+        type: integer
+        required: true
+      - name: interface_id
+        in: path
+        type: integer
+        required: true
+    responses:
+      200:
+        description: Interface set as primary
+      404:
+        description: Interface not found
+    """
     with DatabaseSession() as db:
         interface = (
             db.query(NetworkInterface)
@@ -274,7 +455,35 @@ def set_primary_interface(device_id: int, interface_id: int):
 
 @interfaces_bp.route("/interfaces", methods=["GET"])
 def list_all_interfaces():
-    """List all interfaces with optional filtering."""
+    """List all interfaces with optional filtering.
+    ---
+    tags:
+      - Network Interfaces
+    parameters:
+      - name: device_id
+        in: query
+        type: integer
+        description: Filter by device ID
+      - name: status
+        in: query
+        type: string
+        enum: [up, down, disabled]
+        description: Filter by status
+      - name: is_primary
+        in: query
+        type: boolean
+        description: Filter by primary status
+    responses:
+      200:
+        description: List of interfaces
+        schema:
+          type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/definitions/NetworkInterface'
+    """
     with DatabaseSession() as db:
         query = db.query(NetworkInterface)
 
@@ -306,7 +515,21 @@ def list_all_interfaces():
 
 @interfaces_bp.route("/interfaces/<int:interface_id>", methods=["GET"])
 def get_interface(interface_id: int):
-    """Get a specific interface by ID."""
+    """Get a specific interface by ID.
+    ---
+    tags:
+      - Network Interfaces
+    parameters:
+      - name: interface_id
+        in: path
+        type: integer
+        required: true
+    responses:
+      200:
+        description: Interface details
+      404:
+        description: Interface not found
+    """
     with DatabaseSession() as db:
         interface = (
             db.query(NetworkInterface)
@@ -322,7 +545,24 @@ def get_interface(interface_id: int):
 
 @interfaces_bp.route("/interfaces/by-mac/<string:mac_address>", methods=["GET"])
 def get_interface_by_mac(mac_address: str):
-    """Find interfaces by MAC address."""
+    """Find interfaces by MAC address.
+    ---
+    tags:
+      - Network Interfaces
+    parameters:
+      - name: mac_address
+        in: path
+        type: string
+        required: true
+        description: MAC address (XX:XX:XX:XX:XX:XX format)
+    responses:
+      200:
+        description: Interfaces with matching MAC address
+      400:
+        description: Invalid MAC address format
+      404:
+        description: No interfaces found
+    """
     if not validate_mac_address(mac_address):
         raise ValidationError("Invalid MAC address format. Use XX:XX:XX:XX:XX:XX")
 
@@ -341,7 +581,24 @@ def get_interface_by_mac(mac_address: str):
 
 @interfaces_bp.route("/interfaces/by-ip/<string:ip_address>", methods=["GET"])
 def get_interface_by_ip(ip_address: str):
-    """Find interfaces by IP address."""
+    """Find interfaces by IP address.
+    ---
+    tags:
+      - Network Interfaces
+    parameters:
+      - name: ip_address
+        in: path
+        type: string
+        required: true
+        description: IP address
+    responses:
+      200:
+        description: Interfaces with matching IP address
+      400:
+        description: Invalid IP address format
+      404:
+        description: No interfaces found
+    """
     if not validate_ip_address(ip_address):
         raise ValidationError("Invalid IP address format")
 

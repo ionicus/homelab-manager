@@ -73,3 +73,31 @@ def get_job_logs(job_id: int):
             raise NotFoundError("Job", job_id)
 
         return success_response({"job_id": job.id, "log_output": job.log_output or ""})
+
+
+@provisioning_bp.route("/playbooks", methods=["GET"])
+def list_playbooks():
+    """List available Ansible playbooks."""
+    playbooks = executor.list_available_playbooks()
+    return success_response({"playbooks": playbooks})
+
+
+@provisioning_bp.route("/jobs", methods=["GET"])
+def list_jobs():
+    """List provisioning jobs, optionally filtered by device_id."""
+    device_id = request.args.get("device_id", type=int)
+
+    with DatabaseSession() as db:
+        query = db.query(ProvisioningJob)
+
+        if device_id:
+            # Verify device exists
+            device = db.query(Device).filter(Device.id == device_id).first()
+            if not device:
+                raise NotFoundError("Device", device_id)
+            query = query.filter(ProvisioningJob.device_id == device_id)
+
+        # Order by created_at descending (newest first)
+        jobs = query.order_by(ProvisioningJob.created_at.desc()).all()
+
+        return success_response([job.to_dict() for job in jobs])

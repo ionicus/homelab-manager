@@ -1,6 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { getDevice, getDeviceServices, getDeviceMetrics, getDeviceInterfaces } from '../services/api';
+import {
+  getDevice,
+  getDeviceServices,
+  getDeviceMetrics,
+  getDeviceInterfaces,
+  getProvisioningJobs,
+} from '../services/api';
 import { safeGetArray } from '../utils/validation';
 import ErrorDisplay from '../components/ErrorDisplay';
 import LoadingSkeleton from '../components/LoadingSkeleton';
@@ -10,6 +16,8 @@ import MetricsChart from '../components/MetricsChart';
 import NetworkChart from '../components/NetworkChart';
 import InterfaceList from './InterfaceList';
 import InterfaceForm from './InterfaceForm';
+import ProvisioningForm from '../components/ProvisioningForm';
+import ProvisioningJobsList from '../components/ProvisioningJobsList';
 
 function DeviceDetail() {
   const { id } = useParams();
@@ -17,8 +25,10 @@ function DeviceDetail() {
   const [services, setServices] = useState([]);
   const [metrics, setMetrics] = useState([]);
   const [interfaces, setInterfaces] = useState([]);
+  const [provisioningJobs, setProvisioningJobs] = useState([]);
   const [showInterfaceForm, setShowInterfaceForm] = useState(false);
   const [showServiceForm, setShowServiceForm] = useState(false);
+  const [showProvisioningForm, setShowProvisioningForm] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -30,17 +40,19 @@ function DeviceDetail() {
     setLoading(true);
     setError(null);
     try {
-      const [deviceRes, servicesRes, metricsRes, interfacesRes] = await Promise.all([
+      const [deviceRes, servicesRes, metricsRes, interfacesRes, jobsRes] = await Promise.all([
         getDevice(id),
         getDeviceServices(id),
         getDeviceMetrics(id, 50),
         getDeviceInterfaces(id),
+        getProvisioningJobs(id),
       ]);
 
       setDevice(deviceRes.data || deviceRes);
       setServices(safeGetArray(servicesRes));
       setMetrics(safeGetArray(metricsRes));
       setInterfaces(safeGetArray(interfacesRes));
+      setProvisioningJobs(safeGetArray(jobsRes));
       setLoading(false);
     } catch (err) {
       setError(err);
@@ -55,6 +67,11 @@ function DeviceDetail() {
 
   const handleServiceUpdate = async () => {
     setShowServiceForm(false);
+    await fetchDeviceData();
+  };
+
+  const handleProvisioningStart = async () => {
+    setShowProvisioningForm(false);
     await fetchDeviceData();
   };
 
@@ -177,6 +194,28 @@ function DeviceDetail() {
             deviceId={id}
             onUpdate={fetchDeviceData}
           />
+        </div>
+
+        <div className="detail-section">
+          <div className="section-header">
+            <h2>Provisioning ({provisioningJobs.length} jobs)</h2>
+            <button
+              className="btn btn-sm btn-primary"
+              onClick={() => setShowProvisioningForm(true)}
+            >
+              Run Playbook
+            </button>
+          </div>
+
+          {showProvisioningForm && (
+            <ProvisioningForm
+              deviceId={id}
+              onSuccess={handleProvisioningStart}
+              onCancel={() => setShowProvisioningForm(false)}
+            />
+          )}
+
+          <ProvisioningJobsList jobs={provisioningJobs} />
         </div>
 
         <div className="detail-section">

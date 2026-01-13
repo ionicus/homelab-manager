@@ -70,6 +70,11 @@ export const updateServiceStatus = (serviceId, status) =>
   api.put(`/services/${serviceId}/status`, { status });
 
 // Provisioning
+export const getPlaybooks = () => api.get('/provision/playbooks');
+export const getProvisioningJobs = (deviceId = null) => {
+  const url = deviceId ? `/provision/jobs?device_id=${deviceId}` : '/provision/jobs';
+  return api.get(url);
+};
 export const triggerProvisioning = (deviceId, playbookName) =>
   api.post('/provision', { device_id: deviceId, playbook_name: playbookName });
 export const getJobStatus = (jobId) => api.get(`/provision/${jobId}`);

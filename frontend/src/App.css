@@ -586,6 +586,30 @@ body[data-midnight-theme="true"] {
   border: none;
 }
 
+.section-header-collapsible {
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.2s ease;
+  border-radius: 6px;
+  margin: -0.5rem;
+  padding: 0.5rem;
+}
+
+.section-header-collapsible:hover {
+  background-color: var(--card-border);
+}
+
+.collapse-icon {
+  display: inline-block;
+  margin-right: 0.5rem;
+  font-size: 0.75rem;
+  transition: transform 0.2s ease;
+}
+
+.collapse-icon.expanded {
+  transform: rotate(90deg);
+}
+
 .btn-sm {
   padding: 0.5rem 1rem;
   font-size: 0.875rem;

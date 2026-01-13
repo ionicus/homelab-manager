@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Button, Group } from '@mantine/core';
+import { Button, Group, Collapse } from '@mantine/core';
 import {
   getDevice,
   getDeviceServices,
@@ -31,6 +31,7 @@ function DeviceDetail() {
   const [showInterfaceForm, setShowInterfaceForm] = useState(false);
   const [editingInterface, setEditingInterface] = useState(null);
   const [showServiceForm, setShowServiceForm] = useState(false);
+  const [automationExpanded, setAutomationExpanded] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -209,17 +210,27 @@ function DeviceDetail() {
         </div>
 
         <div className="detail-section">
-          <h2>Automation</h2>
-
-          <div className="automation-subsection">
-            <h3>Available Playbooks</h3>
-            <PlaybookSelector deviceId={id} onExecute={handlePlaybookExecute} />
+          <div
+            className="section-header section-header-collapsible"
+            onClick={() => setAutomationExpanded(!automationExpanded)}
+          >
+            <h2>
+              <span className={`collapse-icon ${automationExpanded ? 'expanded' : ''}`}>▶</span>
+              Automation ({automationJobs.length})
+            </h2>
           </div>
 
-          <div className="automation-subsection">
-            <h3>Execution History ({automationJobs.length})</h3>
-            <AutomationJobsList jobs={automationJobs} />
-          </div>
+          <Collapse in={automationExpanded}>
+            <div className="automation-subsection">
+              <h3>Run Playbook</h3>
+              <PlaybookSelector deviceId={id} onExecute={handlePlaybookExecute} />
+            </div>
+
+            <div className="automation-subsection">
+              <h3>Execution History</h3>
+              <AutomationJobsList jobs={automationJobs} />
+            </div>
+          </Collapse>
         </div>
 
         <div className="detail-section">

@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { Button, Select, Group } from '@mantine/core';
 import { getAutomationJobs, getDevices } from '../services/api';
 import { safeGetArray } from '../utils/validation';
 import { formatShortTimestamp } from '../utils/formatting';
 import ErrorDisplay from '../components/ErrorDisplay';
 import LoadingSkeleton from '../components/LoadingSkeleton';
 import StatusBadge from '../components/StatusBadge';
+import AutomationForm from '../components/AutomationForm';
 
 function Automation() {
   const navigate = useNavigate();
@@ -15,6 +17,9 @@ function Automation() {
   const [error, setError] = useState(null);
   const [filterDevice, setFilterDevice] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const [showDeviceSelector, setShowDeviceSelector] = useState(false);
+  const [showAutomationForm, setShowAutomationForm] = useState(false);
+  const [selectedDeviceId, setSelectedDeviceId] = useState(null);
 
   useEffect(() => {
     fetchData();
@@ -36,6 +41,33 @@ function Automation() {
       setError(err);
       setLoading(false);
     }
+  };
+
+  const handleNewJobClick = () => {
+    setShowDeviceSelector(true);
+  };
+
+  const handleDeviceSelect = (deviceId) => {
+    if (deviceId) {
+      setSelectedDeviceId(parseInt(deviceId));
+      setShowDeviceSelector(false);
+      setShowAutomationForm(true);
+    }
+  };
+
+  const handleCancelDeviceSelector = () => {
+    setShowDeviceSelector(false);
+  };
+
+  const handleAutomationSuccess = () => {
+    setShowAutomationForm(false);
+    setSelectedDeviceId(null);
+    fetchData();
+  };
+
+  const handleAutomationCancel = () => {
+    setShowAutomationForm(false);
+    setSelectedDeviceId(null);
   };
 
   if (loading) return <LoadingSkeleton type="list" />;
@@ -63,11 +95,45 @@ function Automation() {
     return device?.name || `Device ${deviceId}`;
   };
 
+  // Filter to only devices with IP addresses (required for automation)
+  const devicesWithIp = devices.filter(d => d.ip_address);
+
   return (
     <div className="automation-page">
       <div className="page-header">
         <h1>Automation</h1>
+        <Button onClick={handleNewJobClick} disabled={devicesWithIp.length === 0}>
+          New Job
+        </Button>
       </div>
+
+      {showDeviceSelector && (
+        <div className="form-modal" onClick={handleCancelDeviceSelector}>
+          <div className="form-modal-content" onClick={(e) => e.stopPropagation()}>
+            <h2>Select Device</h2>
+            <p>Choose a device to run automation on:</p>
+            <Select
+              placeholder="Select a device"
+              data={devicesWithIp.map(d => ({ value: String(d.id), label: `${d.name} (${d.ip_address})` }))}
+              onChange={handleDeviceSelect}
+              searchable
+            />
+            <Group mt="md" justify="flex-end">
+              <Button variant="default" onClick={handleCancelDeviceSelector}>
+                Cancel
+              </Button>
+            </Group>
+          </div>
+        </div>
+      )}
+
+      {showAutomationForm && selectedDeviceId && (
+        <AutomationForm
+          deviceId={selectedDeviceId}
+          onSuccess={handleAutomationSuccess}
+          onCancel={handleAutomationCancel}
+        />
+      )}
 
       <div className="stats-grid">
         <div className="stat-card stat-card-primary">
@@ -175,7 +241,7 @@ function Automation() {
                         {getDeviceName(job.device_id)}
                       </Link>
                     </td>
-                    <td className="playbook-name">{job.playbook_name}</td>
+                    <td className="playbook-name">{job.action_name}</td>
                     <td>
                       <StatusBadge status={job.status} />
                     </td>

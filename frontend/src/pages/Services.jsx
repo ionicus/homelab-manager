@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Button, Group } from '@mantine/core';
+import { Button, Group, Select } from '@mantine/core';
 import { getServices, getDevices, deleteService, updateServiceStatus } from '../services/api';
 import { safeGetArray } from '../utils/validation';
 import ErrorDisplay from '../components/ErrorDisplay';
@@ -15,6 +15,7 @@ function Services() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showServiceForm, setShowServiceForm] = useState(false);
+  const [showDeviceSelector, setShowDeviceSelector] = useState(false);
   const [selectedDeviceId, setSelectedDeviceId] = useState(null);
   const [filterDevice, setFilterDevice] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -69,9 +70,20 @@ function Services() {
     }
   };
 
-  const handleAddService = (deviceId) => {
-    setSelectedDeviceId(deviceId);
-    setShowServiceForm(true);
+  const handleAddServiceClick = () => {
+    setShowDeviceSelector(true);
+  };
+
+  const handleDeviceSelect = (deviceId) => {
+    if (deviceId) {
+      setSelectedDeviceId(parseInt(deviceId));
+      setShowDeviceSelector(false);
+      setShowServiceForm(true);
+    }
+  };
+
+  const handleCancelDeviceSelector = () => {
+    setShowDeviceSelector(false);
   };
 
   const handleServiceUpdate = () => {
@@ -108,7 +120,30 @@ function Services() {
     <div className="services-page">
       <div className="page-header">
         <h1>Services ({services.length})</h1>
+        <Button onClick={handleAddServiceClick} disabled={devices.length === 0}>
+          Add Service
+        </Button>
       </div>
+
+      {showDeviceSelector && (
+        <div className="form-modal" onClick={handleCancelDeviceSelector}>
+          <div className="form-modal-content" onClick={(e) => e.stopPropagation()}>
+            <h2>Select Device</h2>
+            <p>Choose a device to add the service to:</p>
+            <Select
+              placeholder="Select a device"
+              data={devices.map(d => ({ value: String(d.id), label: d.name }))}
+              onChange={handleDeviceSelect}
+              searchable
+            />
+            <Group mt="md" justify="flex-end">
+              <Button variant="default" onClick={handleCancelDeviceSelector}>
+                Cancel
+              </Button>
+            </Group>
+          </div>
+        </div>
+      )}
 
       <div className="stats-grid">
         <div className="stat-card stat-card-primary">

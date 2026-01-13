@@ -1,10 +1,10 @@
-"""Automation routes with improved error handling and validation."""
+"""Automation routes with extensible executor support."""
 
 from flask import Blueprint, request
 
 from app.models import AutomationJob, Device, JobStatus
 from app.schemas.automation import AutomationJobCreate
-from app.services.ansible_executor import executor
+from app.services.executors import registry
 from app.utils.errors import (
     DatabaseSession,
     NotFoundError,
@@ -19,8 +19,26 @@ automation_bp = Blueprint("automation", __name__)
 @automation_bp.route("", methods=["POST"])
 @validate_request(AutomationJobCreate)
 def trigger_automation():
-    """Trigger an automation job."""
+    """Trigger an automation job.
+
+    Supports multiple executor backends via the executor_type field.
+    Defaults to 'ansible' for backwards compatibility.
+    """
     data = request.validated_data
+
+    # Get executor from registry
+    executor = registry.get_executor(data.executor_type)
+    if not executor:
+        valid_types = [e.type for e in registry.list_executor_types()]
+        raise ValidationError(
+            f"Unknown executor type: {data.executor_type}. Valid types: {valid_types}"
+        )
+
+    # Validate action exists for this executor
+    if not executor.validate_config(data.action_name, data.action_config):
+        raise ValidationError(
+            f"Invalid action '{data.action_name}' for executor '{data.executor_type}'"
+        )
 
     with DatabaseSession() as db:
         # Verify device exists
@@ -28,26 +46,29 @@ def trigger_automation():
         if not device:
             raise NotFoundError("Device", data.device_id)
 
-        job = AutomationJob(
-            device_id=data.device_id,
-            playbook_name=data.playbook_name,
-            status=JobStatus.PENDING,
-        )
-
         # Validate device has IP address
         if not device.ip_address:
             raise ValidationError("Device must have an IP address for automation")
+
+        job = AutomationJob(
+            device_id=data.device_id,
+            executor_type=data.executor_type,
+            action_name=data.action_name,
+            action_config=data.action_config,
+            status=JobStatus.PENDING,
+        )
 
         db.add(job)
         db.commit()
         db.refresh(job)
 
-        # Trigger Ansible playbook execution in background thread
-        executor.execute_playbook(
+        # Execute automation in background thread
+        executor.execute(
             job_id=job.id,
             device_ip=device.ip_address,
             device_name=device.name,
-            playbook_name=data.playbook_name,
+            action_name=data.action_name,
+            config=data.action_config,
         )
 
         return success_response(job.to_dict(), status_code=201)
@@ -75,17 +96,63 @@ def get_job_logs(job_id: int):
         return success_response({"job_id": job.id, "log_output": job.log_output or ""})
 
 
+@automation_bp.route("/executors", methods=["GET"])
+def list_executors():
+    """List available executor types."""
+    executors = registry.list_executor_types()
+    return success_response(
+        [
+            {
+                "type": e.type,
+                "display_name": e.display_name,
+                "description": e.description,
+            }
+            for e in executors
+        ]
+    )
+
+
+@automation_bp.route("/executors/<executor_type>/actions", methods=["GET"])
+def list_executor_actions(executor_type: str):
+    """List available actions for an executor type."""
+    executor = registry.get_executor(executor_type)
+    if not executor:
+        raise NotFoundError("Executor", executor_type)
+
+    actions = executor.list_available_actions()
+    return success_response(
+        [
+            {
+                "name": a.name,
+                "display_name": a.display_name,
+                "description": a.description,
+                "config_schema": a.config_schema,
+            }
+            for a in actions
+        ]
+    )
+
+
 @automation_bp.route("/playbooks", methods=["GET"])
 def list_playbooks():
-    """List available Ansible playbooks."""
-    playbooks = executor.list_available_playbooks()
-    return success_response({"playbooks": playbooks})
+    """List available Ansible playbooks.
+
+    Deprecated: Use /executors/ansible/actions instead.
+    Kept for backwards compatibility.
+    """
+    executor = registry.get_executor("ansible")
+    if not executor:
+        return success_response({"playbooks": []})
+
+    actions = executor.list_available_actions()
+    return success_response({"playbooks": [a.name for a in actions]})
 
 
 @automation_bp.route("/jobs", methods=["GET"])
 def list_jobs():
-    """List automation jobs, optionally filtered by device_id."""
+    """List automation jobs, optionally filtered by device_id or executor_type."""
     device_id = request.args.get("device_id", type=int)
+    executor_type = request.args.get("executor_type", type=str)
 
     with DatabaseSession() as db:
         query = db.query(AutomationJob)
@@ -96,6 +163,9 @@ def list_jobs():
             if not device:
                 raise NotFoundError("Device", device_id)
             query = query.filter(AutomationJob.device_id == device_id)
+
+        if executor_type:
+            query = query.filter(AutomationJob.executor_type == executor_type)
 
         # Order by id descending (newest first)
         jobs = query.order_by(AutomationJob.id.desc()).all()

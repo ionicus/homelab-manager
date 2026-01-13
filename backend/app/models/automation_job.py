@@ -2,7 +2,7 @@
 
 import enum
 
-from sqlalchemy import Column, DateTime, Enum, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, Column, DateTime, Enum, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from app.database import Base
@@ -18,13 +18,21 @@ class JobStatus(enum.Enum):
 
 
 class AutomationJob(Base):
-    """Automation job for Ansible playbook execution."""
+    """Automation job for executing automation actions.
+
+    Supports multiple executor backends (Ansible, SSH, etc.) via the
+    executor_type field.
+    """
 
     __tablename__ = "automation_jobs"
 
     id = Column(Integer, primary_key=True, index=True)
-    device_id = Column(Integer, ForeignKey("devices.id", ondelete="CASCADE"), nullable=False)
-    playbook_name = Column(String(255), nullable=False)
+    device_id = Column(
+        Integer, ForeignKey("devices.id", ondelete="CASCADE"), nullable=False
+    )
+    executor_type = Column(String(50), nullable=False, default="ansible")
+    action_name = Column(String(255), nullable=False)
+    action_config = Column(JSON, nullable=True)
     status = Column(Enum(JobStatus), default=JobStatus.PENDING)
     started_at = Column(DateTime, nullable=True)
     completed_at = Column(DateTime, nullable=True)
@@ -38,10 +46,16 @@ class AutomationJob(Base):
         return {
             "id": self.id,
             "device_id": self.device_id,
-            "playbook_name": self.playbook_name,
+            "executor_type": self.executor_type,
+            "action_name": self.action_name,
+            "action_config": self.action_config,
+            # Backwards compatibility: keep playbook_name for frontend
+            "playbook_name": self.action_name,
             "status": self.status.value if self.status else None,
             "started_at": self.started_at.isoformat() if self.started_at else None,
-            "completed_at": self.completed_at.isoformat() if self.completed_at else None,
+            "completed_at": (
+                self.completed_at.isoformat() if self.completed_at else None
+            ),
             "log_output": self.log_output,
             # For frontend compatibility
             "created_at": self.started_at.isoformat() if self.started_at else None,
@@ -50,4 +64,5 @@ class AutomationJob(Base):
 
     def __repr__(self):
         """String representation."""
-        return f"<AutomationJob {self.id} - {self.status.value if self.status else 'unknown'}>"
+        status_str = self.status.value if self.status else "unknown"
+        return f"<AutomationJob {self.id} ({self.executor_type}) - {status_str}>"

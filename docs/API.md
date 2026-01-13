@@ -689,7 +689,13 @@ POST /api/metrics
 
 ## Automation
 
-Trigger Ansible playbook executions for automated device configuration.
+Execute automation actions on devices using pluggable executor backends.
+
+The automation system supports multiple executor types (Ansible, SSH, etc.) through a plugin architecture. Each executor provides its own set of actions that can be triggered on devices.
+
+### Executor Types
+
+- `ansible` - Execute Ansible playbooks for configuration management
 
 ### Automation Job Object
 
@@ -697,8 +703,14 @@ Trigger Ansible playbook executions for automated device configuration.
 {
   "id": 1,
   "device_id": 1,
-  "playbook_name": "configure_web_server",
+  "executor_type": "ansible",
+  "action_name": "ping",
+  "action_config": null,
+  "playbook_name": "ping",
   "status": "pending",
+  "started_at": "2026-01-12T10:00:00",
+  "completed_at": null,
+  "log_output": null,
   "created_at": "2026-01-12T10:00:00"
 }
 ```
@@ -710,36 +722,83 @@ Trigger Ansible playbook executions for automated device configuration.
 - `completed` - Job finished successfully
 - `failed` - Job failed
 
-### List Available Playbooks
+### List Available Executors
 
 ```http
-GET /api/automation/playbooks
+GET /api/automation/executors
 ```
 
-Returns a list of available Ansible playbooks.
+Returns a list of registered executor types.
+
+**Response** `200 OK`:
+```json
+[
+  {
+    "type": "ansible",
+    "display_name": "Ansible",
+    "description": "Execute Ansible playbooks for configuration management"
+  }
+]
+```
+
+### List Executor Actions
+
+```http
+GET /api/automation/executors/{executor_type}/actions
+```
+
+Returns available actions for a specific executor type.
+
+**Parameters**:
+- `executor_type` (path, string, required) - Executor type identifier
 
 **Response** `200 OK`:
 ```json
 [
   {
     "name": "ping",
-    "description": "Simple connectivity test"
+    "display_name": "Ping",
+    "description": "Simple connectivity test",
+    "config_schema": {}
   },
   {
     "name": "system_info",
-    "description": "Gather system information"
+    "display_name": "System Info",
+    "description": "Gather system information",
+    "config_schema": {}
   }
 ]
+```
+
+**Errors**:
+- `404` - Executor type not found
+
+### List Available Playbooks (Deprecated)
+
+```http
+GET /api/automation/playbooks
+```
+
+**Deprecated**: Use `/api/automation/executors/ansible/actions` instead.
+
+Returns a list of available Ansible playbooks for backwards compatibility.
+
+**Response** `200 OK`:
+```json
+{
+  "playbooks": ["ping", "system_info", "update"]
+}
 ```
 
 ### List Automation Jobs
 
 ```http
-GET /api/automation/jobs?device_id=1
+GET /api/automation/jobs?device_id=1&executor_type=ansible
 ```
 
 **Query Parameters** (all optional):
 - `device_id` (integer) - Filter jobs by device ID
+- `executor_type` (string) - Filter jobs by executor type
 
 **Response** `200 OK`:
 ```json
@@ -747,6 +806,8 @@ GET /api/automation/jobs?device_id=1
   {
     "id": 1,
     "device_id": 1,
+    "executor_type": "ansible",
+    "action_name": "ping",
     "playbook_name": "ping",
     "status": "completed",
     "created_at": "2026-01-12T10:00:00"
@@ -760,15 +821,46 @@ GET /api/automation/jobs?device_id=1
 POST /api/automation
 ```
 
-**Request Body**:
+**Request Body** (new format):
 ```json
 {
   "device_id": 1,
-  "playbook_name": "configure_web_server"
+  "executor_type": "ansible",
+  "action_name": "ping",
+  "action_config": null
 }
 ```
 
-**Response** `201 Created`
+**Request Body** (legacy format - still supported):
+```json
+{
+  "device_id": 1,
+  "playbook_name": "ping"
+}
+```
+
+**Required Fields**:
+- `device_id` (integer) - ID of the target device
+- `action_name` (string) - Action to execute (or `playbook_name` for Ansible)
+
+**Optional Fields**:
+- `executor_type` (string) - Executor type (default: "ansible")
+- `action_config` (object) - Action-specific configuration
+
+**Response** `201 Created`:
+```json
+{
+  "id": 1,
+  "device_id": 1,
+  "executor_type": "ansible",
+  "action_name": "ping",
+  "status": "pending"
+}
+```
+
+**Errors**:
+- `400` - Validation error (invalid executor type, action, or device has no IP)
+- `404` - Device not found
 
 ### Get Job Status
 
@@ -776,19 +868,43 @@ POST /api/automation
 GET /api/automation/{job_id}
 ```
 
+**Parameters**:
+- `job_id` (path, integer, required) - Job ID
+
+**Response** `200 OK`:
+```json
+{
+  "id": 1,
+  "device_id": 1,
+  "executor_type": "ansible",
+  "action_name": "ping",
+  "status": "completed",
+  "log_output": "STDOUT:\n..."
+}
+```
+
+**Errors**:
+- `404` - Job not found
+
 ### Get Job Logs
 
 ```http
 GET /api/automation/{job_id}/logs
 ```
 
-**Response**:
+**Parameters**:
+- `job_id` (path, integer, required) - Job ID
+
+**Response** `200 OK`:
 ```json
 {
   "job_id": 1,
-  "log_output": "Ansible playbook execution logs..."
+  "log_output": "STDOUT:\nAnsible playbook execution logs...\n\nSTDERR:\n"
 }
 ```
+
+**Errors**:
+- `404` - Job not found
 
 ---
 
@@ -801,6 +917,16 @@ GET /api/automation/{job_id}/logs
 ---
 
 ## Changelog
+
+### Version 0.2.0 (2026-01-13)
+
+- Extensible automation framework with plugin architecture
+- New executor registry for multiple automation backends
+- Added `/api/automation/executors` endpoint to list available executors
+- Added `/api/automation/executors/{type}/actions` endpoint to list executor actions
+- Database schema: renamed `playbook_name` to `action_name`, added `executor_type` and `action_config`
+- Backwards compatible: legacy `playbook_name` still accepted in requests
+- Added `executor_type` filter to job listing endpoint
 
 ### Version 0.1.0 (2026-01-12)
 

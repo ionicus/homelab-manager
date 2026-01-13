@@ -69,16 +69,43 @@ export const deleteService = (id) => api.delete(`/services/${id}`);
 export const updateServiceStatus = (serviceId, status) =>
   api.put(`/services/${serviceId}/status`, { status });
 
-// Automation
-export const getPlaybooks = () => api.get('/automation/playbooks');
-export const getAutomationJobs = (deviceId = null) => {
-  const url = deviceId ? `/automation/jobs?device_id=${deviceId}` : '/automation/jobs';
-  return api.get(url);
+// Automation - Executors (extensible automation)
+export const getExecutors = () => api.get('/automation/executors');
+export const getExecutorActions = (executorType) =>
+  api.get(`/automation/executors/${executorType}/actions`);
+
+// Automation - Jobs
+export const getAutomationJobs = (deviceId = null, executorType = null) => {
+  const params = new URLSearchParams();
+  if (deviceId) params.append('device_id', deviceId);
+  if (executorType) params.append('executor_type', executorType);
+  const queryString = params.toString();
+  return api.get(`/automation/jobs${queryString ? `?${queryString}` : ''}`);
 };
-export const triggerAutomation = (deviceId, playbookName) =>
+
+// Trigger automation with executor type support (backwards compatible)
+export const triggerAutomation = (
+  deviceId,
+  actionName,
+  executorType = 'ansible',
+  actionConfig = null
+) =>
+  api.post('/automation', {
+    device_id: deviceId,
+    action_name: actionName,
+    executor_type: executorType,
+    action_config: actionConfig,
+  });
+
+// Legacy: trigger with playbook_name for backwards compatibility
+export const triggerPlaybook = (deviceId, playbookName) =>
   api.post('/automation', { device_id: deviceId, playbook_name: playbookName });
+
 export const getJobStatus = (jobId) => api.get(`/automation/${jobId}`);
 export const getJobLogs = (jobId) => api.get(`/automation/${jobId}/logs`);
+
+// Deprecated: Use getExecutorActions('ansible') instead
+export const getPlaybooks = () => api.get('/automation/playbooks');
 
 // Network Interfaces
 export const getDeviceInterfaces = (deviceId) =>

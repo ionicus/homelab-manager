@@ -1,0 +1,25 @@
+---
+# System update playbook (Debian/Ubuntu)
+- name: Update system packages
+  hosts: homelab
+  gather_facts: yes
+  become: yes
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+      when: ansible_os_family == "Debian"
+
+    - name: Upgrade all packages
+      apt:
+        upgrade: dist
+        autoremove: yes
+        autoclean: yes
+      when: ansible_os_family == "Debian"
+      register: upgrade_result
+
+    - name: Display upgrade results
+      debug:
+        msg: "Packages upgraded: {{ upgrade_result.changed }}"

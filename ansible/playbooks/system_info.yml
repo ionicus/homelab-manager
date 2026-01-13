@@ -1,0 +1,26 @@
+---
+# Gather and display system information
+- name: Gather system information
+  hosts: homelab
+  gather_facts: yes
+
+  tasks:
+    - name: Display OS information
+      debug:
+        msg: "OS: {{ ansible_distribution }} {{ ansible_distribution_version }}"
+
+    - name: Display CPU information
+      debug:
+        msg: "CPU: {{ ansible_processor_vcpus }} cores, {{ ansible_processor[2] }}"
+
+    - name: Display memory information
+      debug:
+        msg: "Memory: {{ ansible_memtotal_mb }} MB total"
+
+    - name: Display disk information
+      debug:
+        msg: "Main disk: {{ ansible_mounts[0].size_total }} bytes at {{ ansible_mounts[0].mount }}"
+
+    - name: Display network interfaces
+      debug:
+        msg: "Interfaces: {{ ansible_interfaces | join(', ') }}"

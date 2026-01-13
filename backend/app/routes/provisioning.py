@@ -4,9 +4,11 @@ from flask import Blueprint, request
 
 from app.models import ProvisioningJob, JobStatus, Device
 from app.schemas.provisioning import ProvisioningTaskCreate
+from app.services.ansible_executor import executor
 from app.utils.errors import (
     DatabaseSession,
     NotFoundError,
+    ValidationError,
     success_response,
 )
 from app.utils.validation import validate_request
@@ -32,11 +34,21 @@ def trigger_provisioning():
             status=JobStatus.PENDING,
         )
 
+        # Validate device has IP address
+        if not device.ip_address:
+            raise ValidationError("Device must have an IP address for provisioning")
+
         db.add(job)
         db.commit()
         db.refresh(job)
 
-        # TODO: Trigger actual Ansible playbook execution asynchronously
+        # Trigger Ansible playbook execution in background thread
+        executor.execute_playbook(
+            job_id=job.id,
+            device_ip=device.ip_address,
+            device_name=device.name,
+            playbook_name=data.playbook_name,
+        )
 
         return success_response(job.to_dict(), status_code=201)
 

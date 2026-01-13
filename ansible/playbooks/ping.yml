@@ -1,0 +1,17 @@
+---
+# Simple connectivity test playbook
+- name: Test connectivity to device
+  hosts: homelab
+  gather_facts: yes
+
+  tasks:
+    - name: Ping the device
+      ping:
+
+    - name: Display uptime
+      command: uptime
+      register: uptime_result
+
+    - name: Show uptime
+      debug:
+        msg: "Device uptime: {{ uptime_result.stdout }}"

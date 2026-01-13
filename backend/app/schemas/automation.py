@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Any, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class AutomationJobBase(BaseModel):
@@ -15,18 +15,11 @@ class AutomationJobBase(BaseModel):
         max_length=50,
         description="Executor type (ansible, ssh, etc.)",
     )
-    action_name: Optional[str] = Field(
-        default=None,
+    action_name: str = Field(
+        ...,
         min_length=1,
         max_length=100,
         description="Action to execute",
-    )
-    # Backwards compatibility: accept playbook_name as alias for action_name
-    playbook_name: Optional[str] = Field(
-        default=None,
-        min_length=1,
-        max_length=100,
-        description="Ansible playbook name (deprecated, use action_name)",
     )
     action_config: Optional[dict[str, Any]] = Field(
         default=None,
@@ -36,13 +29,6 @@ class AutomationJobBase(BaseModel):
         default="pending",
         description="Job status (pending, running, completed, failed)",
     )
-
-    @model_validator(mode="after")
-    def normalize_action_name(self):
-        """Use playbook_name as action_name if action_name not provided."""
-        if self.action_name is None and self.playbook_name is not None:
-            self.action_name = self.playbook_name
-        return self
 
     @field_validator("status")
     @classmethod
@@ -58,17 +44,6 @@ class AutomationJobCreate(AutomationJobBase):
     """Schema for creating a new automation job."""
 
     device_id: int = Field(..., description="ID of the device to run automation on")
-
-    @model_validator(mode="after")
-    def require_action_name(self):
-        """Ensure action_name is provided (directly or via playbook_name)."""
-        # First run parent's normalizer
-        if self.action_name is None and self.playbook_name is not None:
-            self.action_name = self.playbook_name
-        # Then validate
-        if self.action_name is None:
-            raise ValueError("action_name is required (or playbook_name for Ansible)")
-        return self
 
 
 class AutomationJobUpdate(BaseModel):
@@ -102,10 +77,6 @@ class AutomationJobResponse(BaseModel):
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
     log_output: Optional[str] = None
-    # Backwards compatibility
-    playbook_name: Optional[str] = None
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
 
 
 class ExecutorInfo(BaseModel):

@@ -22,7 +22,6 @@ def trigger_automation():
     """Trigger an automation job.
 
     Supports multiple executor backends via the executor_type field.
-    Defaults to 'ansible' for backwards compatibility.
     """
     data = request.validated_data
 
@@ -131,21 +130,6 @@ def list_executor_actions(executor_type: str):
             for a in actions
         ]
     )
-
-
-@automation_bp.route("/playbooks", methods=["GET"])
-def list_playbooks():
-    """List available Ansible playbooks.
-
-    Deprecated: Use /executors/ansible/actions instead.
-    Kept for backwards compatibility.
-    """
-    executor = registry.get_executor("ansible")
-    if not executor:
-        return success_response({"playbooks": []})
-
-    actions = executor.list_available_actions()
-    return success_response({"playbooks": [a.name for a in actions]})
 
 
 @automation_bp.route("/jobs", methods=["GET"])

@@ -83,7 +83,7 @@ export const getAutomationJobs = (deviceId = null, executorType = null) => {
   return api.get(`/automation/jobs${queryString ? `?${queryString}` : ''}`);
 };
 
-// Trigger automation with executor type support (backwards compatible)
+// Trigger automation job
 export const triggerAutomation = (
   deviceId,
   actionName,
@@ -97,15 +97,8 @@ export const triggerAutomation = (
     action_config: actionConfig,
   });
 
-// Legacy: trigger with playbook_name for backwards compatibility
-export const triggerPlaybook = (deviceId, playbookName) =>
-  api.post('/automation', { device_id: deviceId, playbook_name: playbookName });
-
 export const getJobStatus = (jobId) => api.get(`/automation/${jobId}`);
 export const getJobLogs = (jobId) => api.get(`/automation/${jobId}/logs`);
-
-// Deprecated: Use getExecutorActions('ansible') instead
-export const getPlaybooks = () => api.get('/automation/playbooks');
 
 // Network Interfaces
 export const getDeviceInterfaces = (deviceId) =>

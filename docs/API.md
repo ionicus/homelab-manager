@@ -1,6 +1,6 @@
 # Homelab Manager API Documentation
 
-Version: 0.1.0
+Version: 0.2.0
 Base URL: `http://localhost:5000/api`
 
 ## Table of Contents
@@ -706,12 +706,10 @@ The automation system supports multiple executor types (Ansible, SSH, etc.) thro
   "executor_type": "ansible",
   "action_name": "ping",
   "action_config": null,
-  "playbook_name": "ping",
   "status": "pending",
   "started_at": "2026-01-12T10:00:00",
   "completed_at": null,
-  "log_output": null,
-  "created_at": "2026-01-12T10:00:00"
+  "log_output": null
 }
 ```
 
@@ -773,23 +771,6 @@ Returns available actions for a specific executor type.
 **Errors**:
 - `404` - Executor type not found
 
-### List Available Playbooks (Deprecated)
-
-```http
-GET /api/automation/playbooks
-```
-
-**Deprecated**: Use `/api/automation/executors/ansible/actions` instead.
-
-Returns a list of available Ansible playbooks for backwards compatibility.
-
-**Response** `200 OK`:
-```json
-{
-  "playbooks": ["ping", "system_info", "update"]
-}
-```
-
 ### List Automation Jobs
 
 ```http
@@ -808,9 +789,8 @@ GET /api/automation/jobs?device_id=1&executor_type=ansible
     "device_id": 1,
     "executor_type": "ansible",
     "action_name": "ping",
-    "playbook_name": "ping",
     "status": "completed",
-    "created_at": "2026-01-12T10:00:00"
+    "started_at": "2026-01-12T10:00:00"
   }
 ]
 ```
@@ -821,7 +801,7 @@ GET /api/automation/jobs?device_id=1&executor_type=ansible
 POST /api/automation
 ```
 
-**Request Body** (new format):
+**Request Body**:
 ```json
 {
   "device_id": 1,
@@ -831,17 +811,9 @@ POST /api/automation
 }
 ```
 
-**Request Body** (legacy format - still supported):
-```json
-{
-  "device_id": 1,
-  "playbook_name": "ping"
-}
-```
-
 **Required Fields**:
 - `device_id` (integer) - ID of the target device
-- `action_name` (string) - Action to execute (or `playbook_name` for Ansible)
+- `action_name` (string) - Action to execute
 
 **Optional Fields**:
 - `executor_type` (string) - Executor type (default: "ansible")
@@ -925,7 +897,6 @@ GET /api/automation/{job_id}/logs
 - Added `/api/automation/executors` endpoint to list available executors
 - Added `/api/automation/executors/{type}/actions` endpoint to list executor actions
 - Database schema: renamed `playbook_name` to `action_name`, added `executor_type` and `action_config`
-- Backwards compatible: legacy `playbook_name` still accepted in requests
 - Added `executor_type` filter to job listing endpoint
 
 ### Version 0.1.0 (2026-01-12)

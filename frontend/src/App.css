@@ -2040,3 +2040,107 @@
     padding: 1rem;
   }
 }
+
+/* Service Detail Page Styles */
+.service-detail {
+  padding: 0;
+}
+
+.health-check-panel {
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 1.5rem;
+}
+
+.health-check-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.health-check-link {
+  color: #4a9eff;
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 1rem;
+  word-break: break-all;
+  transition: color 0.2s;
+}
+
+.health-check-link:hover {
+  color: #6bb3ff;
+  text-decoration: underline;
+}
+
+.health-check-description {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #888;
+  font-style: italic;
+}
+
+.device-summary {
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 1.5rem;
+}
+
+.device-summary-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #333;
+}
+
+.device-summary-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: #fff;
+}
+
+.device-summary-info {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.device-info-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.device-info-item .label {
+  font-size: 0.875rem;
+  color: #888;
+  font-weight: 600;
+}
+
+.device-info-item .value {
+  font-size: 0.875rem;
+  color: #fff;
+  font-weight: 500;
+}
+
+@media (max-width: 768px) {
+  .device-summary-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .device-summary-info {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .health-check-panel {
+    padding: 1rem;
+  }
+}

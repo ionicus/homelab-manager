@@ -249,11 +249,11 @@ function Services() {
                   )}
                 </button>
                 <Link
-                  to={`/devices/${service.device_id}`}
-                  className="btn btn-sm"
-                  title="View device"
+                  to={`/services/${service.id}`}
+                  className="btn btn-sm btn-primary"
+                  title="View service details"
                 >
-                  View Device
+                  View Details
                 </Link>
                 <button
                   className="btn btn-sm btn-danger"

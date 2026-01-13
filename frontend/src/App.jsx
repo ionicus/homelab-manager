@@ -4,6 +4,7 @@ import DeviceList from './pages/DeviceList'
 import DeviceDetail from './pages/DeviceDetail'
 import DeviceForm from './pages/DeviceForm'
 import Services from './pages/Services'
+import ServiceDetail from './pages/ServiceDetail'
 import Automation from './pages/Automation'
 import JobDetail from './pages/JobDetail'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -34,6 +35,7 @@ function App() {
               <Route path="/devices/:id/edit" element={<DeviceForm />} />
               <Route path="/devices/:id" element={<DeviceDetail />} />
               <Route path="/services" element={<Services />} />
+              <Route path="/services/:id" element={<ServiceDetail />} />
               <Route path="/automation" element={<Automation />} />
               <Route path="/automation/jobs/:id" element={<JobDetail />} />
             </Routes>

@@ -21,6 +21,21 @@ class ErrorBoundary extends Component {
           <div className="error-boundary-content">
             <h2>Something went wrong</h2>
             <p>An unexpected error occurred. Please try refreshing the page.</p>
+            <pre style={{
+              background: '#1a1a1a',
+              padding: '1rem',
+              borderRadius: '4px',
+              overflow: 'auto',
+              maxHeight: '300px',
+              fontSize: '0.875rem',
+              color: '#ff6b6b',
+              textAlign: 'left',
+              margin: '1rem 0'
+            }}>
+              {this.state.error?.toString()}
+              {'\n\n'}
+              {this.state.error?.stack}
+            </pre>
             <button
               className="btn btn-primary"
               onClick={() => window.location.reload()}

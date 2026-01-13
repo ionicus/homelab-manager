@@ -83,18 +83,11 @@ export const getJobLogs = (jobId) => api.get(`/provision/${jobId}/logs`);
 // Network Interfaces
 export const getDeviceInterfaces = (deviceId) =>
   api.get(`/devices/${deviceId}/interfaces`);
-export const getDeviceInterface = (deviceId, interfaceId) =>
-  api.get(`/devices/${deviceId}/interfaces/${interfaceId}`);
 export const createDeviceInterface = (deviceId, data) =>
   api.post(`/devices/${deviceId}/interfaces`, data);
-export const updateDeviceInterface = (deviceId, interfaceId, data) =>
-  api.put(`/devices/${deviceId}/interfaces/${interfaceId}`, data);
 export const deleteDeviceInterface = (deviceId, interfaceId) =>
   api.delete(`/devices/${deviceId}/interfaces/${interfaceId}`);
 export const setPrimaryInterface = (deviceId, interfaceId) =>
   api.put(`/devices/${deviceId}/interfaces/${interfaceId}/set-primary`);
-export const getAllInterfaces = () => api.get('/interfaces');
-export const getInterfaceByMac = (mac) => api.get(`/interfaces/by-mac/${mac}`);
-export const getInterfaceByIp = (ip) => api.get(`/interfaces/by-ip/${ip}`);
 
 export default api;

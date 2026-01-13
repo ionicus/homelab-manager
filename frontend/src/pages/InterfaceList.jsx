@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Button, Group } from '@mantine/core';
 import {
   deleteDeviceInterface,
   setPrimaryInterface,
@@ -111,24 +112,26 @@ function InterfaceList({ interfaces, deviceId, onUpdate }) {
             )}
           </div>
 
-          <div className="interface-actions">
+          <Group className="interface-actions" gap="xs">
             {!iface.is_primary && (
-              <button
-                className="btn btn-sm btn-outline"
+              <Button
+                size="sm"
+                variant="outline"
                 onClick={() => handleSetPrimary(iface.id)}
-                disabled={loading[iface.id]}
+                loading={loading[iface.id]}
               >
                 Set as Primary
-              </button>
+              </Button>
             )}
-            <button
-              className="btn btn-sm btn-danger"
+            <Button
+              size="sm"
+              color="red"
               onClick={() => handleDelete(iface.id, iface.interface_name)}
               disabled={loading[iface.id]}
             >
               Delete
-            </button>
-          </div>
+            </Button>
+          </Group>
         </div>
       ))}
     </div>

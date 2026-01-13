@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { Button, Group } from '@mantine/core';
 import { getService, getDevice, updateServiceStatus, deleteService } from '../services/api';
+import { formatTimestamp } from '../utils/formatting';
 import ErrorDisplay from '../components/ErrorDisplay';
 import LoadingSkeleton from '../components/LoadingSkeleton';
+import StatusBadge from '../components/StatusBadge';
 import ServiceForm from '../components/ServiceForm';
 
 function ServiceDetail() {
@@ -83,54 +86,31 @@ function ServiceDetail() {
   if (error) return <ErrorDisplay error={error} onRetry={fetchServiceData} />;
   if (!service) return <ErrorDisplay error="Service not found" onRetry={fetchServiceData} />;
 
-  const getStatusBadge = (status) => {
-    const badges = {
-      running: { className: 'status-badge status-running', text: 'Running', icon: '▶' },
-      stopped: { className: 'status-badge status-stopped', text: 'Stopped', icon: '⏸' },
-      error: { className: 'status-badge status-error', text: 'Error', icon: '⚠' },
-    };
-    return badges[status] || badges.stopped;
-  };
-
-  const badge = getStatusBadge(service.status);
-
-  const formatTimestamp = (timestamp) => {
-    if (!timestamp) return 'N/A';
-    return new Date(timestamp).toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    });
-  };
-
   return (
-    <div className="service-detail">
+    <div className="service-detail-page">
       <div className="page-header">
         <div className="header-content">
           <h1>{service.name}</h1>
-          <span className={badge.className}>
-            {badge.icon} {badge.text}
-          </span>
+          <StatusBadge status={service.status} />
         </div>
-        <div>
-          <button
+        <Group gap="sm">
+          <Button
             onClick={handleStatusToggle}
-            className={service.status === 'running' ? 'btn btn-warning' : 'btn btn-success'}
+            color={service.status === 'running' ? 'yellow' : 'green'}
             disabled={updatingStatus || service.status === 'error'}
           >
             {updatingStatus ? 'Updating...' : service.status === 'running' ? 'Stop Service' : 'Start Service'}
-          </button>
-          <button onClick={() => setShowEditForm(true)} className="btn btn-primary">
+          </Button>
+          <Button onClick={() => setShowEditForm(true)}>
             Edit
-          </button>
-          <button onClick={handleDelete} className="btn btn-danger">
+          </Button>
+          <Button onClick={handleDelete} color="red">
             Delete
-          </button>
-          <Link to="/services" className="btn">Back to Services</Link>
-        </div>
+          </Button>
+          <Button component={Link} to="/services" variant="default">
+            Back to Services
+          </Button>
+        </Group>
       </div>
 
       {showEditForm && (
@@ -200,9 +180,7 @@ function ServiceDetail() {
             <div className="info-item">
               <span className="info-label">Status</span>
               <span className="info-value">
-                <span className={badge.className}>
-                  {badge.icon} {badge.text}
-                </span>
+                <StatusBadge status={service.status} />
               </span>
             </div>
             <div className="info-item">
@@ -252,9 +230,7 @@ function ServiceDetail() {
             <div className="device-summary">
               <div className="device-summary-header">
                 <h3>{device.name}</h3>
-                <span className={`status-badge status-${device.status}`}>
-                  {device.status}
-                </span>
+                <StatusBadge status={device.status} />
               </div>
               <div className="device-summary-info">
                 <div className="device-info-item">
@@ -270,9 +246,9 @@ function ServiceDetail() {
                   <span className="value">{device.mac_address || 'Not set'}</span>
                 </div>
               </div>
-              <Link to={`/devices/${device.id}`} className="btn btn-sm">
+              <Button component={Link} to={`/devices/${device.id}`} size="sm">
                 View Full Device Details
-              </Link>
+              </Button>
             </div>
           </div>
         )}

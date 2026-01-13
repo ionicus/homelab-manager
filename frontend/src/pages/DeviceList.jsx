@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { Button } from '@mantine/core';
 import { getDevices, deleteDevice } from '../services/api';
 import { safeGetArray } from '../utils/validation';
 import ErrorDisplay from '../components/ErrorDisplay';
 import LoadingSkeleton from '../components/LoadingSkeleton';
+import StatusBadge from '../components/StatusBadge';
 
 function DeviceList() {
   const [devices, setDevices] = useState([]);
@@ -62,7 +64,7 @@ function DeviceList() {
     <div className="device-list-page">
       <div className="page-header">
         <h1>All Devices ({devices.length})</h1>
-        <Link to="/devices/new" className="btn btn-primary">Add Device</Link>
+        <Button component={Link} to="/devices/new">Add Device</Button>
       </div>
 
       {devices.length > 0 && (
@@ -101,7 +103,7 @@ function DeviceList() {
       {devices.length === 0 ? (
         <div className="empty-state">
           <p>No devices found</p>
-          <Link to="/devices/new" className="btn btn-primary">Add Your First Device</Link>
+          <Button component={Link} to="/devices/new">Add Your First Device</Button>
         </div>
       ) : (
         <div className="devices-grid">
@@ -113,9 +115,7 @@ function DeviceList() {
                     <span className="device-card-icon">{getDeviceIcon(device.type)}</span>
                     <h3>{device.name}</h3>
                   </div>
-                  <span className={`status-badge status-${device.status}`}>
-                    {device.status}
-                  </span>
+                  <StatusBadge status={device.status} />
                 </div>
                 <div className="device-card-body">
                   <div className="device-card-info">
@@ -135,14 +135,15 @@ function DeviceList() {
                 </div>
               </Link>
               <div className="device-card-actions">
-                <Link to={`/devices/${device.id}`} className="btn btn-sm">View Details</Link>
-                <Link to={`/devices/${device.id}/edit`} className="btn btn-sm">Edit</Link>
-                <button
+                <Button component={Link} to={`/devices/${device.id}`} size="sm" variant="default">View Details</Button>
+                <Button component={Link} to={`/devices/${device.id}/edit`} size="sm" variant="default">Edit</Button>
+                <Button
                   onClick={() => handleDelete(device.id)}
-                  className="btn btn-sm btn-danger"
+                  size="sm"
+                  color="red"
                 >
                   Delete
-                </button>
+                </Button>
               </div>
             </div>
           ))}

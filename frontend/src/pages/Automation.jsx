@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { getProvisioningJobs, getDevices } from '../services/api';
 import { safeGetArray } from '../utils/validation';
+import { formatShortTimestamp } from '../utils/formatting';
 import ErrorDisplay from '../components/ErrorDisplay';
 import LoadingSkeleton from '../components/LoadingSkeleton';
+import StatusBadge from '../components/StatusBadge';
 
 function Automation() {
+  const navigate = useNavigate();
   const [jobs, setJobs] = useState([]);
   const [devices, setDevices] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -58,27 +61,6 @@ function Automation() {
   const getDeviceName = (deviceId) => {
     const device = devices.find((d) => d.id === deviceId);
     return device?.name || `Device ${deviceId}`;
-  };
-
-  const getStatusBadge = (status) => {
-    const badges = {
-      pending: { className: 'status-badge status-pending', text: 'Pending', icon: '⏳' },
-      running: { className: 'status-badge status-running', text: 'Running', icon: '▶' },
-      completed: { className: 'status-badge status-completed', text: 'Completed', icon: '✓' },
-      failed: { className: 'status-badge status-failed', text: 'Failed', icon: '✕' },
-    };
-    return badges[status] || badges.pending;
-  };
-
-  const formatTimestamp = (timestamp) => {
-    if (!timestamp) return 'N/A';
-    return new Date(timestamp).toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
   };
 
   return (
@@ -174,40 +156,33 @@ function Automation() {
                   <th>Status</th>
                   <th>Started</th>
                   <th>Completed</th>
-                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredJobs.map((job) => {
-                  const badge = getStatusBadge(job.status);
-                  return (
-                    <tr key={job.id} className={`job-row job-${job.status}`}>
-                      <td className="job-id">#{job.id}</td>
-                      <td>
-                        <Link to={`/devices/${job.device_id}`} className="device-link">
-                          {getDeviceName(job.device_id)}
-                        </Link>
-                      </td>
-                      <td className="playbook-name">{job.playbook_name}</td>
-                      <td>
-                        <span className={badge.className}>
-                          {badge.icon} {badge.text}
-                        </span>
-                      </td>
-                      <td className="timestamp">{formatTimestamp(job.started_at)}</td>
-                      <td className="timestamp">{formatTimestamp(job.completed_at)}</td>
-                      <td>
-                        <Link
-                          to={`/automation/jobs/${job.id}`}
-                          className="btn btn-sm"
-                          title="View job details and logs"
-                        >
-                          View Details
-                        </Link>
-                      </td>
-                    </tr>
-                  );
-                })}
+                {filteredJobs.map((job) => (
+                  <tr
+                    key={job.id}
+                    className={`job-row job-${job.status} clickable-row`}
+                    onClick={() => navigate(`/automation/jobs/${job.id}`)}
+                  >
+                    <td className="job-id">#{job.id}</td>
+                    <td>
+                      <Link
+                        to={`/devices/${job.device_id}`}
+                        className="device-link"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {getDeviceName(job.device_id)}
+                      </Link>
+                    </td>
+                    <td className="playbook-name">{job.playbook_name}</td>
+                    <td>
+                      <StatusBadge status={job.status} />
+                    </td>
+                    <td className="timestamp">{formatShortTimestamp(job.started_at)}</td>
+                    <td className="timestamp">{formatShortTimestamp(job.completed_at)}</td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>

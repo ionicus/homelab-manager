@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Button, Stack, TextInput, NumberInput, Select, Checkbox, Alert, CloseButton, Group, SimpleGrid } from '@mantine/core';
 import { createDeviceInterface } from '../services/api';
 
 function InterfaceForm({ deviceId, onSuccess, onCancel }) {
@@ -16,11 +17,18 @@ function InterfaceForm({ deviceId, onSuccess, onCancel }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
+  const handleTextChange = (e) => {
+    const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value,
+      [name]: value,
+    }));
+  };
+
+  const handleCheckboxChange = (checked) => {
+    setFormData((prev) => ({
+      ...prev,
+      is_primary: checked,
     }));
   };
 
@@ -54,136 +62,114 @@ function InterfaceForm({ deviceId, onSuccess, onCancel }) {
 
   return (
     <div className="form-modal-content">
-      <div className="form-header">
-        <h2>Add Network Interface</h2>
-        <button className="close-btn" onClick={onCancel}>
-          ✕
-        </button>
-      </div>
+      <Group justify="space-between" mb="md">
+        <h2 style={{ margin: 0 }}>Add Network Interface</h2>
+        <CloseButton onClick={onCancel} size="lg" />
+      </Group>
 
-      <form onSubmit={handleSubmit} className="interface-form" style={{ padding: '1.5rem' }}>
-        {error && <div className="form-error">{error}</div>}
-        <div className="form-row">
-          <div className="form-group">
-            <label htmlFor="interface_name">Interface Name *</label>
-            <input
-              type="text"
-              id="interface_name"
+      <form onSubmit={handleSubmit}>
+        <Stack spacing="md">
+          {error && (
+            <Alert color="red" title="Error">
+              {error}
+            </Alert>
+          )}
+
+          <SimpleGrid cols={2} spacing="md" breakpoints={[{ maxWidth: 'sm', cols: 1 }]}>
+            <TextInput
+              label="Interface Name"
+              placeholder="e.g., eth0, wlan0, ens33"
               name="interface_name"
               value={formData.interface_name}
-              onChange={handleChange}
+              onChange={handleTextChange}
               required
-              placeholder="e.g., eth0, wlan0, ens33"
+              withAsterisk
             />
-          </div>
 
-          <div className="form-group">
-            <label htmlFor="mac_address">MAC Address *</label>
-            <input
-              type="text"
-              id="mac_address"
+            <TextInput
+              label="MAC Address"
+              placeholder="XX:XX:XX:XX:XX:XX"
               name="mac_address"
               value={formData.mac_address}
-              onChange={handleChange}
+              onChange={handleTextChange}
               required
-              placeholder="XX:XX:XX:XX:XX:XX"
+              withAsterisk
               pattern="^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$"
               title="MAC address must be in format XX:XX:XX:XX:XX:XX"
             />
-          </div>
-        </div>
+          </SimpleGrid>
 
-        <div className="form-row">
-          <div className="form-group">
-            <label htmlFor="ip_address">IP Address</label>
-            <input
-              type="text"
-              id="ip_address"
+          <SimpleGrid cols={2} spacing="md" breakpoints={[{ maxWidth: 'sm', cols: 1 }]}>
+            <TextInput
+              label="IP Address"
+              placeholder="e.g., 192.168.1.100"
               name="ip_address"
               value={formData.ip_address}
-              onChange={handleChange}
-              placeholder="e.g., 192.168.1.100"
+              onChange={handleTextChange}
             />
-          </div>
 
-          <div className="form-group">
-            <label htmlFor="subnet_mask">Subnet Mask</label>
-            <input
-              type="text"
-              id="subnet_mask"
+            <TextInput
+              label="Subnet Mask"
+              placeholder="e.g., 255.255.255.0"
               name="subnet_mask"
               value={formData.subnet_mask}
-              onChange={handleChange}
-              placeholder="e.g., 255.255.255.0"
+              onChange={handleTextChange}
             />
-          </div>
-        </div>
+          </SimpleGrid>
 
-        <div className="form-row">
-          <div className="form-group">
-            <label htmlFor="gateway">Gateway</label>
-            <input
-              type="text"
-              id="gateway"
+          <SimpleGrid cols={2} spacing="md" breakpoints={[{ maxWidth: 'sm', cols: 1 }]}>
+            <TextInput
+              label="Gateway"
+              placeholder="e.g., 192.168.1.1"
               name="gateway"
               value={formData.gateway}
-              onChange={handleChange}
-              placeholder="e.g., 192.168.1.1"
+              onChange={handleTextChange}
             />
-          </div>
 
-          <div className="form-group">
-            <label htmlFor="vlan_id">VLAN ID</label>
-            <input
-              type="number"
-              id="vlan_id"
+            <NumberInput
+              label="VLAN ID"
+              placeholder="1-4094"
               name="vlan_id"
               value={formData.vlan_id}
-              onChange={handleChange}
-              placeholder="1-4094"
-              min="1"
-              max="4094"
+              onChange={(value) => setFormData(prev => ({ ...prev, vlan_id: value || '' }))}
+              min={1}
+              max={4094}
             />
-          </div>
-        </div>
+          </SimpleGrid>
 
-        <div className="form-row">
-          <div className="form-group">
-            <label htmlFor="status">Status *</label>
-            <select
-              id="status"
+          <SimpleGrid cols={2} spacing="md" breakpoints={[{ maxWidth: 'sm', cols: 1 }]}>
+            <Select
+              label="Status"
+              placeholder="Select status"
               name="status"
               value={formData.status}
-              onChange={handleChange}
+              onChange={(value) => setFormData(prev => ({ ...prev, status: value }))}
+              data={[
+                { value: 'up', label: 'Up' },
+                { value: 'down', label: 'Down' },
+                { value: 'disabled', label: 'Disabled' },
+              ]}
               required
-            >
-              <option value="up">Up</option>
-              <option value="down">Down</option>
-              <option value="disabled">Disabled</option>
-            </select>
-          </div>
+              withAsterisk
+            />
 
-          <div className="form-group checkbox-group">
-            <label>
-              <input
-                type="checkbox"
-                name="is_primary"
-                checked={formData.is_primary}
-                onChange={handleChange}
-              />
-              <span>Set as primary interface</span>
-            </label>
-          </div>
-        </div>
+            <Checkbox
+              label="Set as primary interface"
+              checked={formData.is_primary}
+              onChange={(event) => handleCheckboxChange(event.currentTarget.checked)}
+              mt="xl"
+            />
+          </SimpleGrid>
 
-        <div className="form-actions">
-          <button type="submit" className="btn btn-primary" disabled={loading}>
-            {loading ? 'Creating...' : 'Create Interface'}
-          </button>
-          <button type="button" className="btn" onClick={onCancel}>
-            Cancel
-          </button>
-        </div>
+          <Group spacing="sm" justify="flex-end" mt="md">
+            <Button type="button" onClick={onCancel} variant="default">
+              Cancel
+            </Button>
+            <Button type="submit" loading={loading}>
+              Create Interface
+            </Button>
+          </Group>
+        </Stack>
       </form>
     </div>
   );

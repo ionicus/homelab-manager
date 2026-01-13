@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Button, Group, CloseButton, Select, Stack, Text, Loader } from '@mantine/core';
 import { getPlaybooks, triggerProvisioning } from '../services/api';
 import ErrorDisplay from './ErrorDisplay';
 
@@ -54,72 +55,67 @@ function ProvisioningForm({ deviceId, onSuccess, onCancel }) {
     }
   };
 
+  const playbookDescriptions = {
+    ping: 'Test basic connectivity and SSH access to the device.',
+    system_info: 'Gather comprehensive system information (OS, CPU, memory, disk, network).',
+    update: 'Update system packages (requires sudo privileges).',
+    docker_install: 'Install Docker CE on Debian/Ubuntu systems (requires sudo privileges).',
+    basic_setup: 'Basic system setup and configuration.',
+  };
+
   return (
     <div className="form-modal" onClick={onCancel}>
       <div className="form-modal-content" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>Run Ansible Playbook</h2>
-          <button className="close-btn" onClick={onCancel}>&times;</button>
-        </div>
-
-        {error && <ErrorDisplay error={error} onRetry={fetchingPlaybooks ? null : fetchPlaybooks} />}
+        <Group justify="space-between" mb="md">
+          <h2 style={{ margin: 0 }}>Run Ansible Playbook</h2>
+          <CloseButton onClick={onCancel} size="lg" />
+        </Group>
 
         <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label htmlFor="playbook">Select Playbook *</label>
+          <Stack spacing="md">
+            {error && <ErrorDisplay error={error} onRetry={fetchingPlaybooks ? null : fetchPlaybooks} />}
+
             {fetchingPlaybooks ? (
-              <div className="loading-state">Loading available playbooks...</div>
+              <Group spacing="sm">
+                <Loader size="sm" />
+                <Text color="dimmed">Loading available playbooks...</Text>
+              </Group>
             ) : playbooks.length === 0 ? (
-              <div className="empty-state">
-                <p>No playbooks available. Please add playbooks to ansible/playbooks/ directory.</p>
-              </div>
+              <Text color="dimmed" ta="center" py="md">
+                No playbooks available. Please add playbooks to ansible/playbooks/ directory.
+              </Text>
             ) : (
-              <select
-                id="playbook"
+              <Select
+                label="Select Playbook"
+                placeholder="Choose a playbook to run"
                 value={selectedPlaybook}
-                onChange={(e) => setSelectedPlaybook(e.target.value)}
+                onChange={setSelectedPlaybook}
+                data={playbooks.map(playbook => ({ value: playbook, label: playbook }))}
                 required
+                withAsterisk
                 disabled={loading}
+              />
+            )}
+
+            {selectedPlaybook && playbookDescriptions[selectedPlaybook] && (
+              <Text size="sm" color="dimmed">
+                {playbookDescriptions[selectedPlaybook]}
+              </Text>
+            )}
+
+            <Group spacing="sm" justify="flex-end" mt="md">
+              <Button type="button" onClick={onCancel} variant="default" disabled={loading}>
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                loading={loading}
+                disabled={fetchingPlaybooks || playbooks.length === 0}
               >
-                {playbooks.map((playbook) => (
-                  <option key={playbook} value={playbook}>
-                    {playbook}
-                  </option>
-                ))}
-              </select>
-            )}
-          </div>
-
-          <div className="playbook-description">
-            {selectedPlaybook === 'ping' && (
-              <p>Test basic connectivity and SSH access to the device.</p>
-            )}
-            {selectedPlaybook === 'system_info' && (
-              <p>Gather comprehensive system information (OS, CPU, memory, disk, network).</p>
-            )}
-            {selectedPlaybook === 'update' && (
-              <p>Update system packages (requires sudo privileges).</p>
-            )}
-            {selectedPlaybook === 'docker_install' && (
-              <p>Install Docker CE on Debian/Ubuntu systems (requires sudo privileges).</p>
-            )}
-            {selectedPlaybook === 'basic_setup' && (
-              <p>Basic system setup and configuration.</p>
-            )}
-          </div>
-
-          <div className="form-actions">
-            <button type="button" onClick={onCancel} disabled={loading}>
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="btn-primary"
-              disabled={loading || fetchingPlaybooks || playbooks.length === 0}
-            >
-              {loading ? 'Starting...' : 'Run Playbook'}
-            </button>
-          </div>
+                Run Playbook
+              </Button>
+            </Group>
+          </Stack>
         </form>
       </div>
     </div>

@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { Button } from '@mantine/core';
 import { getDevices } from '../services/api';
 import { safeGetArray } from '../utils/validation';
 import ErrorDisplay from '../components/ErrorDisplay';
 import LoadingSkeleton from '../components/LoadingSkeleton';
+import StatusBadge from '../components/StatusBadge';
 
 function Dashboard() {
   const [devices, setDevices] = useState([]);
@@ -45,7 +47,7 @@ function Dashboard() {
     <div className="dashboard">
       <div className="dashboard-header">
         <h1>Dashboard</h1>
-        <Link to="/devices/new" className="btn btn-primary">Add Device</Link>
+        <Button component={Link} to="/devices/new">Add Device</Button>
       </div>
 
       <div className="stats-grid">
@@ -109,9 +111,7 @@ function Dashboard() {
                     {device.ip_address && <span className="device-ip">{device.ip_address}</span>}
                   </p>
                 </div>
-                <span className={`status-badge status-${device.status}`}>
-                  {device.status}
-                </span>
+                <StatusBadge status={device.status} />
               </Link>
             ))}
           </div>

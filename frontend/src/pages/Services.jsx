@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { Button, Group } from '@mantine/core';
 import { getServices, getDevices, deleteService, updateServiceStatus } from '../services/api';
 import { safeGetArray } from '../utils/validation';
 import ErrorDisplay from '../components/ErrorDisplay';
 import LoadingSkeleton from '../components/LoadingSkeleton';
+import StatusBadge from '../components/StatusBadge';
 import ServiceForm from '../components/ServiceForm';
 
 function Services() {
+  const navigate = useNavigate();
   const [services, setServices] = useState([]);
   const [devices, setDevices] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -197,7 +200,11 @@ function Services() {
       ) : (
         <div className="service-grid">
           {filteredServices.map(service => (
-            <div key={service.id} className="service-card">
+            <div
+              key={service.id}
+              className="service-card clickable-card"
+              onClick={() => navigate(`/services/${service.id}`)}
+            >
               <div className="service-header">
                 <div className="service-title-group">
                   <h3>{service.name}</h3>
@@ -205,13 +212,12 @@ function Services() {
                     to={`/devices/${service.device_id}`}
                     className="device-link"
                     title="View device"
+                    onClick={(e) => e.stopPropagation()}
                   >
                     {getDeviceName(service.device_id)}
                   </Link>
                 </div>
-                <span className={`status-badge status-${service.status}`}>
-                  {service.status}
-                </span>
+                <StatusBadge status={service.status} />
               </div>
 
               <div className="service-details">
@@ -235,11 +241,10 @@ function Services() {
                 )}
               </div>
 
-              <div className="service-actions">
-                <button
-                  className={`btn btn-sm ${
-                    service.status === 'running' ? 'btn-warning' : 'btn-success'
-                  }`}
+              <Group className="service-actions" gap="xs" onClick={(e) => e.stopPropagation()}>
+                <Button
+                  size="xs"
+                  color={service.status === 'running' ? 'yellow' : 'green'}
                   onClick={() => handleStatusToggle(service.id, service.status)}
                   disabled={updatingStatus[service.id]}
                   title={service.status === 'running' ? 'Stop service' : 'Start service'}
@@ -247,22 +252,16 @@ function Services() {
                   {updatingStatus[service.id] ? '...' : (
                     service.status === 'running' ? 'Stop' : 'Start'
                   )}
-                </button>
-                <Link
-                  to={`/services/${service.id}`}
-                  className="btn btn-sm btn-primary"
-                  title="View service details"
-                >
-                  View Details
-                </Link>
-                <button
-                  className="btn btn-sm btn-danger"
+                </Button>
+                <Button
+                  size="xs"
+                  color="red"
                   onClick={() => handleDelete(service.id, service.name)}
                   title="Delete service"
                 >
                   Delete
-                </button>
-              </div>
+                </Button>
+              </Group>
             </div>
           ))}
         </div>

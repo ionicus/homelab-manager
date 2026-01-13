@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { getJobLogs } from '../services/api';
+import { formatShortTimestamp } from '../utils/formatting';
 
 function ProvisioningJobsList({ jobs }) {
   const [expandedJob, setExpandedJob] = useState(null);
@@ -39,18 +40,6 @@ function ProvisioningJobsList({ jobs }) {
     return badges[status] || badges.pending;
   };
 
-  const formatTimestamp = (timestamp) => {
-    if (!timestamp) return 'N/A';
-    return new Date(timestamp).toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    });
-  };
-
   if (!jobs || jobs.length === 0) {
     return (
       <div className="empty-state">
@@ -70,7 +59,7 @@ function ProvisioningJobsList({ jobs }) {
             <div className="job-header" onClick={() => toggleJobExpansion(job.id)}>
               <div className="job-info">
                 <h4>{job.playbook_name}</h4>
-                <span className="job-timestamp">{formatTimestamp(job.created_at)}</span>
+                <span className="job-timestamp">{formatShortTimestamp(job.created_at)}</span>
               </div>
               <div className="job-status">
                 <span className={badge.className}>
@@ -95,11 +84,11 @@ function ProvisioningJobsList({ jobs }) {
                     <strong>Status:</strong> {job.status}
                   </div>
                   <div className="metadata-item">
-                    <strong>Created:</strong> {formatTimestamp(job.created_at)}
+                    <strong>Created:</strong> {formatShortTimestamp(job.created_at)}
                   </div>
                   {job.updated_at && (
                     <div className="metadata-item">
-                      <strong>Updated:</strong> {formatTimestamp(job.updated_at)}
+                      <strong>Updated:</strong> {formatShortTimestamp(job.updated_at)}
                     </div>
                   )}
                 </div>

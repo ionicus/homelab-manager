@@ -1,3 +1,5 @@
+import { Alert, Stack, Button, Code } from '@mantine/core';
+
 function ErrorDisplay({ error, onRetry, showRetry = true }) {
   const getErrorDetails = () => {
     if (typeof error === 'string') {
@@ -29,22 +31,23 @@ function ErrorDisplay({ error, onRetry, showRetry = true }) {
   const { message, details } = getErrorDetails();
 
   return (
-    <div className="error-display">
-      <div className="error-icon">⚠️</div>
-      <h3 className="error-title">Error</h3>
-      <p className="error-message">{message}</p>
+    <Stack spacing="md" p="md">
+      <Alert
+        color="red"
+        title="Error"
+        icon={<span style={{ fontSize: '1.5rem' }}>⚠️</span>}
+      >
+        {message}
+      </Alert>
       {details && (
-        <pre className="error-details">{details}</pre>
+        <Code block>{details}</Code>
       )}
       {showRetry && onRetry && (
-        <button
-          className="btn btn-primary"
-          onClick={onRetry}
-        >
+        <Button onClick={onRetry}>
           Try Again
-        </button>
+        </Button>
       )}
-    </div>
+    </Stack>
   );
 }
 

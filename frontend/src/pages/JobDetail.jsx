@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { Button, Group } from '@mantine/core';
 import { getJobStatus, getJobLogs, getDevice, triggerProvisioning } from '../services/api';
+import { formatTimestamp } from '../utils/formatting';
 import ErrorDisplay from '../components/ErrorDisplay';
 import LoadingSkeleton from '../components/LoadingSkeleton';
+import StatusBadge from '../components/StatusBadge';
 
 function JobDetail() {
   const { id } = useParams();
@@ -73,49 +76,28 @@ function JobDetail() {
   if (error) return <ErrorDisplay error={error} onRetry={fetchJobData} />;
   if (!job) return <ErrorDisplay error="Job not found" onRetry={fetchJobData} />;
 
-  const getStatusBadge = (status) => {
-    const badges = {
-      pending: { className: 'status-badge status-pending', text: 'Pending', icon: '⏳' },
-      running: { className: 'status-badge status-running', text: 'Running', icon: '▶' },
-      completed: { className: 'status-badge status-completed', text: 'Completed', icon: '✓' },
-      failed: { className: 'status-badge status-failed', text: 'Failed', icon: '✕' },
-    };
-    return badges[status] || badges.pending;
-  };
-
-  const formatTimestamp = (timestamp) => {
-    if (!timestamp) return 'N/A';
-    return new Date(timestamp).toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    });
-  };
-
-  const badge = getStatusBadge(job.status);
-
   return (
     <div className="job-detail">
       <div className="page-header">
         <div className="header-content">
           <h1>Automation Job #{job.id}</h1>
-          <span className={badge.className}>
-            {badge.icon} {badge.text}
-          </span>
+          <StatusBadge status={job.status} />
         </div>
-        <div>
-          <button
+        <Group gap="sm">
+          <Button
             onClick={handleRerun}
-            className="btn btn-primary"
             disabled={rerunning || job.status === 'running'}
           >
-            {rerunning ? 'Creating...' : '↻ Re-run Playbook'}
-          </button>
-          <Link to="/automation" className="btn">Back to Automation</Link>
-        </div>
+            {rerunning ? 'Creating...' : 'Re-run Playbook'}
+          </Button>
+          <Button
+            variant="outline"
+            component={Link}
+            to="/automation"
+          >
+            Back to Automation
+          </Button>
+        </Group>
       </div>
 
       <div className="detail-sections">
@@ -145,9 +127,7 @@ function JobDetail() {
             <div className="info-item">
               <span className="info-label">Status</span>
               <span className="info-value">
-                <span className={badge.className}>
-                  {badge.icon} {badge.text}
-                </span>
+                <StatusBadge status={job.status} />
               </span>
             </div>
             <div className="info-item">

@@ -1,8 +1,12 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Button, Group } from '@mantine/core';
 import { deleteService, updateServiceStatus } from '../services/api';
 import ServiceForm from './ServiceForm';
+import StatusBadge from './StatusBadge';
 
 function ServiceList({ services, deviceId, onUpdate }) {
+  const navigate = useNavigate();
   const [editingServiceId, setEditingServiceId] = useState(null);
   const [updatingStatus, setUpdatingStatus] = useState({});
 
@@ -63,12 +67,14 @@ function ServiceList({ services, deviceId, onUpdate }) {
 
       <div className="service-grid">
         {services.map(service => (
-          <div key={service.id} className="service-card">
+          <div
+            key={service.id}
+            className="service-card clickable-card"
+            onClick={() => navigate(`/services/${service.id}`)}
+          >
             <div className="service-header">
               <h3>{service.name}</h3>
-              <span className={`status-badge status-${service.status}`}>
-                {service.status}
-              </span>
+              <StatusBadge status={service.status} />
             </div>
 
             <div className="service-details">
@@ -92,34 +98,33 @@ function ServiceList({ services, deviceId, onUpdate }) {
               )}
             </div>
 
-            <div className="service-actions">
-              <button
-                className={`btn btn-sm ${
-                  service.status === 'running' ? 'btn-warning' : 'btn-success'
-                }`}
+            <Group className="service-actions" gap="xs" onClick={(e) => e.stopPropagation()}>
+              <Button
+                size="sm"
+                color={service.status === 'running' ? 'yellow' : 'green'}
                 onClick={() => handleStatusToggle(service.id, service.status)}
-                disabled={updatingStatus[service.id]}
+                loading={updatingStatus[service.id]}
                 title={service.status === 'running' ? 'Stop service' : 'Start service'}
               >
-                {updatingStatus[service.id] ? '...' : (
-                  service.status === 'running' ? 'Stop' : 'Start'
-                )}
-              </button>
-              <button
-                className="btn btn-sm"
+                {service.status === 'running' ? 'Stop' : 'Start'}
+              </Button>
+              <Button
+                size="sm"
+                variant="default"
                 onClick={() => handleEdit(service.id)}
                 title="Edit service"
               >
                 Edit
-              </button>
-              <button
-                className="btn btn-sm btn-danger"
+              </Button>
+              <Button
+                size="sm"
+                color="red"
                 onClick={() => handleDelete(service.id, service.name)}
                 title="Delete service"
               >
                 Delete
-              </button>
-            </div>
+              </Button>
+            </Group>
           </div>
         ))}
       </div>

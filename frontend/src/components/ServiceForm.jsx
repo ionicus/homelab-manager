@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Button, Group, CloseButton, TextInput, NumberInput, Select, Stack, Alert } from '@mantine/core';
 import { createService, updateService, getService } from '../services/api';
 
 function ServiceForm({ deviceId, serviceId = null, onSuccess, onCancel }) {
@@ -34,7 +35,7 @@ function ServiceForm({ deviceId, serviceId = null, onSuccess, onCancel }) {
     }
   };
 
-  const handleChange = (e) => {
+  const handleTextChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
@@ -73,105 +74,91 @@ function ServiceForm({ deviceId, serviceId = null, onSuccess, onCancel }) {
   return (
     <div className="form-modal">
       <div className="form-modal-content">
-        <div className="form-header">
-          <h2>{serviceId ? 'Edit Service' : 'Add New Service'}</h2>
-          <button className="close-btn" onClick={onCancel}>✕</button>
-        </div>
+        <Group justify="space-between" mb="md">
+          <h2 style={{ margin: 0 }}>{serviceId ? 'Edit Service' : 'Add New Service'}</h2>
+          <CloseButton onClick={onCancel} size="lg" />
+        </Group>
 
-        <form onSubmit={handleSubmit} className="service-form">
-          {error && (
-            <div className="form-error">
-              {error}
-            </div>
-          )}
+        <form onSubmit={handleSubmit}>
+          <Stack spacing="md">
+            {error && (
+              <Alert color="red" title="Error">
+                {error}
+              </Alert>
+            )}
 
-          <div className="form-group">
-            <label htmlFor="name">Service Name *</label>
-            <input
-              type="text"
-              id="name"
+            <TextInput
+              label="Service Name"
+              placeholder="e.g., nginx, postgresql, docker"
               name="name"
               value={formData.name}
-              onChange={handleChange}
+              onChange={handleTextChange}
               required
+              withAsterisk
               maxLength={255}
-              placeholder="e.g., nginx, postgresql, docker"
             />
-          </div>
 
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="port">Port</label>
-              <input
-                type="number"
-                id="port"
+            <Group grow>
+              <NumberInput
+                label="Port"
+                placeholder="e.g., 80, 443, 5432"
                 name="port"
                 value={formData.port}
-                onChange={handleChange}
-                min="1"
-                max="65535"
-                placeholder="e.g., 80, 443, 5432"
+                onChange={(value) => setFormData(prev => ({ ...prev, port: value || '' }))}
+                min={1}
+                max={65535}
               />
-            </div>
 
-            <div className="form-group">
-              <label htmlFor="protocol">Protocol</label>
-              <input
-                type="text"
-                id="protocol"
+              <TextInput
+                label="Protocol"
+                placeholder="e.g., http, https, tcp"
                 name="protocol"
                 value={formData.protocol}
-                onChange={handleChange}
+                onChange={handleTextChange}
                 maxLength={50}
-                placeholder="e.g., http, https, tcp"
               />
-            </div>
-          </div>
+            </Group>
 
-          <div className="form-group">
-            <label htmlFor="status">Status</label>
-            <select
-              id="status"
+            <Select
+              label="Status"
+              placeholder="Select status"
               name="status"
               value={formData.status}
-              onChange={handleChange}
-            >
-              <option value="stopped">Stopped</option>
-              <option value="running">Running</option>
-              <option value="error">Error</option>
-            </select>
-          </div>
+              onChange={(value) => setFormData(prev => ({ ...prev, status: value }))}
+              data={[
+                { value: 'stopped', label: 'Stopped' },
+                { value: 'running', label: 'Running' },
+                { value: 'error', label: 'Error' },
+              ]}
+            />
 
-          <div className="form-group">
-            <label htmlFor="health_check_url">Health Check URL</label>
-            <input
-              type="url"
-              id="health_check_url"
+            <TextInput
+              label="Health Check URL"
+              placeholder="e.g., http://localhost:80/health"
               name="health_check_url"
               value={formData.health_check_url}
-              onChange={handleChange}
+              onChange={handleTextChange}
               maxLength={500}
-              placeholder="e.g., http://localhost:80/health"
+              type="url"
             />
-          </div>
 
-          <div className="form-actions">
-            <button
-              type="button"
-              onClick={onCancel}
-              className="btn"
-              disabled={loading}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="btn btn-primary"
-              disabled={loading}
-            >
-              {loading ? 'Saving...' : (serviceId ? 'Update Service' : 'Create Service')}
-            </button>
-          </div>
+            <Group spacing="sm" justify="flex-end" mt="md">
+              <Button
+                type="button"
+                onClick={onCancel}
+                variant="default"
+                disabled={loading}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                loading={loading}
+              >
+                {serviceId ? 'Update Service' : 'Create Service'}
+              </Button>
+            </Group>
+          </Stack>
         </form>
       </div>
     </div>

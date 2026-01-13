@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { Button, Group } from '@mantine/core';
 import {
   getDevice,
   getDeviceServices,
@@ -10,6 +11,7 @@ import {
 import { safeGetArray } from '../utils/validation';
 import ErrorDisplay from '../components/ErrorDisplay';
 import LoadingSkeleton from '../components/LoadingSkeleton';
+import StatusBadge from '../components/StatusBadge';
 import ServiceList from '../components/ServiceList';
 import ServiceForm from '../components/ServiceForm';
 import MetricsChart from '../components/MetricsChart';
@@ -84,14 +86,12 @@ function DeviceDetail() {
       <div className="page-header">
         <div className="header-content">
           <h1>{device.name}</h1>
-          <span className={`status-badge status-${device.status}`}>
-            {device.status}
-          </span>
+          <StatusBadge status={device.status} />
         </div>
-        <div>
-          <Link to={`/devices/${device.id}/edit`} className="btn btn-primary">Edit</Link>
-          <Link to="/devices" className="btn">Back to Devices</Link>
-        </div>
+        <Group spacing="sm">
+          <Button component={Link} to={`/devices/${device.id}/edit`}>Edit</Button>
+          <Button component={Link} to="/devices" variant="default">Back to Devices</Button>
+        </Group>
       </div>
 
       <div className="detail-overview">
@@ -143,12 +143,12 @@ function DeviceDetail() {
         <div className="detail-section">
           <div className="section-header">
             <h2>Network Interfaces ({interfaces.length})</h2>
-            <button
-              className="btn btn-sm btn-primary"
+            <Button
+              size="sm"
               onClick={() => setShowInterfaceForm(true)}
             >
               Add Interface
-            </button>
+            </Button>
           </div>
 
           {showInterfaceForm && (
@@ -171,12 +171,12 @@ function DeviceDetail() {
         <div className="detail-section">
           <div className="section-header">
             <h2>Services ({services.length})</h2>
-            <button
-              className="btn btn-sm btn-primary"
+            <Button
+              size="sm"
               onClick={() => setShowServiceForm(true)}
             >
               Add Service
-            </button>
+            </Button>
           </div>
 
           {showServiceForm && (

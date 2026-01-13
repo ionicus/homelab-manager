@@ -1,98 +1,123 @@
+import { Skeleton, Stack, Group, SimpleGrid, Box } from '@mantine/core';
+
 function LoadingSkeleton({ type = 'default', count = 1 }) {
   if (type === 'dashboard') {
     return (
-      <div className="dashboard">
-        <div className="dashboard-header">
-          <div className="skeleton skeleton-title"></div>
-          <div className="skeleton skeleton-button"></div>
-        </div>
+      <Box p="md">
+        <Group justify="space-between" mb="xl">
+          <Skeleton height={40} width={200} />
+          <Skeleton height={36} width={120} />
+        </Group>
 
-        <div className="stats-grid">
+        <SimpleGrid cols={4} spacing="lg" mb="xl" breakpoints={[
+          { maxWidth: 'md', cols: 2 },
+          { maxWidth: 'sm', cols: 1 },
+        ]}>
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="stat-card">
-              <div className="skeleton skeleton-icon"></div>
-              <div className="stat-content">
-                <div className="skeleton skeleton-text"></div>
-                <div className="skeleton skeleton-number"></div>
-              </div>
-            </div>
+            <Box key={i} p="md" style={{ border: '1px solid var(--card-border)', borderRadius: '8px' }}>
+              <Group>
+                <Skeleton height={40} circle />
+                <Stack spacing="xs" style={{ flex: 1 }}>
+                  <Skeleton height={16} width="60%" />
+                  <Skeleton height={24} width="40%" />
+                </Stack>
+              </Group>
+            </Box>
           ))}
-        </div>
+        </SimpleGrid>
 
-        <div className="dashboard-grid">
-          <div className="dashboard-section">
-            <div className="skeleton skeleton-subtitle"></div>
-            <div className="type-grid">
+        <SimpleGrid cols={2} spacing="lg" breakpoints={[{ maxWidth: 'sm', cols: 1 }]}>
+          <Box>
+            <Skeleton height={28} width={150} mb="md" />
+            <Stack spacing="md">
               {[...Array(3)].map((_, i) => (
-                <div key={i} className="skeleton skeleton-card"></div>
+                <Skeleton key={i} height={80} />
               ))}
-            </div>
-          </div>
-          <div className="dashboard-section">
-            <div className="skeleton skeleton-subtitle"></div>
-            {[...Array(3)].map((_, i) => (
-              <div key={i} className="skeleton skeleton-list-item"></div>
-            ))}
-          </div>
-        </div>
-      </div>
+            </Stack>
+          </Box>
+          <Box>
+            <Skeleton height={28} width={150} mb="md" />
+            <Stack spacing="md">
+              {[...Array(3)].map((_, i) => (
+                <Skeleton key={i} height={60} />
+              ))}
+            </Stack>
+          </Box>
+        </SimpleGrid>
+      </Box>
     );
   }
 
   if (type === 'device-list') {
     return (
-      <div className="device-list-page">
-        <div className="page-header">
-          <div className="skeleton skeleton-title"></div>
-          <div className="skeleton skeleton-button"></div>
-        </div>
-        <div className="devices-grid">
+      <Box p="md">
+        <Group justify="space-between" mb="xl">
+          <Skeleton height={40} width={200} />
+          <Skeleton height={36} width={120} />
+        </Group>
+        <SimpleGrid cols={3} spacing="lg" breakpoints={[
+          { maxWidth: 'md', cols: 2 },
+          { maxWidth: 'sm', cols: 1 },
+        ]}>
           {[...Array(count)].map((_, i) => (
-            <div key={i} className="device-card">
-              <div className="skeleton skeleton-card-header"></div>
-              <div className="skeleton skeleton-card-body"></div>
-              <div className="skeleton skeleton-card-footer"></div>
-            </div>
+            <Box key={i} p="md" style={{ border: '1px solid var(--card-border)', borderRadius: '8px' }}>
+              <Skeleton height={24} mb="md" />
+              <Skeleton height={60} mb="md" />
+              <Skeleton height={20} />
+            </Box>
           ))}
-        </div>
-      </div>
+        </SimpleGrid>
+      </Box>
     );
   }
 
   if (type === 'device-detail') {
     return (
-      <div className="device-detail">
-        <div className="page-header">
-          <div className="skeleton skeleton-title"></div>
-          <div className="skeleton skeleton-button"></div>
-        </div>
-        <div className="detail-overview">
+      <Box p="md">
+        <Group justify="space-between" mb="xl">
+          <Skeleton height={40} width={250} />
+          <Group>
+            <Skeleton height={36} width={80} />
+            <Skeleton height={36} width={120} />
+          </Group>
+        </Group>
+
+        <SimpleGrid cols={4} spacing="lg" mb="xl" breakpoints={[
+          { maxWidth: 'md', cols: 2 },
+          { maxWidth: 'sm', cols: 1 },
+        ]}>
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="overview-card">
-              <div className="skeleton skeleton-icon"></div>
-              <div className="skeleton skeleton-text"></div>
-            </div>
+            <Box key={i} p="md" style={{ border: '1px solid var(--card-border)', borderRadius: '8px' }}>
+              <Group>
+                <Skeleton height={32} circle />
+                <Stack spacing="xs" style={{ flex: 1 }}>
+                  <Skeleton height={14} />
+                  <Skeleton height={18} width="70%" />
+                </Stack>
+              </Group>
+            </Box>
           ))}
-        </div>
-        <div className="detail-sections">
+        </SimpleGrid>
+
+        <Stack spacing="xl">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="detail-section">
-              <div className="skeleton skeleton-subtitle"></div>
-              <div className="skeleton skeleton-content"></div>
-            </div>
+            <Box key={i}>
+              <Skeleton height={28} width={180} mb="md" />
+              <Skeleton height={120} />
+            </Box>
           ))}
-        </div>
-      </div>
+        </Stack>
+      </Box>
     );
   }
 
   // Default skeleton
   return (
-    <div className="loading-skeleton">
+    <Stack spacing="md" p="md">
       {[...Array(count)].map((_, i) => (
-        <div key={i} className="skeleton skeleton-line"></div>
+        <Skeleton key={i} height={20} />
       ))}
-    </div>
+    </Stack>
   );
 }
 

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import { Button, Group, TextInput, Select, Stack, Container, Title, Paper, Alert } from '@mantine/core';
 import { getDevice, createDevice, updateDevice } from '../services/api';
 
 function DeviceForm() {
@@ -72,92 +73,91 @@ function DeviceForm() {
   };
 
   return (
-    <div className="device-form-page">
-      <div className="page-header">
-        <h1>{isEditMode ? 'Edit Device' : 'Add New Device'}</h1>
-        <Link to="/devices" className="btn">Cancel</Link>
-      </div>
+    <Container size="md" py="xl">
+      <Group justify="space-between" mb="xl">
+        <Title order={1}>{isEditMode ? 'Edit Device' : 'Add New Device'}</Title>
+        <Button component={Link} to="/devices" variant="default">Cancel</Button>
+      </Group>
 
-      {error && <div className="error">{error}</div>}
+      <Paper shadow="sm" p="lg" withBorder>
+        <form onSubmit={handleSubmit}>
+          <Stack spacing="md">
+            {error && (
+              <Alert color="red" title="Error">
+                {error}
+              </Alert>
+            )}
 
-      <form onSubmit={handleSubmit} className="device-form">
-        <div className="form-group">
-          <label htmlFor="name">Device Name *</label>
-          <input
-            type="text"
-            id="name"
-            name="name"
-            value={formData.name}
-            onChange={handleChange}
-            required
-            placeholder="e.g., server-01"
-          />
-        </div>
+            <TextInput
+              label="Device Name"
+              placeholder="e.g., server-01"
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
+              required
+              withAsterisk
+            />
 
-        <div className="form-group">
-          <label htmlFor="type">Type *</label>
-          <select
-            id="type"
-            name="type"
-            value={formData.type}
-            onChange={handleChange}
-            required
-          >
-            <option value="server">Server</option>
-            <option value="vm">Virtual Machine</option>
-            <option value="container">Container</option>
-            <option value="network">Network Device</option>
-            <option value="storage">Storage</option>
-          </select>
-        </div>
+            <Select
+              label="Type"
+              placeholder="Select device type"
+              name="type"
+              value={formData.type}
+              onChange={(value) => setFormData(prev => ({ ...prev, type: value }))}
+              data={[
+                { value: 'server', label: 'Server' },
+                { value: 'vm', label: 'Virtual Machine' },
+                { value: 'container', label: 'Container' },
+                { value: 'network', label: 'Network Device' },
+                { value: 'storage', label: 'Storage' },
+              ]}
+              required
+              withAsterisk
+            />
 
-        <div className="form-group">
-          <label htmlFor="status">Status *</label>
-          <select
-            id="status"
-            name="status"
-            value={formData.status}
-            onChange={handleChange}
-            required
-          >
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-            <option value="maintenance">Maintenance</option>
-          </select>
-        </div>
+            <Select
+              label="Status"
+              placeholder="Select status"
+              name="status"
+              value={formData.status}
+              onChange={(value) => setFormData(prev => ({ ...prev, status: value }))}
+              data={[
+                { value: 'active', label: 'Active' },
+                { value: 'inactive', label: 'Inactive' },
+                { value: 'maintenance', label: 'Maintenance' },
+              ]}
+              required
+              withAsterisk
+            />
 
-        <div className="form-group">
-          <label htmlFor="ip_address">IP Address</label>
-          <input
-            type="text"
-            id="ip_address"
-            name="ip_address"
-            value={formData.ip_address}
-            onChange={handleChange}
-            placeholder="e.g., 192.168.1.100"
-          />
-        </div>
+            <TextInput
+              label="IP Address"
+              placeholder="e.g., 192.168.1.100"
+              name="ip_address"
+              value={formData.ip_address}
+              onChange={handleChange}
+            />
 
-        <div className="form-group">
-          <label htmlFor="mac_address">MAC Address</label>
-          <input
-            type="text"
-            id="mac_address"
-            name="mac_address"
-            value={formData.mac_address}
-            onChange={handleChange}
-            placeholder="e.g., 00:11:22:33:44:55"
-          />
-        </div>
+            <TextInput
+              label="MAC Address"
+              placeholder="e.g., 00:11:22:33:44:55"
+              name="mac_address"
+              value={formData.mac_address}
+              onChange={handleChange}
+            />
 
-        <div className="form-actions">
-          <button type="submit" className="btn btn-primary" disabled={loading}>
-            {loading ? 'Saving...' : (isEditMode ? 'Update Device' : 'Create Device')}
-          </button>
-          <Link to="/devices" className="btn">Cancel</Link>
-        </div>
-      </form>
-    </div>
+            <Group spacing="sm" justify="flex-end" mt="md">
+              <Button component={Link} to="/devices" variant="default">
+                Cancel
+              </Button>
+              <Button type="submit" loading={loading}>
+                {isEditMode ? 'Update Device' : 'Create Device'}
+              </Button>
+            </Group>
+          </Stack>
+        </form>
+      </Paper>
+    </Container>
   );
 }
 

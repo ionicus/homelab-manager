@@ -6,7 +6,7 @@ A comprehensive system for managing homelab infrastructure with inventory tracki
 
 - **Inventory Management**: Track all physical servers, VMs, containers, and network devices
 - **Network Interface Management**: Multi-homed device support with multiple NICs, MAC addresses, VLANs, and IP addresses
-- **Automated Provisioning**: Deploy and configure systems using Ansible playbooks
+- **Automation**: Deploy and configure systems using Ansible playbooks
 - **Real-time Monitoring**: Monitor CPU, memory, disk usage, and network traffic
 - **Service Management**: Track and control running services across your infrastructure
 - **Alert System**: Get notified when systems exceed defined thresholds
@@ -136,8 +136,8 @@ homelab-manager/
 │   │   ├── App.css      # Global styles
 │   │   └── main.jsx     # Entry point
 │   └── package.json     # Node dependencies
-├── ansible/             # Ansible playbooks
-│   ├── playbooks/       # Provisioning scripts
+├── ansible/             # Ansible automation
+│   ├── playbooks/       # Automation playbooks
 │   └── inventory/       # Inventory files
 ├── docker/              # Docker configuration
 │   ├── docker-compose.yml
@@ -162,7 +162,7 @@ Comprehensive documentation covering all API endpoints, request/response formats
 - **Network Interfaces**: `/api/devices/{id}/interfaces` - Multi-homed network support
 - **Services**: `/api/services` - Service tracking and monitoring
 - **Metrics**: `/api/metrics` - Performance metrics collection
-- **Provisioning**: `/api/provisioning` - Ansible job triggering
+- **Automation**: `/api/provision` - Ansible job triggering
 
 **Error Handling**: All errors return JSON with proper HTTP status codes (400, 404, 409, 500)
 
@@ -327,7 +327,7 @@ CORS_ORIGINS=http://localhost:3000,http://localhost:5173
 - [x] Phase 1: Foundation and basic CRUD
 - [ ] Phase 2: Inventory Management
 - [ ] Phase 3: Monitoring System
-- [ ] Phase 4: Provisioning Integration
+- [ ] Phase 4: Automation Integration
 - [ ] Phase 5: Authentication and Deployment
 
 ## License

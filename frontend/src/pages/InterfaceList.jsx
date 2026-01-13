@@ -5,7 +5,7 @@ import {
   setPrimaryInterface,
 } from '../services/api';
 
-function InterfaceList({ interfaces, deviceId, onUpdate }) {
+function InterfaceList({ interfaces, deviceId, onUpdate, onEdit }) {
   const [loading, setLoading] = useState({});
 
   const handleSetPrimary = async (interfaceId) => {
@@ -123,6 +123,13 @@ function InterfaceList({ interfaces, deviceId, onUpdate }) {
                 Set as Primary
               </Button>
             )}
+            <Button
+              size="sm"
+              variant="light"
+              onClick={() => onEdit(iface)}
+            >
+              Edit
+            </Button>
             <Button
               size="sm"
               color="red"

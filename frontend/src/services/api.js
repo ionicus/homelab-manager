@@ -85,6 +85,8 @@ export const getDeviceInterfaces = (deviceId) =>
   api.get(`/devices/${deviceId}/interfaces`);
 export const createDeviceInterface = (deviceId, data) =>
   api.post(`/devices/${deviceId}/interfaces`, data);
+export const updateDeviceInterface = (deviceId, interfaceId, data) =>
+  api.put(`/devices/${deviceId}/interfaces/${interfaceId}`, data);
 export const deleteDeviceInterface = (deviceId, interfaceId) =>
   api.delete(`/devices/${deviceId}/interfaces/${interfaceId}`);
 export const setPrimaryInterface = (deviceId, interfaceId) =>

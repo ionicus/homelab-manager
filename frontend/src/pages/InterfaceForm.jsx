@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button, Stack, TextInput, NumberInput, Select, Checkbox, Alert, CloseButton, Group, SimpleGrid } from '@mantine/core';
-import { createDeviceInterface } from '../services/api';
+import { createDeviceInterface, updateDeviceInterface } from '../services/api';
 
-function InterfaceForm({ deviceId, onSuccess, onCancel }) {
+function InterfaceForm({ deviceId, interfaceData, onSuccess, onCancel }) {
+  const isEditMode = !!interfaceData;
+
   const [formData, setFormData] = useState({
     interface_name: '',
     mac_address: '',
@@ -16,6 +18,22 @@ function InterfaceForm({ deviceId, onSuccess, onCancel }) {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  // Pre-populate form when editing
+  useEffect(() => {
+    if (interfaceData) {
+      setFormData({
+        interface_name: interfaceData.interface_name || '',
+        mac_address: interfaceData.mac_address || '',
+        ip_address: interfaceData.ip_address || '',
+        subnet_mask: interfaceData.subnet_mask || '',
+        gateway: interfaceData.gateway || '',
+        vlan_id: interfaceData.vlan_id || '',
+        status: interfaceData.status || 'up',
+        is_primary: interfaceData.is_primary || false,
+      });
+    }
+  }, [interfaceData]);
 
   const handleTextChange = (e) => {
     const { name, value } = e.target;
@@ -52,10 +70,14 @@ function InterfaceForm({ deviceId, onSuccess, onCancel }) {
       if (formData.gateway) cleanData.gateway = formData.gateway;
       if (formData.vlan_id) cleanData.vlan_id = parseInt(formData.vlan_id, 10);
 
-      await createDeviceInterface(deviceId, cleanData);
+      if (isEditMode) {
+        await updateDeviceInterface(deviceId, interfaceData.id, cleanData);
+      } else {
+        await createDeviceInterface(deviceId, cleanData);
+      }
       onSuccess();
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to create interface');
+      setError(err.response?.data?.error || `Failed to ${isEditMode ? 'update' : 'create'} interface`);
       setLoading(false);
     }
   };
@@ -63,7 +85,7 @@ function InterfaceForm({ deviceId, onSuccess, onCancel }) {
   return (
     <div className="form-modal-content">
       <Group justify="space-between" mb="md">
-        <h2 style={{ margin: 0 }}>Add Network Interface</h2>
+        <h2 style={{ margin: 0 }}>{isEditMode ? 'Edit Network Interface' : 'Add Network Interface'}</h2>
         <CloseButton onClick={onCancel} size="lg" />
       </Group>
 
@@ -166,7 +188,7 @@ function InterfaceForm({ deviceId, onSuccess, onCancel }) {
               Cancel
             </Button>
             <Button type="submit" loading={loading}>
-              Create Interface
+              {isEditMode ? 'Update Interface' : 'Create Interface'}
             </Button>
           </Group>
         </Stack>

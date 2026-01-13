@@ -29,6 +29,7 @@ function DeviceDetail() {
   const [interfaces, setInterfaces] = useState([]);
   const [provisioningJobs, setProvisioningJobs] = useState([]);
   const [showInterfaceForm, setShowInterfaceForm] = useState(false);
+  const [editingInterface, setEditingInterface] = useState(null);
   const [showServiceForm, setShowServiceForm] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -63,7 +64,18 @@ function DeviceDetail() {
 
   const handleInterfaceUpdate = async () => {
     setShowInterfaceForm(false);
+    setEditingInterface(null);
     await fetchDeviceData();
+  };
+
+  const handleEditInterface = (iface) => {
+    setEditingInterface(iface);
+    setShowInterfaceForm(true);
+  };
+
+  const handleCancelInterfaceForm = () => {
+    setShowInterfaceForm(false);
+    setEditingInterface(null);
   };
 
   const handleServiceUpdate = async () => {
@@ -145,7 +157,7 @@ function DeviceDetail() {
             <h2>Network Interfaces ({interfaces.length})</h2>
             <Button
               size="sm"
-              onClick={() => setShowInterfaceForm(true)}
+              onClick={() => { setEditingInterface(null); setShowInterfaceForm(true); }}
             >
               Add Interface
             </Button>
@@ -155,8 +167,9 @@ function DeviceDetail() {
             <div className="interface-form-overlay">
               <InterfaceForm
                 deviceId={id}
+                interfaceData={editingInterface}
                 onSuccess={handleInterfaceUpdate}
-                onCancel={() => setShowInterfaceForm(false)}
+                onCancel={handleCancelInterfaceForm}
               />
             </div>
           )}
@@ -165,6 +178,7 @@ function DeviceDetail() {
             interfaces={interfaces}
             deviceId={id}
             onUpdate={fetchDeviceData}
+            onEdit={handleEditInterface}
           />
         </div>
 

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Container, Title, Paper, Stack, SegmentedControl, Text, Card, Group, Button, ColorSwatch, useMantineTheme, NavLink, Grid } from '@mantine/core';
+import { Title, Paper, Stack, SegmentedControl, Text, Card, Group, Button, ColorSwatch, useMantineTheme, NavLink, Grid } from '@mantine/core';
 import { IconPalette, IconBrush, IconSettings } from '@tabler/icons-react';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -220,8 +220,10 @@ function Settings() {
   );
 
   return (
-    <Container size="xl" py="xl">
-      <Title order={1} mb="xl">Settings</Title>
+    <div className="settings-page">
+      <div className="page-header">
+        <h1>Settings</h1>
+      </div>
 
       <Grid gutter="lg">
         <Grid.Col span={3}>
@@ -264,7 +266,7 @@ function Settings() {
           {activeSection === 'general' && renderGeneralSection()}
         </Grid.Col>
       </Grid>
-    </Container>
+    </div>
   );
 }
 

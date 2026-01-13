@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Link, NavLink } from 'react-router-dom'
 import { MantineProvider, createTheme } from '@mantine/core'
 import { ThemeProvider, useTheme } from './contexts/ThemeContext'
 import { themes } from './theme'
@@ -30,11 +30,11 @@ function AppContent() {
           <div className="nav-container">
             <Link to="/" className="nav-brand">Homelab Manager</Link>
             <ul className="nav-menu">
-              <li><Link to="/">Dashboard</Link></li>
-              <li><Link to="/devices">Devices</Link></li>
-              <li><Link to="/services">Services</Link></li>
-              <li><Link to="/automation">Automation</Link></li>
-              <li><Link to="/settings">Settings</Link></li>
+              <li><NavLink to="/" end>Dashboard</NavLink></li>
+              <li><NavLink to="/devices">Devices</NavLink></li>
+              <li><NavLink to="/services">Services</NavLink></li>
+              <li><NavLink to="/automation">Automation</NavLink></li>
+              <li><NavLink to="/settings">Settings</NavLink></li>
             </ul>
           </div>
         </nav>

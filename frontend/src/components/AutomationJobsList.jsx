@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { getJobLogs } from '../services/api';
 import { formatShortTimestamp } from '../utils/formatting';
 
-function ProvisioningJobsList({ jobs }) {
+function AutomationJobsList({ jobs }) {
   const [expandedJob, setExpandedJob] = useState(null);
   const [logs, setLogs] = useState({});
   const [loadingLogs, setLoadingLogs] = useState({});
@@ -43,7 +43,7 @@ function ProvisioningJobsList({ jobs }) {
   if (!jobs || jobs.length === 0) {
     return (
       <div className="empty-state">
-        <p>No provisioning jobs yet. Click "Run Playbook" to start.</p>
+        <p>No automation jobs yet. Click "Run Playbook" to start.</p>
       </div>
     );
   }
@@ -112,4 +112,4 @@ function ProvisioningJobsList({ jobs }) {
   );
 }
 
-export default ProvisioningJobsList;
+export default AutomationJobsList;

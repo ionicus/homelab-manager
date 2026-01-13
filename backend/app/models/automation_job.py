@@ -1,4 +1,4 @@
-"""Provisioning job model."""
+"""Automation job model."""
 
 import enum
 from datetime import datetime
@@ -18,10 +18,10 @@ class JobStatus(enum.Enum):
     FAILED = "failed"
 
 
-class ProvisioningJob(Base):
-    """Provisioning job for automated deployment."""
+class AutomationJob(Base):
+    """Automation job for Ansible playbook execution."""
 
-    __tablename__ = "provisioning_jobs"
+    __tablename__ = "automation_jobs"
 
     id = Column(Integer, primary_key=True, index=True)
     device_id = Column(Integer, ForeignKey("devices.id", ondelete="CASCADE"), nullable=False)
@@ -32,7 +32,7 @@ class ProvisioningJob(Base):
     log_output = Column(Text, nullable=True)
 
     # Relationship
-    device = relationship("Device", backref="provisioning_jobs")
+    device = relationship("Device", backref="automation_jobs")
 
     def to_dict(self):
         """Convert model to dictionary."""
@@ -44,11 +44,11 @@ class ProvisioningJob(Base):
             "started_at": self.started_at.isoformat() if self.started_at else None,
             "completed_at": self.completed_at.isoformat() if self.completed_at else None,
             "log_output": self.log_output,
-            # For frontend compatibility (can be properly added via migration later)
+            # For frontend compatibility
             "created_at": self.started_at.isoformat() if self.started_at else None,
             "updated_at": self.completed_at.isoformat() if self.completed_at else None,
         }
 
     def __repr__(self):
         """String representation."""
-        return f"<ProvisioningJob {self.id} - {self.status.value if self.status else 'unknown'}>"
+        return f"<AutomationJob {self.id} - {self.status.value if self.status else 'unknown'}>"

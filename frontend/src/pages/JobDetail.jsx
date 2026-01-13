@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Button, Group } from '@mantine/core';
-import { getJobStatus, getJobLogs, getDevice, triggerProvisioning } from '../services/api';
+import { getJobStatus, getJobLogs, getDevice, triggerAutomation } from '../services/api';
 import { formatTimestamp } from '../utils/formatting';
 import ErrorDisplay from '../components/ErrorDisplay';
 import LoadingSkeleton from '../components/LoadingSkeleton';
@@ -61,7 +61,7 @@ function JobDetail() {
 
     try {
       setRerunning(true);
-      await triggerProvisioning(job.device_id, job.playbook_name);
+      await triggerAutomation(job.device_id, job.playbook_name);
       // Optionally redirect to new job or show success message
       alert('New job created successfully! Refresh the page to see it.');
     } catch (err) {

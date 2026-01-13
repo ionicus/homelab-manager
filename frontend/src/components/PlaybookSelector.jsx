@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getPlaybooks, triggerProvisioning } from '../services/api';
+import { getPlaybooks, triggerAutomation } from '../services/api';
 import ErrorDisplay from './ErrorDisplay';
 
 function PlaybookSelector({ deviceId, onExecute }) {
@@ -35,7 +35,7 @@ function PlaybookSelector({ deviceId, onExecute }) {
     try {
       setExecuting(playbookName);
       setError(null);
-      const response = await triggerProvisioning(deviceId, playbookName);
+      const response = await triggerAutomation(deviceId, playbookName);
       if (onExecute) {
         onExecute(response.data);
       }

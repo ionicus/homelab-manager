@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Button, Group, CloseButton, Select, Stack, Text, Loader } from '@mantine/core';
-import { getPlaybooks, triggerProvisioning } from '../services/api';
+import { getPlaybooks, triggerAutomation } from '../services/api';
 import ErrorDisplay from './ErrorDisplay';
 
-function ProvisioningForm({ deviceId, onSuccess, onCancel }) {
+function AutomationForm({ deviceId, onSuccess, onCancel }) {
   const [playbooks, setPlaybooks] = useState([]);
   const [selectedPlaybook, setSelectedPlaybook] = useState('');
   const [loading, setLoading] = useState(false);
@@ -43,12 +43,12 @@ function ProvisioningForm({ deviceId, onSuccess, onCancel }) {
     try {
       setLoading(true);
       setError(null);
-      const response = await triggerProvisioning(deviceId, selectedPlaybook);
+      const response = await triggerAutomation(deviceId, selectedPlaybook);
       if (onSuccess) {
         onSuccess(response.data.data);
       }
     } catch (err) {
-      console.error('Failed to trigger provisioning:', err);
+      console.error('Failed to trigger automation:', err);
       setError(err);
     } finally {
       setLoading(false);
@@ -122,4 +122,4 @@ function ProvisioningForm({ deviceId, onSuccess, onCancel }) {
   );
 }
 
-export default ProvisioningForm;
+export default AutomationForm;

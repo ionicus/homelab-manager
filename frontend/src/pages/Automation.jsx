@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { getProvisioningJobs, getDevices } from '../services/api';
+import { getAutomationJobs, getDevices } from '../services/api';
 import { safeGetArray } from '../utils/validation';
 import { formatShortTimestamp } from '../utils/formatting';
 import ErrorDisplay from '../components/ErrorDisplay';
@@ -25,7 +25,7 @@ function Automation() {
     setError(null);
     try {
       const [jobsRes, devicesRes] = await Promise.all([
-        getProvisioningJobs(),
+        getAutomationJobs(),
         getDevices(),
       ]);
 

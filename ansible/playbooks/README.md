@@ -82,7 +82,7 @@ All playbooks assume:
 
 Playbooks are executed via the Homelab Manager API:
 ```
-POST /api/provision
+POST /api/automation
 {
   "device_id": 1,
   "playbook_name": "ping"
@@ -90,7 +90,7 @@ POST /api/provision
 ```
 
 The system will:
-1. Create a ProvisioningJob in the database
+1. Create an AutomationJob in the database
 2. Generate a dynamic Ansible inventory for the target device
 3. Execute the playbook in a background thread
 4. Capture all output logs

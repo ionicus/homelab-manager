@@ -20,9 +20,9 @@ from app.schemas.metric import (
     MetricCreate,
     MetricResponse,
 )
-from app.schemas.provisioning import (
-    ProvisioningTaskCreate,
-    ProvisioningTaskResponse,
+from app.schemas.automation import (
+    AutomationJobCreate,
+    AutomationJobResponse,
 )
 
 __all__ = [
@@ -37,6 +37,6 @@ __all__ = [
     "ServiceResponse",
     "MetricCreate",
     "MetricResponse",
-    "ProvisioningTaskCreate",
-    "ProvisioningTaskResponse",
+    "AutomationJobCreate",
+    "AutomationJobResponse",
 ]

@@ -12,7 +12,7 @@ Base URL: `http://localhost:5000/api`
 - [Network Interfaces](#network-interfaces)
 - [Services](#services)
 - [Metrics](#metrics)
-- [Provisioning](#provisioning)
+- [Automation](#automation)
 
 ---
 
@@ -26,7 +26,7 @@ The Homelab Manager API provides comprehensive management of homelab infrastruct
 - **Multi-Homed Network Support**: Manage multiple network interfaces per device with MAC, IP, VLAN configuration
 - **Service Monitoring**: Track running services with health checks and status
 - **Performance Metrics**: Collect and query CPU, memory, disk, and network usage
-- **Ansible Integration**: Trigger provisioning jobs for automated configuration
+- **Ansible Integration**: Trigger automation jobs for device configuration
 
 ### Request/Response Format
 
@@ -687,11 +687,11 @@ POST /api/metrics
 
 ---
 
-## Provisioning
+## Automation
 
 Trigger Ansible playbook executions for automated device configuration.
 
-### Provisioning Job Object
+### Automation Job Object
 
 ```json
 {
@@ -713,7 +713,7 @@ Trigger Ansible playbook executions for automated device configuration.
 ### List Available Playbooks
 
 ```http
-GET /api/provision/playbooks
+GET /api/automation/playbooks
 ```
 
 Returns a list of available Ansible playbooks.
@@ -732,10 +732,10 @@ Returns a list of available Ansible playbooks.
 ]
 ```
 
-### List Provisioning Jobs
+### List Automation Jobs
 
 ```http
-GET /api/provision/jobs?device_id=1
+GET /api/automation/jobs?device_id=1
 ```
 
 **Query Parameters** (all optional):
@@ -754,10 +754,10 @@ GET /api/provision/jobs?device_id=1
 ]
 ```
 
-### Trigger Provisioning Job
+### Trigger Automation Job
 
 ```http
-POST /api/provision
+POST /api/automation
 ```
 
 **Request Body**:
@@ -773,13 +773,13 @@ POST /api/provision
 ### Get Job Status
 
 ```http
-GET /api/provision/{job_id}
+GET /api/automation/{job_id}
 ```
 
 ### Get Job Logs
 
 ```http
-GET /api/provision/{job_id}/logs
+GET /api/automation/{job_id}/logs
 ```
 
 **Response**:

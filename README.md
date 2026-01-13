@@ -162,7 +162,7 @@ Comprehensive documentation covering all API endpoints, request/response formats
 - **Network Interfaces**: `/api/devices/{id}/interfaces` - Multi-homed network support
 - **Services**: `/api/services` - Service tracking and monitoring
 - **Metrics**: `/api/metrics` - Performance metrics collection
-- **Automation**: `/api/provision` - Ansible job triggering
+- **Automation**: `/api/automation` - Ansible job triggering
 
 **Error Handling**: All errors return JSON with proper HTTP status codes (400, 404, 409, 500)
 

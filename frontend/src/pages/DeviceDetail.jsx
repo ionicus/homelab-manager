@@ -6,7 +6,7 @@ import {
   getDeviceServices,
   getDeviceMetrics,
   getDeviceInterfaces,
-  getProvisioningJobs,
+  getAutomationJobs,
 } from '../services/api';
 import { safeGetArray } from '../utils/validation';
 import ErrorDisplay from '../components/ErrorDisplay';
@@ -19,7 +19,7 @@ import NetworkChart from '../components/NetworkChart';
 import InterfaceList from './InterfaceList';
 import InterfaceForm from './InterfaceForm';
 import PlaybookSelector from '../components/PlaybookSelector';
-import ProvisioningJobsList from '../components/ProvisioningJobsList';
+import AutomationJobsList from '../components/AutomationJobsList';
 
 function DeviceDetail() {
   const { id } = useParams();
@@ -27,7 +27,7 @@ function DeviceDetail() {
   const [services, setServices] = useState([]);
   const [metrics, setMetrics] = useState([]);
   const [interfaces, setInterfaces] = useState([]);
-  const [provisioningJobs, setProvisioningJobs] = useState([]);
+  const [automationJobs, setAutomationJobs] = useState([]);
   const [showInterfaceForm, setShowInterfaceForm] = useState(false);
   const [editingInterface, setEditingInterface] = useState(null);
   const [showServiceForm, setShowServiceForm] = useState(false);
@@ -47,14 +47,14 @@ function DeviceDetail() {
         getDeviceServices(id),
         getDeviceMetrics(id, 50),
         getDeviceInterfaces(id),
-        getProvisioningJobs(id),
+        getAutomationJobs(id),
       ]);
 
       setDevice(deviceRes.data || deviceRes);
       setServices(safeGetArray(servicesRes));
       setMetrics(safeGetArray(metricsRes));
       setInterfaces(safeGetArray(interfacesRes));
-      setProvisioningJobs(safeGetArray(jobsRes));
+      setAutomationJobs(safeGetArray(jobsRes));
       setLoading(false);
     } catch (err) {
       setError(err);
@@ -217,8 +217,8 @@ function DeviceDetail() {
           </div>
 
           <div className="automation-subsection">
-            <h3>Execution History ({provisioningJobs.length})</h3>
-            <ProvisioningJobsList jobs={provisioningJobs} />
+            <h3>Execution History ({automationJobs.length})</h3>
+            <AutomationJobsList jobs={automationJobs} />
           </div>
         </div>
 

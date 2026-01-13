@@ -8,7 +8,7 @@ from typing import Optional
 from datetime import datetime
 
 from app.database import Session
-from app.models import ProvisioningJob, JobStatus
+from app.models import AutomationJob, JobStatus
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +31,7 @@ class AnsibleExecutor:
         Execute an Ansible playbook in a background thread.
 
         Args:
-            job_id: Database ID of the provisioning job
+            job_id: Database ID of the automation job
             device_ip: Target device IP address
             device_name: Target device name
             playbook_name: Name of the playbook to execute
@@ -55,7 +55,7 @@ class AnsibleExecutor:
         Internal method to run the playbook (runs in separate thread).
 
         Args:
-            job_id: Database ID of the provisioning job
+            job_id: Database ID of the automation job
             device_ip: Target device IP address
             device_name: Target device name
             playbook_name: Name of the playbook to execute
@@ -65,7 +65,7 @@ class AnsibleExecutor:
 
         try:
             # Get job from database
-            job = db.query(ProvisioningJob).filter(ProvisioningJob.id == job_id).first()
+            job = db.query(AutomationJob).filter(AutomationJob.id == job_id).first()
             if not job:
                 logger.error(f"Job {job_id} not found in database")
                 return

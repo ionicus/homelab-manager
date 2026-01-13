@@ -69,16 +69,16 @@ export const deleteService = (id) => api.delete(`/services/${id}`);
 export const updateServiceStatus = (serviceId, status) =>
   api.put(`/services/${serviceId}/status`, { status });
 
-// Provisioning
-export const getPlaybooks = () => api.get('/provision/playbooks');
-export const getProvisioningJobs = (deviceId = null) => {
-  const url = deviceId ? `/provision/jobs?device_id=${deviceId}` : '/provision/jobs';
+// Automation
+export const getPlaybooks = () => api.get('/automation/playbooks');
+export const getAutomationJobs = (deviceId = null) => {
+  const url = deviceId ? `/automation/jobs?device_id=${deviceId}` : '/automation/jobs';
   return api.get(url);
 };
-export const triggerProvisioning = (deviceId, playbookName) =>
-  api.post('/provision', { device_id: deviceId, playbook_name: playbookName });
-export const getJobStatus = (jobId) => api.get(`/provision/${jobId}`);
-export const getJobLogs = (jobId) => api.get(`/provision/${jobId}/logs`);
+export const triggerAutomation = (deviceId, playbookName) =>
+  api.post('/automation', { device_id: deviceId, playbook_name: playbookName });
+export const getJobStatus = (jobId) => api.get(`/automation/${jobId}`);
+export const getJobLogs = (jobId) => api.get(`/automation/${jobId}/logs`);
 
 // Network Interfaces
 export const getDeviceInterfaces = (deviceId) =>

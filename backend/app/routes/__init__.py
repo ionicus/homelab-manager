@@ -2,11 +2,11 @@
 
 from flask import Flask
 
-from app.routes.devices import devices_bp
-from app.routes.services import services_bp
-from app.routes.metrics import metrics_bp
 from app.routes.automation import automation_bp
+from app.routes.devices import devices_bp
+from app.routes.metrics import metrics_bp
 from app.routes.network_interfaces import interfaces_bp
+from app.routes.services import services_bp
 
 
 def register_blueprints(app: Flask):

@@ -5,9 +5,10 @@ Provides consistent error responses, custom exceptions, and helper functions
 for common error scenarios.
 """
 
-from typing import Dict, Any, Optional, Tuple
-from flask import jsonify
 import logging
+from typing import Any, Dict, Optional, Tuple
+
+from flask import jsonify
 
 logger = logging.getLogger(__name__)
 
@@ -16,10 +17,7 @@ class APIError(Exception):
     """Base exception for API errors."""
 
     def __init__(
-        self,
-        message: str,
-        status_code: int = 400,
-        payload: Optional[Dict[str, Any]] = None
+        self, message: str, status_code: int = 400, payload: Optional[Dict[str, Any]] = None
     ):
         super().__init__()
         self.message = message
@@ -66,11 +64,7 @@ class DatabaseError(APIError):
         super().__init__(message, status_code=500)
 
 
-def error_response(
-    message: str,
-    status_code: int = 400,
-    **kwargs
-) -> Tuple[Dict[str, Any], int]:
+def error_response(message: str, status_code: int = 400, **kwargs) -> Tuple[Dict[str, Any], int]:
     """
     Create a standardized error response.
 
@@ -94,9 +88,7 @@ def error_response(
 
 
 def success_response(
-    data: Any = None,
-    message: Optional[str] = None,
-    status_code: int = 200
+    data: Any = None, message: Optional[str] = None, status_code: int = 200
 ) -> Tuple[Dict[str, Any], int]:
     """
     Create a standardized success response.
@@ -129,10 +121,7 @@ def success_response(
     return jsonify(response), status_code
 
 
-def validation_error(
-    message: str,
-    field: Optional[str] = None
-) -> Tuple[Dict[str, Any], int]:
+def validation_error(message: str, field: Optional[str] = None) -> Tuple[Dict[str, Any], int]:
     """
     Create a validation error response (400).
 
@@ -149,10 +138,7 @@ def validation_error(
     return jsonify(response), 400
 
 
-def not_found_error(
-    resource: str,
-    identifier: Optional[Any] = None
-) -> Tuple[Dict[str, Any], int]:
+def not_found_error(resource: str, identifier: Optional[Any] = None) -> Tuple[Dict[str, Any], int]:
     """
     Create a resource not found error response (404).
 
@@ -183,8 +169,7 @@ def conflict_error(message: str) -> Tuple[Dict[str, Any], int]:
 
 
 def database_error(
-    message: str = "Database operation failed",
-    log_details: Optional[str] = None
+    message: str = "Database operation failed", log_details: Optional[str] = None
 ) -> Tuple[Dict[str, Any], int]:
     """
     Create a database error response (500).
@@ -218,7 +203,7 @@ def handle_database_exception(e: Exception) -> Tuple[Dict[str, Any], int]:
 
     if isinstance(e, IntegrityError):
         # Extract constraint violation details if possible
-        error_msg = str(e.orig) if hasattr(e, 'orig') else str(e)
+        error_msg = str(e.orig) if hasattr(e, "orig") else str(e)
 
         # Check for common constraint violations
         if "unique constraint" in error_msg.lower():
@@ -261,6 +246,7 @@ class DatabaseSession:
 
     def __init__(self):
         from app.database import Session
+
         self.Session = Session
         self.db = None
 

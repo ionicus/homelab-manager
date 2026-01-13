@@ -1,9 +1,8 @@
 """Network Interface model."""
 
 import enum
-from datetime import datetime
 
-from sqlalchemy import Column, Integer, String, ForeignKey, Enum, Boolean
+from sqlalchemy import Boolean, Column, Enum, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 
 from app.database import Base

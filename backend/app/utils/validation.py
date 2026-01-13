@@ -1,9 +1,10 @@
 """Request validation utilities using Pydantic schemas."""
 
 from functools import wraps
-from flask import request, jsonify
+from typing import Any, Callable, Type
+
+from flask import jsonify, request
 from pydantic import BaseModel, ValidationError
-from typing import Type, Callable, Any
 
 
 def validate_request(schema: Type[BaseModel]):
@@ -51,15 +52,10 @@ def validate_request(schema: Type[BaseModel]):
                     message = error["msg"]
                     errors.append({"field": field, "message": message})
 
-                return jsonify({
-                    "error": "Validation failed",
-                    "details": errors
-                }), 400
+                return jsonify({"error": "Validation failed", "details": errors}), 400
 
             except Exception as e:
-                return jsonify({
-                    "error": f"Validation error: {str(e)}"
-                }), 400
+                return jsonify({"error": f"Validation error: {str(e)}"}), 400
 
         return wrapper
 
@@ -89,11 +85,6 @@ def validate_data(schema: Type[BaseModel], data: dict) -> tuple[Any, dict | None
             message = error["msg"]
             errors.append({"field": field, "message": message})
 
-        return None, {
-            "error": "Validation failed",
-            "details": errors
-        }
+        return None, {"error": "Validation failed", "details": errors}
     except Exception as e:
-        return None, {
-            "error": f"Validation error: {str(e)}"
-        }
+        return None, {"error": f"Validation error: {str(e)}"}

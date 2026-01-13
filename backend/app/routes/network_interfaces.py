@@ -2,24 +2,24 @@
 
 from flask import Blueprint, request
 
-from app.models import NetworkInterface, InterfaceStatus, Device
+from app.models import Device, InterfaceStatus, NetworkInterface
 from app.schemas.network_interface import (
     NetworkInterfaceCreate,
     NetworkInterfaceUpdate,
 )
 from app.utils.errors import (
+    ConflictError,
     DatabaseSession,
     NotFoundError,
-    ConflictError,
     ValidationError,
     success_response,
 )
 from app.utils.validation import validate_request
 from app.utils.validators import (
-    validate_mac_address,
-    validate_ip_address,
     ensure_single_primary,
     promote_primary_after_deletion,
+    validate_ip_address,
+    validate_mac_address,
 )
 
 interfaces_bp = Blueprint("interfaces", __name__)
@@ -92,7 +92,9 @@ def create_device_interface(device_id: int):
 
         # If this is first interface or explicitly set as primary, make it primary
         is_primary = data.is_primary if data.is_primary is not None else False
-        interface_count = db.query(NetworkInterface).filter(NetworkInterface.device_id == device_id).count()
+        interface_count = (
+            db.query(NetworkInterface).filter(NetworkInterface.device_id == device_id).count()
+        )
 
         if interface_count == 0:
             is_primary = True  # First interface is always primary
@@ -151,7 +153,9 @@ def update_device_interface(device_id: int, interface_id: int):
                 .first()
             )
             if existing:
-                raise ConflictError("Interface with this MAC address already exists for this device")
+                raise ConflictError(
+                    "Interface with this MAC address already exists for this device"
+                )
 
         # Update fields (only if provided)
         if data.interface_name is not None:
@@ -197,9 +201,13 @@ def delete_device_interface(device_id: int, interface_id: int):
             raise NotFoundError("Interface", interface_id)
 
         # Check if this is the only interface
-        interface_count = db.query(NetworkInterface).filter(NetworkInterface.device_id == device_id).count()
+        interface_count = (
+            db.query(NetworkInterface).filter(NetworkInterface.device_id == device_id).count()
+        )
         if interface_count == 1:
-            raise ValidationError("Cannot delete the only interface. Device must have at least one interface.")
+            raise ValidationError(
+                "Cannot delete the only interface. Device must have at least one interface."
+            )
 
         was_primary = interface.is_primary
 
@@ -214,7 +222,9 @@ def delete_device_interface(device_id: int, interface_id: int):
         return success_response(message="Interface deleted successfully")
 
 
-@interfaces_bp.route("/devices/<int:device_id>/interfaces/<int:interface_id>/set-primary", methods=["PUT"])
+@interfaces_bp.route(
+    "/devices/<int:device_id>/interfaces/<int:interface_id>/set-primary", methods=["PUT"]
+)
 def set_primary_interface(device_id: int, interface_id: int):
     """Set an interface as the primary interface for the device."""
     with DatabaseSession() as db:
@@ -271,7 +281,9 @@ def list_all_interfaces():
             is_primary_bool = is_primary.lower() in ("true", "1", "yes")
             query = query.filter(NetworkInterface.is_primary == is_primary_bool)
 
-        interfaces = query.order_by(NetworkInterface.device_id, NetworkInterface.is_primary.desc()).all()
+        interfaces = query.order_by(
+            NetworkInterface.device_id, NetworkInterface.is_primary.desc()
+        ).all()
 
         return success_response([iface.to_dict() for iface in interfaces])
 
@@ -315,9 +327,7 @@ def get_interface_by_ip(ip_address: str):
 
     with DatabaseSession() as db:
         interfaces = (
-            db.query(NetworkInterface)
-            .filter(NetworkInterface.ip_address == ip_address)
-            .all()
+            db.query(NetworkInterface).filter(NetworkInterface.ip_address == ip_address).all()
         )
 
         if not interfaces:

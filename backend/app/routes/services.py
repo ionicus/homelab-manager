@@ -2,8 +2,8 @@
 
 from flask import Blueprint, request
 
-from app.models import Service, ServiceStatus, Device
-from app.schemas.service import ServiceCreate, ServiceUpdate, ServiceStatusUpdate
+from app.models import Device, Service, ServiceStatus
+from app.schemas.service import ServiceCreate, ServiceStatusUpdate, ServiceUpdate
 from app.utils.errors import (
     DatabaseSession,
     NotFoundError,

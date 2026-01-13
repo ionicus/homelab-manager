@@ -2,7 +2,7 @@
 
 from flask import Blueprint, request
 
-from app.models import AutomationJob, JobStatus, Device
+from app.models import AutomationJob, Device, JobStatus
 from app.schemas.automation import AutomationJobCreate
 from app.services.ansible_executor import executor
 from app.utils.errors import (

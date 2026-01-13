@@ -3,7 +3,7 @@
 import enum
 from datetime import datetime
 
-from sqlalchemy import Column, Integer, String, Enum, DateTime, JSON
+from sqlalchemy import JSON, Column, DateTime, Enum, Integer, String
 
 from app.database import Base
 
@@ -45,7 +45,7 @@ class Device(Base):
         """Convert model to dictionary."""
         # Compute primary interface values for backward compatibility
         primary_interface = None
-        if hasattr(self, 'network_interfaces'):
+        if hasattr(self, "network_interfaces"):
             primary_interface = next((ni for ni in self.network_interfaces if ni.is_primary), None)
 
         return {

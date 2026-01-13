@@ -1,11 +1,9 @@
 """Ansible playbook executor using threading."""
 
+import logging
 import subprocess
 import threading
-import logging
 from pathlib import Path
-from typing import Optional
-from datetime import datetime
 
 from app.database import Session
 from app.models import AutomationJob, JobStatus
@@ -91,8 +89,10 @@ class AnsibleExecutor:
             cmd = [
                 "ansible-playbook",
                 str(playbook_path),
-                "-i", inventory_file,
-                "--timeout", "300",
+                "-i",
+                inventory_file,
+                "--timeout",
+                "300",
             ]
 
             logger.info(f"Executing command: {' '.join(cmd)}")
@@ -128,7 +128,9 @@ class AnsibleExecutor:
             logger.error(f"Job {job_id} timed out")
             if job:
                 job.status = JobStatus.FAILED
-                job.log_output = (job.log_output or "") + "\n\nERROR: Execution timed out after 10 minutes"
+                job.log_output = (
+                    job.log_output or ""
+                ) + "\n\nERROR: Execution timed out after 10 minutes"
                 db.commit()
 
         except Exception as e:
@@ -152,8 +154,9 @@ class AnsibleExecutor:
         Returns:
             Inventory file content in INI format
         """
+        ssh_args = "-o StrictHostKeyChecking=no"
         return f"""[homelab]
-{device_name} ansible_host={device_ip} ansible_user=root ansible_ssh_common_args='-o StrictHostKeyChecking=no'
+{device_name} ansible_host={device_ip} ansible_user=root ansible_ssh_common_args='{ssh_args}'
 
 [all:vars]
 ansible_python_interpreter=/usr/bin/python3

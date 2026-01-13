@@ -2,14 +2,13 @@
 
 from flask import Blueprint, request
 
-from app.models import Device, DeviceType, DeviceStatus
+from app.models import Device, DeviceStatus, DeviceType
 from app.schemas.device import DeviceCreate, DeviceUpdate
 from app.utils.errors import (
+    ConflictError,
     DatabaseSession,
     NotFoundError,
-    ConflictError,
     success_response,
-    not_found_error,
 )
 from app.utils.validation import validate_request
 

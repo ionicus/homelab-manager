@@ -1,10 +1,11 @@
 """Homelab Manager Flask Application."""
 
+import logging
+
 from flask import Flask, jsonify
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 from sqlalchemy.exc import SQLAlchemyError
-import logging
 
 from app.config import Config
 from app.routes import register_blueprints

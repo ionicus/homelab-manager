@@ -1,7 +1,8 @@
 """Pydantic schemas for Service model."""
 
 from typing import Optional
-from pydantic import BaseModel, Field, ConfigDict, field_validator
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class ServiceBase(BaseModel):
@@ -9,9 +10,15 @@ class ServiceBase(BaseModel):
 
     name: str = Field(..., min_length=1, max_length=255, description="Service name")
     port: Optional[int] = Field(default=None, ge=1, le=65535, description="Service port (1-65535)")
-    protocol: Optional[str] = Field(default=None, max_length=50, description="Service protocol (http, https, tcp, etc.)")
-    status: Optional[str] = Field(default="stopped", description="Service status (running, stopped, error)")
-    health_check_url: Optional[str] = Field(default=None, max_length=500, description="Health check endpoint URL")
+    protocol: Optional[str] = Field(
+        default=None, max_length=50, description="Service protocol (http, https, tcp, etc.)"
+    )
+    status: Optional[str] = Field(
+        default="stopped", description="Service status (running, stopped, error)"
+    )
+    health_check_url: Optional[str] = Field(
+        default=None, max_length=500, description="Health check endpoint URL"
+    )
 
     @field_validator("status")
     @classmethod

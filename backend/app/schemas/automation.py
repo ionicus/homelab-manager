@@ -1,15 +1,20 @@
 """Pydantic schemas for AutomationJob model."""
 
-from typing import Optional
-from pydantic import BaseModel, Field, ConfigDict, field_validator
 from datetime import datetime
+from typing import Optional
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class AutomationJobBase(BaseModel):
     """Base schema for AutomationJob with common fields."""
 
-    playbook_name: str = Field(..., min_length=1, max_length=100, description="Ansible playbook name")
-    status: Optional[str] = Field(default="pending", description="Job status (pending, running, completed, failed)")
+    playbook_name: str = Field(
+        ..., min_length=1, max_length=100, description="Ansible playbook name"
+    )
+    status: Optional[str] = Field(
+        default="pending", description="Job status (pending, running, completed, failed)"
+    )
 
     @field_validator("status")
     @classmethod

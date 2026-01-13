@@ -1,18 +1,29 @@
 """Pydantic schemas for Metric model."""
 
-from typing import Optional
-from pydantic import BaseModel, Field, ConfigDict, field_validator
 from datetime import datetime
+from typing import Optional
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class MetricBase(BaseModel):
     """Base schema for Metric with common fields."""
 
-    cpu_usage: Optional[float] = Field(default=None, ge=0, le=100, description="CPU usage percentage (0-100)")
-    memory_usage: Optional[float] = Field(default=None, ge=0, le=100, description="Memory usage percentage (0-100)")
-    disk_usage: Optional[float] = Field(default=None, ge=0, le=100, description="Disk usage percentage (0-100)")
-    network_rx_bytes: Optional[int] = Field(default=None, ge=0, description="Network received bytes")
-    network_tx_bytes: Optional[int] = Field(default=None, ge=0, description="Network transmitted bytes")
+    cpu_usage: Optional[float] = Field(
+        default=None, ge=0, le=100, description="CPU usage percentage (0-100)"
+    )
+    memory_usage: Optional[float] = Field(
+        default=None, ge=0, le=100, description="Memory usage percentage (0-100)"
+    )
+    disk_usage: Optional[float] = Field(
+        default=None, ge=0, le=100, description="Disk usage percentage (0-100)"
+    )
+    network_rx_bytes: Optional[int] = Field(
+        default=None, ge=0, description="Network received bytes"
+    )
+    network_tx_bytes: Optional[int] = Field(
+        default=None, ge=0, description="Network transmitted bytes"
+    )
 
     @field_validator("cpu_usage", "memory_usage", "disk_usage")
     @classmethod

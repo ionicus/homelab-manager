@@ -1,9 +1,8 @@
 """Automation job model."""
 
 import enum
-from datetime import datetime
 
-from sqlalchemy import Column, Integer, String, Text, ForeignKey, Enum, DateTime
+from sqlalchemy import Column, DateTime, Enum, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from app.database import Base

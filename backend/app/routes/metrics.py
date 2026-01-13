@@ -2,7 +2,7 @@
 
 from flask import Blueprint, request
 
-from app.models import Metric, Device
+from app.models import Device, Metric
 from app.schemas.metric import MetricCreate
 from app.utils.errors import (
     DatabaseSession,

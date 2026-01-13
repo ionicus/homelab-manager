@@ -1,7 +1,7 @@
 """Validation utilities for network interfaces."""
 
-import re
 import ipaddress
+import re
 from typing import Optional
 
 
@@ -20,7 +20,7 @@ def validate_mac_address(mac: str) -> bool:
     if not mac:
         return False
 
-    pattern = r'^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$'
+    pattern = r"^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$"
     return bool(re.match(pattern, mac))
 
 
@@ -81,8 +81,7 @@ def ensure_single_primary(db, device_id: int, new_primary_id: Optional[int] = No
 
     # Unset all other primary interfaces for this device
     interfaces = db.query(NetworkInterface).filter(
-        NetworkInterface.device_id == device_id,
-        NetworkInterface.is_primary == True
+        NetworkInterface.device_id == device_id, NetworkInterface.is_primary.is_(True)
     )
 
     # If new_primary_id specified, exclude it from the unset operation
@@ -106,9 +105,7 @@ def promote_primary_after_deletion(db, device_id: int):
     from app.models import NetworkInterface
 
     # Find any remaining interface for this device
-    interface = db.query(NetworkInterface).filter(
-        NetworkInterface.device_id == device_id
-    ).first()
+    interface = db.query(NetworkInterface).filter(NetworkInterface.device_id == device_id).first()
 
     if interface:
         interface.is_primary = True

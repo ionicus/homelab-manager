@@ -1,8 +1,9 @@
 """Pydantic schemas for Device model."""
 
-from typing import Optional, Dict, Any
-from pydantic import BaseModel, Field, ConfigDict
 from datetime import datetime
+from typing import Any, Dict, Optional
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class DeviceBase(BaseModel):
@@ -10,15 +11,21 @@ class DeviceBase(BaseModel):
 
     name: str = Field(..., min_length=1, max_length=100, description="Device name")
     type: str = Field(..., description="Device type (server, vm, container, network, storage)")
-    status: Optional[str] = Field(default="inactive", description="Device status (active, inactive, maintenance)")
+    status: Optional[str] = Field(
+        default="inactive", description="Device status (active, inactive, maintenance)"
+    )
 
 
 class DeviceCreate(DeviceBase):
     """Schema for creating a new device."""
 
     ip_address: Optional[str] = Field(default=None, description="Primary IP address (legacy field)")
-    mac_address: Optional[str] = Field(default=None, description="Primary MAC address (legacy field)")
-    metadata: Optional[Dict[str, Any]] = Field(default=None, description="Additional device metadata")
+    mac_address: Optional[str] = Field(
+        default=None, description="Primary MAC address (legacy field)"
+    )
+    metadata: Optional[Dict[str, Any]] = Field(
+        default=None, description="Additional device metadata"
+    )
 
 
 class DeviceUpdate(BaseModel):

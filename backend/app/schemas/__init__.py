@@ -1,28 +1,27 @@
 """Pydantic schemas for request and response validation."""
 
+from app.schemas.automation import (
+    AutomationJobCreate,
+    AutomationJobResponse,
+)
 from app.schemas.device import (
     DeviceCreate,
-    DeviceUpdate,
     DeviceResponse,
-)
-from app.schemas.network_interface import (
-    NetworkInterfaceCreate,
-    NetworkInterfaceUpdate,
-    NetworkInterfaceResponse,
-)
-from app.schemas.service import (
-    ServiceCreate,
-    ServiceUpdate,
-    ServiceResponse,
-    ServiceStatusUpdate,
+    DeviceUpdate,
 )
 from app.schemas.metric import (
     MetricCreate,
     MetricResponse,
 )
-from app.schemas.automation import (
-    AutomationJobCreate,
-    AutomationJobResponse,
+from app.schemas.network_interface import (
+    NetworkInterfaceCreate,
+    NetworkInterfaceResponse,
+    NetworkInterfaceUpdate,
+)
+from app.schemas.service import (
+    ServiceCreate,
+    ServiceResponse,
+    ServiceUpdate,
 )
 
 __all__ = [

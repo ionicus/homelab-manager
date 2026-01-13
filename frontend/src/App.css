@@ -1692,3 +1692,158 @@
 .log-output::-webkit-scrollbar-thumb:hover {
   background: #444;
 }
+
+/* Automation Section Styles */
+.automation-subsection {
+  margin-bottom: 2rem;
+}
+
+.automation-subsection h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #ddd;
+  margin-bottom: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid #333;
+  padding-bottom: 0.5rem;
+}
+
+/* Playbook Selector Styles */
+.playbook-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.playbook-category {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.category-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.75px;
+  margin: 0;
+}
+
+.playbook-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+@media (max-width: 768px) {
+  .playbook-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.playbook-card {
+  background: #1a1a1a;
+  border: 2px solid #333;
+  border-radius: 8px;
+  padding: 1rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.playbook-card:hover:not(:disabled) {
+  border-color: #4a9eff;
+  background: rgba(74, 158, 255, 0.05);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.playbook-card:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.playbook-card:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.playbook-icon {
+  font-size: 2rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.playbook-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.playbook-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.playbook-header h5 {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sudo-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.375rem;
+  background: rgba(255, 193, 7, 0.1);
+  color: #ffc107;
+  border: 1px solid rgba(255, 193, 7, 0.3);
+  border-radius: 3px;
+  font-size: 0.625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+}
+
+.playbook-desc {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: #aaa;
+}
+
+.executing-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: #4a9eff;
+  font-weight: 600;
+}
+
+.spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(74, 158, 255, 0.2);
+  border-top-color: #4a9eff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

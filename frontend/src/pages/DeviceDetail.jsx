@@ -16,7 +16,7 @@ import MetricsChart from '../components/MetricsChart';
 import NetworkChart from '../components/NetworkChart';
 import InterfaceList from './InterfaceList';
 import InterfaceForm from './InterfaceForm';
-import ProvisioningForm from '../components/ProvisioningForm';
+import PlaybookSelector from '../components/PlaybookSelector';
 import ProvisioningJobsList from '../components/ProvisioningJobsList';
 
 function DeviceDetail() {
@@ -28,7 +28,6 @@ function DeviceDetail() {
   const [provisioningJobs, setProvisioningJobs] = useState([]);
   const [showInterfaceForm, setShowInterfaceForm] = useState(false);
   const [showServiceForm, setShowServiceForm] = useState(false);
-  const [showProvisioningForm, setShowProvisioningForm] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -70,8 +69,7 @@ function DeviceDetail() {
     await fetchDeviceData();
   };
 
-  const handleProvisioningStart = async () => {
-    setShowProvisioningForm(false);
+  const handlePlaybookExecute = async () => {
     await fetchDeviceData();
   };
 
@@ -197,25 +195,17 @@ function DeviceDetail() {
         </div>
 
         <div className="detail-section">
-          <div className="section-header">
-            <h2>Provisioning ({provisioningJobs.length} jobs)</h2>
-            <button
-              className="btn btn-sm btn-primary"
-              onClick={() => setShowProvisioningForm(true)}
-            >
-              Run Playbook
-            </button>
+          <h2>Automation</h2>
+
+          <div className="automation-subsection">
+            <h3>Available Playbooks</h3>
+            <PlaybookSelector deviceId={id} onExecute={handlePlaybookExecute} />
           </div>
 
-          {showProvisioningForm && (
-            <ProvisioningForm
-              deviceId={id}
-              onSuccess={handleProvisioningStart}
-              onCancel={() => setShowProvisioningForm(false)}
-            />
-          )}
-
-          <ProvisioningJobsList jobs={provisioningJobs} />
+          <div className="automation-subsection">
+            <h3>Execution History ({provisioningJobs.length})</h3>
+            <ProvisioningJobsList jobs={provisioningJobs} />
+          </div>
         </div>
 
         <div className="detail-section">

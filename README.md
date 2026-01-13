@@ -155,6 +155,8 @@ Comprehensive documentation covering all API endpoints, request/response formats
 
 **Base URL**: `http://localhost:5000/api`
 
+**Swagger UI**: `http://localhost:5000/apidocs/`
+
 **Key Endpoints**:
 
 - **Devices**: `GET/POST/PUT/DELETE /api/devices` - Device management

@@ -28,6 +28,10 @@ The Homelab Manager API provides comprehensive management of homelab infrastruct
 - **Performance Metrics**: Collect and query CPU, memory, disk, and network usage
 - **Ansible Integration**: Trigger automation jobs for device configuration
 
+### Interactive Documentation
+
+Swagger UI is available at `http://localhost:5000/apidocs/` for interactive API exploration and testing.
+
 ### Request/Response Format
 
 - All requests and responses use **JSON**

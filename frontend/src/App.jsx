@@ -4,6 +4,7 @@ import DeviceList from './pages/DeviceList'
 import DeviceDetail from './pages/DeviceDetail'
 import DeviceForm from './pages/DeviceForm'
 import Services from './pages/Services'
+import Automation from './pages/Automation'
 import ErrorBoundary from './components/ErrorBoundary'
 import './App.css'
 
@@ -19,6 +20,7 @@ function App() {
                 <li><Link to="/">Dashboard</Link></li>
                 <li><Link to="/devices">Devices</Link></li>
                 <li><Link to="/services">Services</Link></li>
+                <li><Link to="/automation">Automation</Link></li>
               </ul>
             </div>
           </nav>
@@ -31,6 +33,7 @@ function App() {
               <Route path="/devices/:id/edit" element={<DeviceForm />} />
               <Route path="/devices/:id" element={<DeviceDetail />} />
               <Route path="/services" element={<Services />} />
+              <Route path="/automation" element={<Automation />} />
             </Routes>
           </main>
         </div>

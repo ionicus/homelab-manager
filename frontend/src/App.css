@@ -1847,3 +1847,122 @@
     transform: rotate(360deg);
   }
 }
+
+/* Automation Page Styles */
+.automation-page {
+  padding: 0;
+}
+
+.automation-jobs-list {
+  margin-top: 2rem;
+}
+
+.automation-jobs-list h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 1rem;
+}
+
+.jobs-table-container {
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.jobs-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.jobs-table thead {
+  background: #0a0a0a;
+  border-bottom: 1px solid #333;
+}
+
+.jobs-table th {
+  padding: 1rem;
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.jobs-table tbody tr {
+  border-bottom: 1px solid #333;
+  transition: background 0.2s;
+}
+
+.jobs-table tbody tr:hover {
+  background: rgba(74, 158, 255, 0.05);
+}
+
+.jobs-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.jobs-table td {
+  padding: 1rem;
+  font-size: 0.875rem;
+  color: #ddd;
+}
+
+.job-id {
+  font-family: monospace;
+  color: #888;
+  font-weight: 600;
+}
+
+.device-link {
+  color: #4a9eff;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.device-link:hover {
+  text-decoration: underline;
+}
+
+.playbook-name {
+  font-family: monospace;
+  color: #fff;
+  font-weight: 500;
+}
+
+.timestamp {
+  color: #888;
+  font-size: 0.8125rem;
+}
+
+.job-row.job-running {
+  background: rgba(74, 158, 255, 0.03);
+}
+
+.job-row.job-failed {
+  background: rgba(255, 107, 107, 0.03);
+}
+
+/* Responsive table */
+@media (max-width: 1024px) {
+  .jobs-table {
+    font-size: 0.8125rem;
+  }
+
+  .jobs-table th,
+  .jobs-table td {
+    padding: 0.75rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .jobs-table-container {
+    overflow-x: auto;
+  }
+
+  .jobs-table {
+    min-width: 800px;
+  }
+}

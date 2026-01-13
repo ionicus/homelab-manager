@@ -6,6 +6,8 @@ import ErrorDisplay from '../components/ErrorDisplay';
 import LoadingSkeleton from '../components/LoadingSkeleton';
 import ServiceList from '../components/ServiceList';
 import ServiceForm from '../components/ServiceForm';
+import MetricsChart from '../components/MetricsChart';
+import NetworkChart from '../components/NetworkChart';
 import InterfaceList from './InterfaceList';
 import InterfaceForm from './InterfaceForm';
 
@@ -31,7 +33,7 @@ function DeviceDetail() {
       const [deviceRes, servicesRes, metricsRes, interfacesRes] = await Promise.all([
         getDevice(id),
         getDeviceServices(id),
-        getDeviceMetrics(id, 10),
+        getDeviceMetrics(id, 50),
         getDeviceInterfaces(id),
       ]);
 
@@ -178,29 +180,11 @@ function DeviceDetail() {
         </div>
 
         <div className="detail-section">
-          <h2>Recent Metrics</h2>
+          <h2>Performance Metrics</h2>
           {metrics.length > 0 ? (
-            <div className="metrics-table-wrapper">
-              <table className="metrics-table">
-                <thead>
-                  <tr>
-                    <th>Timestamp</th>
-                    <th>CPU %</th>
-                    <th>Memory %</th>
-                    <th>Disk %</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {metrics.slice(0, 5).map((metric, idx) => (
-                    <tr key={idx}>
-                      <td>{new Date(metric.timestamp).toLocaleString()}</td>
-                      <td className="metric-value">{metric.cpu_usage?.toFixed(1) || 'N/A'}</td>
-                      <td className="metric-value">{metric.memory_usage?.toFixed(1) || 'N/A'}</td>
-                      <td className="metric-value">{metric.disk_usage?.toFixed(1) || 'N/A'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="metrics-visualization">
+              <MetricsChart metrics={metrics} title="System Usage Over Time" />
+              <NetworkChart metrics={metrics} title="Network Traffic Over Time" />
             </div>
           ) : (
             <div className="empty-state">

@@ -1426,3 +1426,65 @@
     text-align: center;
   }
 }
+
+/* Metrics Visualization */
+.metrics-visualization {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+}
+
+.metrics-chart-container {
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 1.5rem;
+}
+
+.chart-title {
+  color: #fff;
+  font-size: 1.125rem;
+  margin: 0 0 1rem 0;
+  font-weight: 600;
+}
+
+.metrics-tooltip {
+  background: #1a1a1a;
+  border: 1px solid #4a9eff;
+  border-radius: 4px;
+  padding: 0.75rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.tooltip-label {
+  color: #fff;
+  font-weight: 600;
+  margin: 0 0 0.5rem 0;
+  font-size: 0.875rem;
+}
+
+.metrics-tooltip p {
+  margin: 0.25rem 0;
+  font-size: 0.875rem;
+}
+
+/* Responsive charts */
+@media (max-width: 768px) {
+  .metrics-visualization {
+    grid-template-columns: 1fr;
+  }
+  
+  .metrics-chart-container {
+    padding: 1rem;
+  }
+}
+
+/* Chart legend styling */
+.recharts-legend-wrapper {
+  padding-top: 1rem;
+}
+
+/* Chart lines hover effect */
+.recharts-line-curve:hover {
+  filter: brightness(1.2);
+}

@@ -2144,3 +2144,205 @@
     padding: 1rem;
   }
 }
+
+/* ===================================
+   THEMED PAGES - DISTINCT STYLING
+   =================================== */
+
+/* Devices Theme - Blue (Primary) */
+.device-list,
+.device-detail,
+.device-form {
+  --page-accent: #4a90e2;
+  --page-accent-hover: #357abd;
+  --page-accent-light: rgba(74, 144, 226, 0.1);
+  --page-gradient: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
+}
+
+.device-list .page-header h1::before,
+.device-detail .page-header h1::before {
+  content: '🖥️ ';
+}
+
+.device-list .stat-card-primary,
+.device-detail .overview-card:first-child {
+  background: var(--page-gradient);
+  border-left: 4px solid var(--page-accent);
+}
+
+/* Services Theme - Green/Teal */
+.services-page,
+.service-detail {
+  --page-accent: #2ecc71;
+  --page-accent-hover: #27ae60;
+  --page-accent-light: rgba(46, 204, 113, 0.1);
+  --page-gradient: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+}
+
+.services-page .page-header h1::before,
+.service-detail .page-header h1::before {
+  content: '⚙️ ';
+}
+
+.services-page .stat-card-primary {
+  background: var(--page-gradient);
+  border-left: 4px solid var(--page-accent);
+}
+
+.service-detail .overview-card:first-child {
+  background: var(--page-gradient);
+  border-left: 4px solid var(--page-accent);
+}
+
+.services-page .btn-primary,
+.service-detail .btn-primary {
+  background: var(--page-accent);
+  border-color: var(--page-accent);
+}
+
+.services-page .btn-primary:hover,
+.service-detail .btn-primary:hover {
+  background: var(--page-accent-hover);
+  border-color: var(--page-accent-hover);
+}
+
+.service-card:hover {
+  border-left: 4px solid var(--page-accent, #2ecc71);
+  transform: translateX(4px);
+}
+
+/* Automation Theme - Purple/Orange */
+.automation-page,
+.job-detail {
+  --page-accent: #9b59b6;
+  --page-accent-secondary: #e67e22;
+  --page-accent-hover: #8e44ad;
+  --page-accent-light: rgba(155, 89, 182, 0.1);
+  --page-gradient: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
+  --page-gradient-alt: linear-gradient(135deg, #e67e22 0%, #d35400 100%);
+}
+
+.automation-page .page-header h1::before,
+.job-detail .page-header h1::before {
+  content: '🤖 ';
+}
+
+.automation-page .stat-card-primary {
+  background: var(--page-gradient);
+  border-left: 4px solid var(--page-accent);
+}
+
+.automation-page .stat-card-info {
+  background: var(--page-gradient-alt);
+  border-left: 4px solid var(--page-accent-secondary);
+}
+
+.job-detail .overview-card:first-child {
+  background: var(--page-gradient);
+  border-left: 4px solid var(--page-accent);
+}
+
+.automation-page .btn-primary,
+.job-detail .btn-primary {
+  background: var(--page-accent);
+  border-color: var(--page-accent);
+}
+
+.automation-page .btn-primary:hover,
+.job-detail .btn-primary:hover {
+  background: var(--page-accent-hover);
+  border-color: var(--page-accent-hover);
+}
+
+.playbook-card:hover {
+  border-left: 4px solid var(--page-accent, #9b59b6);
+  transform: translateY(-4px);
+}
+
+.playbook-card.category-Connectivity {
+  border-top: 3px solid #3498db;
+}
+
+.playbook-card.category-Discovery {
+  border-top: 3px solid #2ecc71;
+}
+
+.playbook-card.category-Maintenance {
+  border-top: 3px solid #e67e22;
+}
+
+.playbook-card.category-Setup {
+  border-top: 3px solid #9b59b6;
+}
+
+/* Dashboard Theme - Gradient (Overview) */
+.dashboard {
+  --page-accent: #667eea;
+  --page-accent-secondary: #764ba2;
+  --page-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.dashboard .dashboard-header h1::before {
+  content: '📊 ';
+}
+
+.dashboard .stat-card-primary {
+  background: var(--page-gradient);
+}
+
+/* Enhanced stat cards with theme colors */
+.stat-card {
+  transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+}
+
+.stat-card-primary {
+  border-left: 4px solid var(--page-accent, #4a90e2);
+}
+
+.stat-card-success {
+  border-left: 4px solid #2ecc71;
+}
+
+.stat-card-warning {
+  border-left: 4px solid #f39c12;
+}
+
+.stat-card-danger {
+  border-left: 4px solid #e74c3c;
+}
+
+.stat-card-info {
+  border-left: 4px solid #3498db;
+}
+
+/* Page-specific accents */
+.device-list .filters-bar,
+.services-page .filters-bar,
+.automation-page .filters-bar {
+  border-left: 4px solid var(--page-accent);
+  padding-left: 1.5rem;
+}
+
+.device-grid .device-card:hover,
+.service-grid .service-card:hover {
+  box-shadow: 0 4px 16px var(--page-accent-light);
+}
+
+/* Running status animations with theme colors */
+.status-badge.status-running {
+  animation: pulse-theme 2s ease-in-out infinite;
+}
+
+@keyframes pulse-theme {
+  0%, 100% {
+    box-shadow: 0 0 0 0 var(--page-accent-light, rgba(74, 144, 226, 0.4));
+  }
+  50% {
+    box-shadow: 0 0 0 8px var(--page-accent-light, rgba(74, 144, 226, 0));
+  }
+}

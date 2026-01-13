@@ -126,7 +126,7 @@ function PlaybookSelector({ deviceId, onExecute }) {
             {groupedPlaybooks[category].map((playbook) => (
               <button
                 key={playbook.name}
-                className="playbook-card"
+                className={`playbook-card category-${playbook.category}`}
                 onClick={() => handleExecute(playbook.name)}
                 disabled={executing !== null}
               >

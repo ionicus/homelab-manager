@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { getService, getDevice, updateServiceStatus } from '../services/api';
+import { getService, getDevice, updateServiceStatus, deleteService } from '../services/api';
 import ErrorDisplay from '../components/ErrorDisplay';
 import LoadingSkeleton from '../components/LoadingSkeleton';
+import ServiceForm from '../components/ServiceForm';
 
 function ServiceDetail() {
   const { id } = useParams();
@@ -11,6 +12,7 @@ function ServiceDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [showEditForm, setShowEditForm] = useState(false);
 
   useEffect(() => {
     fetchServiceData();
@@ -59,6 +61,24 @@ function ServiceDetail() {
     }
   };
 
+  const handleServiceUpdate = () => {
+    setShowEditForm(false);
+    fetchServiceData();
+  };
+
+  const handleDelete = async () => {
+    if (!window.confirm(`Are you sure you want to delete service "${service.name}"?`)) {
+      return;
+    }
+
+    try {
+      await deleteService(service.id);
+      window.location.href = '/services';
+    } catch (err) {
+      alert('Failed to delete service: ' + (err.userMessage || err.message));
+    }
+  };
+
   if (loading) return <LoadingSkeleton type="detail" />;
   if (error) return <ErrorDisplay error={error} onRetry={fetchServiceData} />;
   if (!service) return <ErrorDisplay error="Service not found" onRetry={fetchServiceData} />;
@@ -103,7 +123,53 @@ function ServiceDetail() {
           >
             {updatingStatus ? 'Updating...' : service.status === 'running' ? 'Stop Service' : 'Start Service'}
           </button>
+          <button onClick={() => setShowEditForm(true)} className="btn btn-primary">
+            Edit
+          </button>
+          <button onClick={handleDelete} className="btn btn-danger">
+            Delete
+          </button>
           <Link to="/services" className="btn">Back to Services</Link>
+        </div>
+      </div>
+
+      {showEditForm && (
+        <ServiceForm
+          deviceId={service.device_id}
+          serviceId={service.id}
+          onSuccess={handleServiceUpdate}
+          onCancel={() => setShowEditForm(false)}
+        />
+      )}
+
+      <div className="detail-overview">
+        <div className="overview-card">
+          <div className="overview-icon">⚙️</div>
+          <div className="overview-content">
+            <span className="overview-label">Port</span>
+            <span className="overview-value">{service.port || 'Not set'}</span>
+          </div>
+        </div>
+        <div className="overview-card">
+          <div className="overview-icon">🔌</div>
+          <div className="overview-content">
+            <span className="overview-label">Protocol</span>
+            <span className="overview-value">{service.protocol || 'Not set'}</span>
+          </div>
+        </div>
+        <div className="overview-card">
+          <div className="overview-icon">🏥</div>
+          <div className="overview-content">
+            <span className="overview-label">Health Check</span>
+            <span className="overview-value">{service.health_check_url ? 'Configured' : 'None'}</span>
+          </div>
+        </div>
+        <div className="overview-card">
+          <div className="overview-icon">📅</div>
+          <div className="overview-content">
+            <span className="overview-label">Created</span>
+            <span className="overview-value">{new Date(service.created_at).toLocaleDateString()}</span>
+          </div>
         </div>
       </div>
 

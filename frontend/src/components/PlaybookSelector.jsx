@@ -16,7 +16,7 @@ function PlaybookSelector({ deviceId, onExecute }) {
     try {
       setLoading(true);
       const response = await getPlaybooks();
-      const playbookList = response.data.data?.playbooks || [];
+      const playbookList = response.data.playbooks || [];
       setPlaybooks(playbookList);
       setError(null);
     } catch (err) {
@@ -37,7 +37,7 @@ function PlaybookSelector({ deviceId, onExecute }) {
       setError(null);
       const response = await triggerProvisioning(deviceId, playbookName);
       if (onExecute) {
-        onExecute(response.data.data);
+        onExecute(response.data);
       }
     } catch (err) {
       console.error('Failed to execute playbook:', err);

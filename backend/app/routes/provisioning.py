@@ -97,7 +97,7 @@ def list_jobs():
                 raise NotFoundError("Device", device_id)
             query = query.filter(ProvisioningJob.device_id == device_id)
 
-        # Order by created_at descending (newest first)
-        jobs = query.order_by(ProvisioningJob.created_at.desc()).all()
+        # Order by id descending (newest first)
+        jobs = query.order_by(ProvisioningJob.id.desc()).all()
 
         return success_response([job.to_dict() for job in jobs])

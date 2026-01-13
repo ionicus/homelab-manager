@@ -44,6 +44,9 @@ class ProvisioningJob(Base):
             "started_at": self.started_at.isoformat() if self.started_at else None,
             "completed_at": self.completed_at.isoformat() if self.completed_at else None,
             "log_output": self.log_output,
+            # For frontend compatibility (can be properly added via migration later)
+            "created_at": self.started_at.isoformat() if self.started_at else None,
+            "updated_at": self.completed_at.isoformat() if self.completed_at else None,
         }
 
     def __repr__(self):

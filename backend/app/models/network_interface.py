@@ -22,9 +22,13 @@ class NetworkInterface(Base):
     __tablename__ = "network_interfaces"
 
     id = Column(Integer, primary_key=True, index=True)
-    device_id = Column(Integer, ForeignKey("devices.id", ondelete="CASCADE"), nullable=False)
+    device_id = Column(
+        Integer, ForeignKey("devices.id", ondelete="CASCADE"), nullable=False
+    )
     interface_name = Column(String(50), nullable=False)  # e.g., eth0, ens18, wlan0
-    mac_address = Column(String(17), nullable=False, index=True)  # Format: 00:11:22:33:44:55
+    mac_address = Column(
+        String(17), nullable=False, index=True
+    )  # Format: 00:11:22:33:44:55
     ip_address = Column(String(45), nullable=True)  # IPv4/IPv6 compatible
     subnet_mask = Column(String(45), nullable=True)  # e.g., 255.255.255.0 or /24
     gateway = Column(String(45), nullable=True)

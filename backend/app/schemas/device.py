@@ -10,7 +10,9 @@ class DeviceBase(BaseModel):
     """Base schema for Device with common fields."""
 
     name: str = Field(..., min_length=1, max_length=100, description="Device name")
-    type: str = Field(..., description="Device type (server, vm, container, network, storage)")
+    type: str = Field(
+        ..., description="Device type (server, vm, container, network, storage)"
+    )
     status: Optional[str] = Field(
         default="inactive", description="Device status (active, inactive, maintenance)"
     )
@@ -19,7 +21,9 @@ class DeviceBase(BaseModel):
 class DeviceCreate(DeviceBase):
     """Schema for creating a new device."""
 
-    ip_address: Optional[str] = Field(default=None, description="Primary IP address (legacy field)")
+    ip_address: Optional[str] = Field(
+        default=None, description="Primary IP address (legacy field)"
+    )
     mac_address: Optional[str] = Field(
         default=None, description="Primary MAC address (legacy field)"
     )

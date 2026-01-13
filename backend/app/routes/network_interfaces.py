@@ -40,14 +40,18 @@ def list_device_interfaces(device_id: int):
         interfaces = (
             db.query(NetworkInterface)
             .filter(NetworkInterface.device_id == device_id)
-            .order_by(NetworkInterface.is_primary.desc(), NetworkInterface.interface_name)
+            .order_by(
+                NetworkInterface.is_primary.desc(), NetworkInterface.interface_name
+            )
             .all()
         )
 
         return success_response([iface.to_dict() for iface in interfaces])
 
 
-@interfaces_bp.route("/devices/<int:device_id>/interfaces/<int:interface_id>", methods=["GET"])
+@interfaces_bp.route(
+    "/devices/<int:device_id>/interfaces/<int:interface_id>", methods=["GET"]
+)
 def get_device_interface(device_id: int, interface_id: int):
     """Get a specific interface for a device."""
     with DatabaseSession() as db:
@@ -88,12 +92,16 @@ def create_device_interface(device_id: int):
             .first()
         )
         if existing:
-            raise ConflictError("Interface with this MAC address already exists for this device")
+            raise ConflictError(
+                "Interface with this MAC address already exists for this device"
+            )
 
         # If this is first interface or explicitly set as primary, make it primary
         is_primary = data.is_primary if data.is_primary is not None else False
         interface_count = (
-            db.query(NetworkInterface).filter(NetworkInterface.device_id == device_id).count()
+            db.query(NetworkInterface)
+            .filter(NetworkInterface.device_id == device_id)
+            .count()
         )
 
         if interface_count == 0:
@@ -122,7 +130,9 @@ def create_device_interface(device_id: int):
         return success_response(interface.to_dict(), status_code=201)
 
 
-@interfaces_bp.route("/devices/<int:device_id>/interfaces/<int:interface_id>", methods=["PUT"])
+@interfaces_bp.route(
+    "/devices/<int:device_id>/interfaces/<int:interface_id>", methods=["PUT"]
+)
 @validate_request(NetworkInterfaceUpdate)
 def update_device_interface(device_id: int, interface_id: int):
     """Update an interface."""
@@ -184,7 +194,9 @@ def update_device_interface(device_id: int, interface_id: int):
         return success_response(interface.to_dict())
 
 
-@interfaces_bp.route("/devices/<int:device_id>/interfaces/<int:interface_id>", methods=["DELETE"])
+@interfaces_bp.route(
+    "/devices/<int:device_id>/interfaces/<int:interface_id>", methods=["DELETE"]
+)
 def delete_device_interface(device_id: int, interface_id: int):
     """Delete an interface."""
     with DatabaseSession() as db:
@@ -202,11 +214,14 @@ def delete_device_interface(device_id: int, interface_id: int):
 
         # Check if this is the only interface
         interface_count = (
-            db.query(NetworkInterface).filter(NetworkInterface.device_id == device_id).count()
+            db.query(NetworkInterface)
+            .filter(NetworkInterface.device_id == device_id)
+            .count()
         )
         if interface_count == 1:
             raise ValidationError(
-                "Cannot delete the only interface. Device must have at least one interface."
+                "Cannot delete the only interface. "
+                "Device must have at least one interface."
             )
 
         was_primary = interface.is_primary
@@ -223,7 +238,8 @@ def delete_device_interface(device_id: int, interface_id: int):
 
 
 @interfaces_bp.route(
-    "/devices/<int:device_id>/interfaces/<int:interface_id>/set-primary", methods=["PUT"]
+    "/devices/<int:device_id>/interfaces/<int:interface_id>/set-primary",
+    methods=["PUT"],
 )
 def set_primary_interface(device_id: int, interface_id: int):
     """Set an interface as the primary interface for the device."""
@@ -292,7 +308,11 @@ def list_all_interfaces():
 def get_interface(interface_id: int):
     """Get a specific interface by ID."""
     with DatabaseSession() as db:
-        interface = db.query(NetworkInterface).filter(NetworkInterface.id == interface_id).first()
+        interface = (
+            db.query(NetworkInterface)
+            .filter(NetworkInterface.id == interface_id)
+            .first()
+        )
 
         if not interface:
             raise NotFoundError("Interface", interface_id)
@@ -327,7 +347,9 @@ def get_interface_by_ip(ip_address: str):
 
     with DatabaseSession() as db:
         interfaces = (
-            db.query(NetworkInterface).filter(NetworkInterface.ip_address == ip_address).all()
+            db.query(NetworkInterface)
+            .filter(NetworkInterface.ip_address == ip_address)
+            .all()
         )
 
         if not interfaces:

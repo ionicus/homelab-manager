@@ -14,7 +14,9 @@ class Metric(Base):
     __tablename__ = "metrics"
 
     id = Column(Integer, primary_key=True, index=True)
-    device_id = Column(Integer, ForeignKey("devices.id", ondelete="CASCADE"), nullable=False)
+    device_id = Column(
+        Integer, ForeignKey("devices.id", ondelete="CASCADE"), nullable=False
+    )
     timestamp = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
     cpu_usage = Column(Float, nullable=True)  # Percentage
     memory_usage = Column(Float, nullable=True)  # Percentage

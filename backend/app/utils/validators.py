@@ -105,7 +105,11 @@ def promote_primary_after_deletion(db, device_id: int):
     from app.models import NetworkInterface
 
     # Find any remaining interface for this device
-    interface = db.query(NetworkInterface).filter(NetworkInterface.device_id == device_id).first()
+    interface = (
+        db.query(NetworkInterface)
+        .filter(NetworkInterface.device_id == device_id)
+        .first()
+    )
 
     if interface:
         interface.is_primary = True

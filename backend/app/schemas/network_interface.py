@@ -16,11 +16,17 @@ class NetworkInterfaceBase(BaseModel):
     mac_address: str = Field(
         ..., pattern=r"^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$", description="MAC address"
     )
-    ip_address: Optional[str] = Field(default=None, description="IP address (IPv4 or IPv6)")
+    ip_address: Optional[str] = Field(
+        default=None, description="IP address (IPv4 or IPv6)"
+    )
     subnet_mask: Optional[str] = Field(default=None, description="Subnet mask")
     gateway: Optional[str] = Field(default=None, description="Gateway IP address")
-    vlan_id: Optional[int] = Field(default=None, ge=1, le=4094, description="VLAN ID (1-4094)")
-    status: Optional[str] = Field(default="up", description="Interface status (up, down, disabled)")
+    vlan_id: Optional[int] = Field(
+        default=None, ge=1, le=4094, description="VLAN ID (1-4094)"
+    )
+    status: Optional[str] = Field(
+        default="up", description="Interface status (up, down, disabled)"
+    )
     is_primary: Optional[bool] = Field(
         default=False, description="Whether this is the primary interface"
     )

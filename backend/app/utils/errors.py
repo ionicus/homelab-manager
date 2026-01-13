@@ -17,7 +17,10 @@ class APIError(Exception):
     """Base exception for API errors."""
 
     def __init__(
-        self, message: str, status_code: int = 400, payload: Optional[Dict[str, Any]] = None
+        self,
+        message: str,
+        status_code: int = 400,
+        payload: Optional[Dict[str, Any]] = None,
     ):
         super().__init__()
         self.message = message
@@ -64,7 +67,9 @@ class DatabaseError(APIError):
         super().__init__(message, status_code=500)
 
 
-def error_response(message: str, status_code: int = 400, **kwargs) -> Tuple[Dict[str, Any], int]:
+def error_response(
+    message: str, status_code: int = 400, **kwargs
+) -> Tuple[Dict[str, Any], int]:
     """
     Create a standardized error response.
 
@@ -121,7 +126,9 @@ def success_response(
     return jsonify(response), status_code
 
 
-def validation_error(message: str, field: Optional[str] = None) -> Tuple[Dict[str, Any], int]:
+def validation_error(
+    message: str, field: Optional[str] = None
+) -> Tuple[Dict[str, Any], int]:
     """
     Create a validation error response (400).
 
@@ -138,7 +145,9 @@ def validation_error(message: str, field: Optional[str] = None) -> Tuple[Dict[st
     return jsonify(response), 400
 
 
-def not_found_error(resource: str, identifier: Optional[Any] = None) -> Tuple[Dict[str, Any], int]:
+def not_found_error(
+    resource: str, identifier: Optional[Any] = None
+) -> Tuple[Dict[str, Any], int]:
     """
     Create a resource not found error response (404).
 

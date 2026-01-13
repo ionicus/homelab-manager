@@ -12,7 +12,9 @@ class HardwareSpec(Base):
     __tablename__ = "hardware_specs"
 
     id = Column(Integer, primary_key=True, index=True)
-    device_id = Column(Integer, ForeignKey("devices.id", ondelete="CASCADE"), nullable=False)
+    device_id = Column(
+        Integer, ForeignKey("devices.id", ondelete="CASCADE"), nullable=False
+    )
     cpu_model = Column(String(255), nullable=True)
     cpu_cores = Column(Integer, nullable=True)
     ram_gb = Column(Integer, nullable=True)

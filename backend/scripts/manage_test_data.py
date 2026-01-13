@@ -7,21 +7,25 @@ Usage:
     python scripts/manage_test_data.py reset    # Flush and create fresh test data
 """
 
-import sys
 import os
+import sys
 
 # Add parent directory to path to import app modules
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.database import Session
-from app.models import Device, DeviceType, DeviceStatus
+from app.database import Session  # noqa: E402
+from app.models import Device, DeviceStatus, DeviceType  # noqa: E402
 
 
 def flush_test_data():
     """Delete all devices with names starting with TEST_."""
     db = Session()
     try:
-        deleted = db.query(Device).filter(Device.name.like("TEST_%")).delete(synchronize_session=False)
+        deleted = (
+            db.query(Device)
+            .filter(Device.name.like("TEST_%"))
+            .delete(synchronize_session=False)
+        )
         db.commit()
         print(f"✓ Deleted {deleted} test devices")
     finally:
@@ -39,7 +43,11 @@ def create_test_data():
                 status=DeviceStatus.ACTIVE,
                 ip_address="192.168.1.100",
                 mac_address="00:11:22:33:44:55",
-                device_metadata={"location": "rack-1", "datacenter": "homelab", "purpose": "testing"},
+                device_metadata={
+                    "location": "rack-1",
+                    "datacenter": "homelab",
+                    "purpose": "testing",
+                },
             ),
             Device(
                 name="TEST_docker-vm",

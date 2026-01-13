@@ -22,7 +22,9 @@ class Service(Base):
     __tablename__ = "services"
 
     id = Column(Integer, primary_key=True, index=True)
-    device_id = Column(Integer, ForeignKey("devices.id", ondelete="CASCADE"), nullable=False)
+    device_id = Column(
+        Integer, ForeignKey("devices.id", ondelete="CASCADE"), nullable=False
+    )
     name = Column(String(255), nullable=False)
     port = Column(Integer, nullable=True)
     protocol = Column(String(50), nullable=True)

@@ -5,6 +5,7 @@ import DeviceDetail from './pages/DeviceDetail'
 import DeviceForm from './pages/DeviceForm'
 import Services from './pages/Services'
 import Automation from './pages/Automation'
+import JobDetail from './pages/JobDetail'
 import ErrorBoundary from './components/ErrorBoundary'
 import './App.css'
 
@@ -34,6 +35,7 @@ function App() {
               <Route path="/devices/:id" element={<DeviceDetail />} />
               <Route path="/services" element={<Services />} />
               <Route path="/automation" element={<Automation />} />
+              <Route path="/automation/jobs/:id" element={<JobDetail />} />
             </Routes>
           </main>
         </div>

@@ -198,9 +198,9 @@ function Automation() {
                       <td className="timestamp">{formatTimestamp(job.completed_at)}</td>
                       <td>
                         <Link
-                          to={`/devices/${job.device_id}`}
+                          to={`/automation/jobs/${job.id}`}
                           className="btn btn-sm"
-                          title="View device automation"
+                          title="View job details and logs"
                         >
                           View Details
                         </Link>

@@ -2170,13 +2170,13 @@
   border-left: 4px solid var(--page-accent);
 }
 
-/* Services Theme - Green/Teal */
+/* Services Theme - Muted Teal/Green */
 .services-page,
 .service-detail {
-  --page-accent: #2ecc71;
-  --page-accent-hover: #27ae60;
-  --page-accent-light: rgba(46, 204, 113, 0.1);
-  --page-gradient: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+  --page-accent: #3d9970;
+  --page-accent-hover: #2d7a5a;
+  --page-accent-light: rgba(61, 153, 112, 0.1);
+  --page-gradient: linear-gradient(135deg, #3d9970 0%, #2d7a5a 100%);
 }
 
 .services-page .page-header h1::before,
@@ -2207,7 +2207,7 @@
 }
 
 .service-card:hover {
-  border-left: 4px solid var(--page-accent, #2ecc71);
+  border-left: 4px solid var(--page-accent, #3d9970);
   transform: translateX(4px);
 }
 
@@ -2305,7 +2305,7 @@
 }
 
 .stat-card-success {
-  border-left: 4px solid #2ecc71;
+  border-left: 4px solid #3d9970;
 }
 
 .stat-card-warning {

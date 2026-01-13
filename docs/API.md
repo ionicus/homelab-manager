@@ -768,7 +768,7 @@ GET /api/provisioning/{job_id}/logs
 - Service tracking endpoints
 - Performance metrics collection
 - Provisioning job triggering
-- Comprehensive error handling with Pydantic validation
+- Comprehensive error handling with validation
 - Transaction rollback on errors
 
 ---

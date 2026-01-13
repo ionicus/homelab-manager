@@ -26,7 +26,7 @@ A comprehensive system for managing homelab infrastructure with inventory tracki
 - **React.js** with Vite
 - **React Router** for navigation
 - **Axios** for API calls
-- **TailwindCSS** for styling
+- **Mantine UI** for components and theming
 
 ### Infrastructure
 - **Ansible** for automation
@@ -126,8 +126,12 @@ homelab-manager/
 │   └── pyproject.toml   # Python dependencies
 ├── frontend/            # React frontend application
 │   ├── src/
-│   │   ├── pages/       # Page & components (Dashboard, DeviceDetail, InterfaceList, etc.)
+│   │   ├── pages/       # Page components (Dashboard, DeviceDetail, Settings, etc.)
+│   │   ├── components/  # Reusable components (StatusBadge, ServiceList, etc.)
+│   │   ├── contexts/    # React contexts (ThemeContext)
+│   │   ├── theme/       # Mantine theme configuration
 │   │   ├── services/    # API client (api.js)
+│   │   ├── utils/       # Utility functions (formatting, validation)
 │   │   ├── App.jsx      # Main app component
 │   │   ├── App.css      # Global styles
 │   │   └── main.jsx     # Entry point

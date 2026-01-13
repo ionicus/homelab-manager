@@ -21,11 +21,18 @@ Thank you for your interest in contributing! This guide will help you get starte
 
 ```bash
 cd backend
-python -m venv .venv
+
+# Install UV if not already installed
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Create virtual environment and install dependencies
+uv venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
+uv pip install -e .
+
+# Configure environment and start
 cp .env.example .env       # Configure your environment
-flask run
+python -m app.main
 ```
 
 ### Frontend Setup
@@ -41,6 +48,7 @@ npm run dev
 ```bash
 # Backend
 cd backend
+source .venv/bin/activate
 pytest
 
 # Frontend

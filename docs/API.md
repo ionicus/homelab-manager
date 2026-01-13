@@ -809,7 +809,7 @@ GET /api/automation/{job_id}/logs
 - Multi-homed network interface support
 - Service tracking endpoints
 - Performance metrics collection
-- Provisioning job triggering
+- Automation job triggering
 - Comprehensive error handling with validation
 - Transaction rollback on errors
 

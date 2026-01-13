@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getPlaybooks, triggerAutomation } from '../services/api';
+import { getExecutorActions, triggerAutomation } from '../services/api';
 import ErrorDisplay from './ErrorDisplay';
 
 function PlaybookSelector({ deviceId, onExecute }) {
@@ -15,8 +15,8 @@ function PlaybookSelector({ deviceId, onExecute }) {
   const fetchPlaybooks = async () => {
     try {
       setLoading(true);
-      const response = await getPlaybooks();
-      const playbookList = response.data.playbooks || [];
+      const response = await getExecutorActions('ansible');
+      const playbookList = response.data.map(action => action.name);
       setPlaybooks(playbookList);
       setError(null);
     } catch (err) {

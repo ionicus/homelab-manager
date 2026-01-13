@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 class AnsibleExecutor(BaseExecutor):
     """Execute Ansible playbooks in background threads."""
 
-    def __init__(self, playbooks_dir: str = "../ansible/playbooks"):
+    def __init__(self, playbooks_dir: str = "automation/ansible/playbooks"):
         self.playbooks_dir = Path(playbooks_dir).resolve()
         self.playbooks_dir.mkdir(parents=True, exist_ok=True)
 

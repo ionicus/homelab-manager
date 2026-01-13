@@ -38,8 +38,12 @@ class Config:
     PORT = int(os.getenv("PORT", "5000"))
 
     # Ansible
-    ANSIBLE_PLAYBOOK_DIR = os.getenv("ANSIBLE_PLAYBOOK_DIR", "../ansible/playbooks")
-    ANSIBLE_INVENTORY_DIR = os.getenv("ANSIBLE_INVENTORY_DIR", "../ansible/inventory")
+    ANSIBLE_PLAYBOOK_DIR = os.getenv(
+        "ANSIBLE_PLAYBOOK_DIR", "automation/ansible/playbooks"
+    )
+    ANSIBLE_INVENTORY_DIR = os.getenv(
+        "ANSIBLE_INVENTORY_DIR", "automation/ansible/inventory"
+    )
 
     # Monitoring
     METRICS_RETENTION_DAYS = int(os.getenv("METRICS_RETENTION_DAYS", "30"))

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Button, Group, CloseButton, Select, Stack, Text, Loader } from '@mantine/core';
-import { getPlaybooks, triggerAutomation } from '../services/api';
+import { getExecutorActions, triggerAutomation } from '../services/api';
 import ErrorDisplay from './ErrorDisplay';
 
 function AutomationForm({ deviceId, onSuccess, onCancel }) {
@@ -17,8 +17,8 @@ function AutomationForm({ deviceId, onSuccess, onCancel }) {
   const fetchPlaybooks = async () => {
     try {
       setFetchingPlaybooks(true);
-      const response = await getPlaybooks();
-      const playbookList = response.data.data?.playbooks || [];
+      const response = await getExecutorActions('ansible');
+      const playbookList = response.data.map(action => action.name);
       setPlaybooks(playbookList);
       if (playbookList.length > 0) {
         setSelectedPlaybook(playbookList[0]);

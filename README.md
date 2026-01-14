@@ -70,6 +70,9 @@ cp .env.example .env
 # Initialize database
 alembic upgrade head
 
+# Create initial admin user
+flask create-admin
+
 # Run the backend
 python -m app.main
 ```
@@ -159,13 +162,51 @@ Comprehensive documentation covering all API endpoints, request/response formats
 
 **Key Endpoints**:
 
+- **Auth**: `POST /api/auth/login` - Authentication and JWT tokens
 - **Devices**: `GET/POST/PUT/DELETE /api/devices` - Device management
 - **Network Interfaces**: `/api/devices/{id}/interfaces` - Multi-homed network support
 - **Services**: `/api/services` - Service tracking and monitoring
 - **Metrics**: `/api/metrics` - Performance metrics collection
 - **Automation**: `/api/automation` - Ansible job triggering
 
-**Error Handling**: All errors return JSON with proper HTTP status codes (400, 404, 409, 500)
+**Error Handling**: All errors return JSON with proper HTTP status codes (400, 401, 403, 404, 409, 429, 500)
+
+## Authentication
+
+All API endpoints (except `/health` and `/api/auth/login`) require JWT authentication.
+
+### Initial Setup
+
+Create the first admin user using the CLI:
+
+```bash
+cd backend
+source .venv/bin/activate
+flask create-admin
+```
+
+### CLI Commands
+
+| Command | Description |
+|---------|-------------|
+| `flask create-admin` | Create an admin user (interactive prompts for username, email, password) |
+| `flask list-users` | Display all users in the system |
+| `flask reset-password` | Reset a user's password from the command line |
+
+### Using the API
+
+1. Login to get a JWT token:
+   ```bash
+   curl -X POST http://localhost:5000/api/auth/login \
+     -H "Content-Type: application/json" \
+     -d '{"username": "admin", "password": "your-password"}'
+   ```
+
+2. Include the token in subsequent requests:
+   ```bash
+   curl http://localhost:5000/api/devices \
+     -H "Authorization: Bearer <your-token>"
+   ```
 
 ## Development
 
@@ -328,8 +369,8 @@ CORS_ORIGINS=http://localhost:3000,http://localhost:5173
 - [x] Phase 1: Foundation and basic CRUD
 - [ ] Phase 2: Inventory Management
 - [ ] Phase 3: Monitoring System
-- [ ] Phase 4: Automation Integration
-- [ ] Phase 5: Authentication and Deployment
+- [x] Phase 4: Automation Integration
+- [x] Phase 5: Authentication and Deployment
 
 ## License
 

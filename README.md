@@ -21,6 +21,8 @@ A comprehensive system for managing homelab infrastructure with inventory tracki
 - **SQLAlchemy** ORM
 - **PostgreSQL** database
 - **Alembic** for migrations
+- **Celery** for background task processing
+- **Redis** for task queue and caching
 - **Pillow** for image processing
 
 ### Frontend
@@ -34,12 +36,14 @@ A comprehensive system for managing homelab infrastructure with inventory tracki
 - **Ansible** for automation
 - **Docker** for containerization
 - **PostgreSQL** for data persistence
+- **Redis** for task queue
 
 ## Prerequisites
 
 - Python 3.14+
 - Node.js 18+
 - PostgreSQL 14+
+- Redis 6+ (for background tasks)
 - Docker & Docker Compose (optional)
 - UV package manager
 
@@ -75,8 +79,16 @@ alembic upgrade head
 # Create initial admin user
 flask create-admin
 
-# Run the backend
+# Start Redis (required for background tasks)
+# Option 1: Using Docker
+docker run -d -p 6379:6379 --name redis redis:alpine
+# Option 2: System package (e.g., sudo apt install redis-server)
+
+# Run the backend API server
 python -m app.main
+
+# In a separate terminal, start the Celery worker for background tasks
+celery -A worker.celery_app worker --loglevel=info
 ```
 
 ### 3. Frontend Setup
@@ -122,13 +134,16 @@ homelab-manager/
 │   │   ├── models/      # SQLAlchemy models (Device, NetworkInterface, Service, etc.)
 │   │   ├── routes/      # API endpoints (devices, interfaces, services, metrics)
 │   │   ├── services/    # Business logic
+│   │   ├── tasks/       # Celery background tasks
 │   │   ├── utils/       # Helper functions (validators, etc.)
 │   │   ├── main.py      # Application entry point
+│   │   ├── celery_app.py # Celery configuration
 │   │   ├── config.py    # Configuration
 │   │   └── database.py  # Database connection
 │   ├── migrations/      # Alembic migrations
 │   ├── automation/      # Automation resources
 │   │   └── ansible/     # Ansible playbooks and config
+│   ├── worker.py        # Celery worker entry point
 │   ├── tests/           # Backend tests
 │   └── pyproject.toml   # Python dependencies
 ├── frontend/            # React frontend application
@@ -250,8 +265,14 @@ This project uses specific tools and paths that may vary by environment:
 
 **Manual start** (if needed):
 ```bash
-# Start backend
+# Start Redis (if not running)
+docker run -d -p 6379:6379 --name redis redis:alpine
+
+# Start backend API
 cd backend && source .venv/bin/activate && python -m app.main
+
+# Start Celery worker (in new terminal)
+cd backend && source .venv/bin/activate && celery -A worker.celery_app worker --loglevel=info
 
 # Start frontend (in new terminal)
 cd frontend && source ~/.nvm/nvm.sh && npm run dev
@@ -313,6 +334,10 @@ FLASK_ENV=development
 HOST=0.0.0.0
 PORT=5000
 CORS_ORIGINS=http://localhost:5173
+
+# Celery / Redis
+CELERY_BROKER_URL=redis://localhost:6379/0
+CELERY_RESULT_BACKEND=redis://localhost:6379/0
 ```
 
 ### Frontend Environment Variables

@@ -100,6 +100,16 @@ class Config:
     # File Uploads (max request size for avatar uploads)
     MAX_CONTENT_LENGTH = 5 * 1024 * 1024  # 5 MB max upload size
 
+    # Celery / Redis
+    CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
+    CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "redis://localhost:6379/0")
+    CELERY_TASK_SERIALIZER = "json"
+    CELERY_RESULT_SERIALIZER = "json"
+    CELERY_ACCEPT_CONTENT = ["json"]
+    CELERY_TIMEZONE = "UTC"
+    CELERY_TASK_TRACK_STARTED = True
+    CELERY_TASK_TIME_LIMIT = 600  # 10 minutes max per task
+
 
 class DevelopmentConfig(Config):
     """Development configuration."""

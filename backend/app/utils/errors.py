@@ -98,6 +98,11 @@ def success_response(
     """
     Create a standardized success response.
 
+    All responses are wrapped in a consistent envelope:
+    - {"data": ...} for data responses
+    - {"message": ...} for message-only responses
+    - {"data": ..., "message": ...} for both
+
     Args:
         data: Response data (dict, list, or None)
         message: Optional success message
@@ -106,22 +111,13 @@ def success_response(
     Returns:
         Tuple of (response_dict, status_code)
     """
-    # Return data directly (including lists) - don't wrap in extra object
-    if data is not None:
-        if isinstance(data, (dict, list)):
-            response = data
-        else:
-            response = {"data": data}
-    else:
-        response = {}
+    response: Dict[str, Any] = {}
 
-    # If there's only a message, wrap it in an object
-    if message and not data:
-        response = {"message": message}
-    elif message and isinstance(data, (dict, list)) and not isinstance(data, list):
-        # Add message to dict responses
-        if isinstance(response, dict):
-            response["message"] = message
+    if data is not None:
+        response["data"] = data
+
+    if message:
+        response["message"] = message
 
     return jsonify(response), status_code
 

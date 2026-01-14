@@ -1,6 +1,6 @@
 # Homelab Manager API Documentation
 
-Version: 0.3.0
+Version: 0.4.0
 Base URL: `http://localhost:5000/api`
 
 ## Table of Contents
@@ -9,6 +9,8 @@ Base URL: `http://localhost:5000/api`
 - [Getting Started](#getting-started)
 - [CLI Commands](#cli-commands)
 - [Authentication](#authentication)
+- [Response Format](#response-format)
+- [Pagination](#pagination)
 - [Error Handling](#error-handling)
 - [Devices](#devices)
 - [Network Interfaces](#network-interfaces)
@@ -39,6 +41,7 @@ Swagger UI is available at `http://localhost:5000/apidocs/` for interactive API 
 - All requests and responses use **JSON**
 - Request body must include `Content-Type: application/json` header
 - Timestamps are in ISO 8601 format
+- All successful responses use a consistent envelope format (see [Response Format](#response-format))
 
 ---
 
@@ -284,6 +287,88 @@ POST /api/auth/users/{user_id}/reset-password
 
 ---
 
+## Response Format
+
+All API responses use a consistent JSON envelope format.
+
+### Success Response
+
+Single resource responses:
+```json
+{
+  "data": {
+    "id": 1,
+    "name": "server-01",
+    ...
+  }
+}
+```
+
+List responses (without pagination):
+```json
+{
+  "data": [
+    { "id": 1, "name": "server-01", ... },
+    { "id": 2, "name": "server-02", ... }
+  ]
+}
+```
+
+Message-only responses:
+```json
+{
+  "message": "Device deleted successfully"
+}
+```
+
+### Paginated Response
+
+List endpoints that support pagination return:
+```json
+{
+  "data": [
+    { "id": 1, ... },
+    { "id": 2, ... }
+  ],
+  "pagination": {
+    "page": 1,
+    "per_page": 20,
+    "total": 150,
+    "total_pages": 8,
+    "has_next": true,
+    "has_prev": false
+  }
+}
+```
+
+---
+
+## Pagination
+
+List endpoints support pagination via query parameters.
+
+### Query Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `page` | integer | 1 | Page number (1-indexed) |
+| `per_page` | integer | 20 | Items per page (max: 100) |
+
+### Example
+
+```http
+GET /api/devices?page=2&per_page=10
+```
+
+### Paginated Endpoints
+
+The following endpoints support pagination:
+- `GET /api/devices` - List devices
+- `GET /api/services` - List services
+- `GET /api/automation/jobs` - List automation jobs
+
+---
+
 ## Error Handling
 
 All errors return a consistent JSON format with appropriate HTTP status codes.
@@ -368,20 +453,34 @@ Devices represent physical or virtual systems in your homelab (servers, VMs, con
 ### List All Devices
 
 ```http
-GET /api/devices
+GET /api/devices?page=1&per_page=20
 ```
+
+**Query Parameters**:
+- `page` (integer, optional, default: 1) - Page number
+- `per_page` (integer, optional, default: 20, max: 100) - Items per page
 
 **Response** `200 OK`:
 ```json
-[
-  {
-    "id": 1,
-    "name": "server-01",
-    "type": "server",
-    "status": "active",
-    ...
+{
+  "data": [
+    {
+      "id": 1,
+      "name": "server-01",
+      "type": "server",
+      "status": "active",
+      ...
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "per_page": 20,
+    "total": 50,
+    "total_pages": 3,
+    "has_next": true,
+    "has_prev": false
   }
-]
+}
 ```
 
 ### Get Device
@@ -396,10 +495,12 @@ GET /api/devices/{device_id}
 **Response** `200 OK`:
 ```json
 {
-  "id": 1,
-  "name": "server-01",
-  "type": "server",
-  ...
+  "data": {
+    "id": 1,
+    "name": "server-01",
+    "type": "server",
+    ...
+  }
 }
 ```
 
@@ -439,9 +540,11 @@ POST /api/devices
 **Response** `201 Created`:
 ```json
 {
-  "id": 1,
-  "name": "server-01",
-  ...
+  "data": {
+    "id": 1,
+    "name": "server-01",
+    ...
+  }
 }
 ```
 
@@ -472,9 +575,11 @@ PUT /api/devices/{device_id}
 **Response** `200 OK`:
 ```json
 {
-  "id": 1,
-  "name": "server-01-updated",
-  ...
+  "data": {
+    "id": 1,
+    "name": "server-01-updated",
+    ...
+  }
 }
 ```
 
@@ -513,17 +618,19 @@ Returns all services running on the specified device.
 
 **Response** `200 OK`:
 ```json
-[
-  {
-    "id": 1,
-    "device_id": 1,
-    "name": "nginx",
-    "port": 80,
-    "protocol": "http",
-    "status": "running",
-    ...
-  }
-]
+{
+  "data": [
+    {
+      "id": 1,
+      "device_id": 1,
+      "name": "nginx",
+      "port": 80,
+      "protocol": "http",
+      "status": "running",
+      ...
+    }
+  ]
+}
 ```
 
 **Errors**:
@@ -542,17 +649,19 @@ Returns recent performance metrics for the specified device.
 
 **Response** `200 OK`:
 ```json
-[
-  {
-    "id": 1,
-    "device_id": 1,
-    "timestamp": "2026-01-12T10:00:00",
-    "cpu_usage": 45.2,
-    "memory_usage": 67.8,
-    "disk_usage": 82.1,
-    ...
-  }
-]
+{
+  "data": [
+    {
+      "id": 1,
+      "device_id": 1,
+      "timestamp": "2026-01-12T10:00:00",
+      "cpu_usage": 45.2,
+      "memory_usage": 67.8,
+      "disk_usage": 82.1,
+      ...
+    }
+  ]
+}
 ```
 
 **Errors**:
@@ -1149,6 +1258,19 @@ HTTP/1.1 429 Too Many Requests
 ---
 
 ## Changelog
+
+### Version 0.4.0 (2026-01-14)
+
+- **Architecture**: Celery background task queue for automation jobs
+- **Architecture**: Redis for task queue and result storage
+- **API**: Standardized response envelope (`{"data": ...}` wrapper for all responses)
+- **API**: Pagination support for list endpoints (devices, services, automation jobs)
+- **API**: Pagination metadata includes `total`, `total_pages`, `has_next`, `has_prev`
+- **Automation**: Jobs now execute in separate Celery worker process
+- **Automation**: Automatic retry (3 attempts) for failed jobs
+- **Automation**: 10-minute time limit per job
+- **Reliability**: Worker survives web server restarts
+- New files: `celery_app.py`, `tasks/automation.py`, `worker.py`
 
 ### Version 0.3.0 (2026-01-13)
 

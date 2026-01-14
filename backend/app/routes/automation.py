@@ -105,7 +105,7 @@ def trigger_automation():
         db.commit()
         db.refresh(job)
 
-        # Execute automation in background thread
+        # Queue automation for background execution via Celery
         executor.execute(
             job_id=job.id,
             device_ip=device.ip_address,

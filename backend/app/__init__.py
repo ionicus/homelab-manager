@@ -6,23 +6,13 @@ from flasgger import Swagger
 from flask import Flask, jsonify
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.cli import register_cli
 from app.config import Config
-from app.routes import register_blueprints
+from app.extensions import limiter
 from app.utils.errors import APIError, handle_database_exception
 
 logger = logging.getLogger(__name__)
-
-# Initialize rate limiter (attached to app in create_app)
-limiter = Limiter(
-    key_func=get_remote_address,
-    default_limits=["200 per day", "50 per hour"],
-    storage_uri="memory://",
-)
 
 SWAGGER_TEMPLATE = {
     "info": {
@@ -72,6 +62,10 @@ def create_app(config_class=Config):
     JWTManager(app)
     limiter.init_app(app)
     Swagger(app, template=SWAGGER_TEMPLATE, config=SWAGGER_CONFIG)
+
+    # Late imports to avoid circular imports
+    from app.cli import register_cli
+    from app.routes import register_blueprints
 
     # Register blueprints
     register_blueprints(app)

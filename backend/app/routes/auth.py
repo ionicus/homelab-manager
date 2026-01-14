@@ -9,7 +9,7 @@ from flask_jwt_extended import (
     jwt_required,
 )
 
-from app import limiter
+from app.extensions import limiter
 from app.models import User
 from app.schemas.auth import LoginRequest, PasswordChange, UserCreate, UserUpdate
 from app.utils.audit import log_login_failure, log_login_success

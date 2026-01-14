@@ -21,10 +21,12 @@ A comprehensive system for managing homelab infrastructure with inventory tracki
 - **SQLAlchemy** ORM
 - **PostgreSQL** database
 - **Alembic** for migrations
+- **Pillow** for image processing
 
 ### Frontend
 - **React.js** with Vite
 - **React Router** for navigation
+- **TanStack Query** for data fetching and caching
 - **Axios** for API calls
 - **Mantine UI** for components and theming
 

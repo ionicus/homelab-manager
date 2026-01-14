@@ -1,9 +1,13 @@
 """Pydantic schemas for AutomationJob model."""
 
+import re
 from datetime import datetime
 from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+# Pattern for safe action names: alphanumeric, underscore, hyphen only
+SAFE_ACTION_NAME_PATTERN = re.compile(r"^[a-zA-Z0-9_-]+$")
 
 
 class AutomationJobBase(BaseModel):
@@ -29,6 +33,19 @@ class AutomationJobBase(BaseModel):
         default="pending",
         description="Job status (pending, running, completed, failed)",
     )
+
+    @field_validator("action_name")
+    @classmethod
+    def validate_action_name(cls, v: str) -> str:
+        """Validate action name contains only safe characters.
+
+        Prevents path traversal and injection attacks.
+        """
+        if not SAFE_ACTION_NAME_PATTERN.match(v):
+            raise ValueError(
+                "Action name must contain only letters, numbers, underscores, and hyphens"
+            )
+        return v.lower()
 
     @field_validator("status")
     @classmethod

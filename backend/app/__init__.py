@@ -6,13 +6,23 @@ from flasgger import Swagger
 from flask import Flask, jsonify
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from sqlalchemy.exc import SQLAlchemyError
 
+from app.cli import register_cli
 from app.config import Config
 from app.routes import register_blueprints
 from app.utils.errors import APIError, handle_database_exception
 
 logger = logging.getLogger(__name__)
+
+# Initialize rate limiter (attached to app in create_app)
+limiter = Limiter(
+    key_func=get_remote_address,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://",
+)
 
 SWAGGER_TEMPLATE = {
     "info": {
@@ -60,10 +70,14 @@ def create_app(config_class=Config):
     # Initialize extensions
     CORS(app, origins=app.config["CORS_ORIGINS"])
     JWTManager(app)
+    limiter.init_app(app)
     Swagger(app, template=SWAGGER_TEMPLATE, config=SWAGGER_CONFIG)
 
     # Register blueprints
     register_blueprints(app)
+
+    # Register CLI commands
+    register_cli(app)
 
     # Register error handlers
     @app.errorhandler(APIError)
@@ -82,7 +96,14 @@ def create_app(config_class=Config):
     def handle_value_error(error):
         """Handle ValueError exceptions (usually enum validation)."""
         logger.warning(f"ValueError: {str(error)}")
-        return jsonify({"error": f"Invalid value: {str(error)}"}), 400
+        # Don't expose raw error message in production
+        return jsonify({"error": "Invalid input provided"}), 400
+
+    @app.errorhandler(429)
+    def handle_rate_limit_exceeded(error):
+        """Handle rate limit exceeded errors."""
+        logger.warning(f"Rate limit exceeded: {error.description}")
+        return jsonify({"error": "Rate limit exceeded. Please try again later."}), 429
 
     @app.errorhandler(404)
     def handle_not_found(error):

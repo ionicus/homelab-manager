@@ -1,6 +1,7 @@
 """Service routes with improved error handling and validation."""
 
 from flask import Blueprint, request
+from flask_jwt_extended import jwt_required
 
 from app.models import Device, Service, ServiceStatus
 from app.schemas.service import ServiceCreate, ServiceStatusUpdate, ServiceUpdate
@@ -15,6 +16,7 @@ services_bp = Blueprint("services", __name__)
 
 
 @services_bp.route("", methods=["GET"])
+@jwt_required()
 def list_services():
     """List all services.
     ---
@@ -37,6 +39,7 @@ def list_services():
 
 
 @services_bp.route("/<int:service_id>", methods=["GET"])
+@jwt_required()
 def get_service(service_id: int):
     """Get a specific service.
     ---
@@ -67,6 +70,7 @@ def get_service(service_id: int):
 
 
 @services_bp.route("", methods=["POST"])
+@jwt_required()
 @validate_request(ServiceCreate)
 def create_service():
     """Create a new service.
@@ -140,6 +144,7 @@ def create_service():
 
 
 @services_bp.route("/<int:service_id>", methods=["PUT"])
+@jwt_required()
 @validate_request(ServiceUpdate)
 def update_service(service_id: int):
     """Update a service.
@@ -203,6 +208,7 @@ def update_service(service_id: int):
 
 
 @services_bp.route("/<int:service_id>", methods=["DELETE"])
+@jwt_required()
 def delete_service(service_id: int):
     """Delete a service.
     ---
@@ -238,6 +244,7 @@ def delete_service(service_id: int):
 
 
 @services_bp.route("/<int:service_id>/status", methods=["PUT"])
+@jwt_required()
 @validate_request(ServiceStatusUpdate)
 def update_service_status(service_id: int):
     """Update service status.

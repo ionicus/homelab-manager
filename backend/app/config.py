@@ -8,12 +8,54 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
+def _require_env(name: str, min_length: int = 32) -> str:
+    """Require environment variable to be set with minimum length.
+
+    Args:
+        name: Environment variable name
+        min_length: Minimum required length for the value
+
+    Returns:
+        The environment variable value
+
+    Raises:
+        RuntimeError: If the variable is not set or too short
+    """
+    value = os.getenv(name)
+    if not value:
+        raise RuntimeError(f"Required environment variable {name} is not set")
+    if len(value) < min_length:
+        raise RuntimeError(
+            f"Environment variable {name} must be at least {min_length} characters"
+        )
+    return value
+
+
+def _get_secret(name: str, dev_default: str) -> str:
+    """Get a secret, requiring it in production.
+
+    In development mode, returns a default value.
+    In production, requires the secret to be explicitly set.
+
+    Args:
+        name: Environment variable name
+        dev_default: Default value for development only
+
+    Returns:
+        The secret value
+    """
+    flask_env = os.getenv("FLASK_ENV", "development")
+    if flask_env == "production":
+        return _require_env(name)
+    return os.getenv(name, dev_default)
+
+
 class Config:
     """Base configuration."""
 
     # Flask
-    SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key-change-in-production")
     FLASK_ENV = os.getenv("FLASK_ENV", "development")
+    SECRET_KEY = _get_secret("SECRET_KEY", "dev-only-secret-key-not-for-production!")
 
     # Database
     DATABASE_URL = os.getenv(
@@ -23,11 +65,13 @@ class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ECHO = FLASK_ENV == "development"
 
-    # CORS
+    # CORS - restrict to specific origins (no wildcards in production)
     CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")
 
     # JWT
-    JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "jwt-secret-key-change-in-production")
+    JWT_SECRET_KEY = _get_secret(
+        "JWT_SECRET_KEY", "dev-only-jwt-key-not-for-production!"
+    )
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(
         seconds=int(os.getenv("JWT_ACCESS_TOKEN_EXPIRES", "3600"))
     )

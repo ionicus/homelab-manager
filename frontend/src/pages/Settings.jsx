@@ -1,18 +1,209 @@
-import { useState } from 'react';
-import { Title, Paper, Stack, SegmentedControl, Text, Card, Group, Button, ColorSwatch, useMantineTheme, NavLink, Grid } from '@mantine/core';
-import { IconPalette, IconBrush, IconSettings } from '@tabler/icons-react';
+import { useState, useEffect } from 'react';
+import {
+  Title, Paper, Stack, SegmentedControl, Text, Card, Group, Button,
+  ColorSwatch, useMantineTheme, NavLink, Grid, TextInput, PasswordInput,
+  Switch, Table, ActionIcon, Modal, Alert, Badge, Loader, Avatar
+} from '@mantine/core';
+import { IconPalette, IconBrush, IconSettings, IconUsers, IconUser, IconTrash, IconEdit, IconPlus } from '@tabler/icons-react';
 import { useTheme } from '../contexts/ThemeContext';
+import { useAuth } from '../contexts/AuthContext';
+import { getUsers, createUser, updateUser, deleteUser, resetUserPassword } from '../services/api';
 
 function Settings() {
-  const [activeSection, setActiveSection] = useState('theme');
+  const [activeSection, setActiveSection] = useState('profile');
   const { currentTheme, switchTheme, availableThemes, pageAccents, updatePageAccent, resetAccents } = useTheme();
+  const { user, updateProfile, changePassword } = useAuth();
   const theme = useMantineTheme();
 
-  const sections = [
+  // Profile state
+  const [profileForm, setProfileForm] = useState({
+    display_name: '',
+    email: '',
+    bio: '',
+    avatar_url: '',
+  });
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileError, setProfileError] = useState(null);
+  const [profileSuccess, setProfileSuccess] = useState(null);
+
+  // Password change state
+  const [passwordForm, setPasswordForm] = useState({
+    current_password: '',
+    new_password: '',
+    confirm_password: '',
+  });
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [passwordError, setPasswordError] = useState(null);
+  const [passwordSuccess, setPasswordSuccess] = useState(null);
+
+  // Users management state (admin only)
+  const [users, setUsers] = useState([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [usersError, setUsersError] = useState(null);
+  const [userModalOpen, setUserModalOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
+  const [userForm, setUserForm] = useState({
+    username: '',
+    email: '',
+    display_name: '',
+    password: '',
+    is_admin: false,
+  });
+  const [userFormLoading, setUserFormLoading] = useState(false);
+  const [userFormError, setUserFormError] = useState(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState(null);
+  const [resetPasswordOpen, setResetPasswordOpen] = useState(false);
+  const [resetPasswordUser, setResetPasswordUser] = useState(null);
+  const [newPassword, setNewPassword] = useState('');
+
+  // Initialize profile form with current user data
+  useEffect(() => {
+    if (user) {
+      setProfileForm({
+        display_name: user.display_name || '',
+        email: user.email || '',
+        bio: user.bio || '',
+        avatar_url: user.avatar_url || '',
+      });
+    }
+  }, [user]);
+
+  // Fetch users when admin views users section
+  useEffect(() => {
+    if (activeSection === 'users' && user?.is_admin) {
+      fetchUsers();
+    }
+  }, [activeSection, user?.is_admin]);
+
+  const fetchUsers = async () => {
+    setUsersLoading(true);
+    setUsersError(null);
+    try {
+      const response = await getUsers();
+      setUsers(response.data.users || response.data);
+    } catch (err) {
+      setUsersError(err.userMessage || 'Failed to load users');
+    } finally {
+      setUsersLoading(false);
+    }
+  };
+
+  // Profile handlers
+  const handleProfileSubmit = async (e) => {
+    e.preventDefault();
+    setProfileLoading(true);
+    setProfileError(null);
+    setProfileSuccess(null);
+    try {
+      await updateProfile(profileForm);
+      setProfileSuccess('Profile updated successfully');
+    } catch (err) {
+      setProfileError(err.userMessage || 'Failed to update profile');
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
+  const handlePasswordSubmit = async (e) => {
+    e.preventDefault();
+    if (passwordForm.new_password !== passwordForm.confirm_password) {
+      setPasswordError('Passwords do not match');
+      return;
+    }
+    setPasswordLoading(true);
+    setPasswordError(null);
+    setPasswordSuccess(null);
+    try {
+      await changePassword(passwordForm.current_password, passwordForm.new_password);
+      setPasswordSuccess('Password changed successfully');
+      setPasswordForm({ current_password: '', new_password: '', confirm_password: '' });
+    } catch (err) {
+      setPasswordError(err.userMessage || 'Failed to change password');
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
+
+  // User management handlers (admin)
+  const openCreateUserModal = () => {
+    setEditingUser(null);
+    setUserForm({ username: '', email: '', display_name: '', password: '', is_admin: false });
+    setUserFormError(null);
+    setUserModalOpen(true);
+  };
+
+  const openEditUserModal = (userToEdit) => {
+    setEditingUser(userToEdit);
+    setUserForm({
+      username: userToEdit.username,
+      email: userToEdit.email,
+      display_name: userToEdit.display_name || '',
+      password: '',
+      is_admin: userToEdit.is_admin,
+    });
+    setUserFormError(null);
+    setUserModalOpen(true);
+  };
+
+  const handleUserFormSubmit = async (e) => {
+    e.preventDefault();
+    setUserFormLoading(true);
+    setUserFormError(null);
+    try {
+      if (editingUser) {
+        const updateData = {
+          email: userForm.email,
+          display_name: userForm.display_name,
+          is_admin: userForm.is_admin,
+        };
+        await updateUser(editingUser.id, updateData);
+      } else {
+        await createUser(userForm);
+      }
+      setUserModalOpen(false);
+      fetchUsers();
+    } catch (err) {
+      setUserFormError(err.userMessage || 'Failed to save user');
+    } finally {
+      setUserFormLoading(false);
+    }
+  };
+
+  const handleDeleteUser = async () => {
+    if (!userToDelete) return;
+    try {
+      await deleteUser(userToDelete.id);
+      setDeleteConfirmOpen(false);
+      setUserToDelete(null);
+      fetchUsers();
+    } catch (err) {
+      setUsersError(err.userMessage || 'Failed to delete user');
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!resetPasswordUser || !newPassword) return;
+    try {
+      await resetUserPassword(resetPasswordUser.id, newPassword);
+      setResetPasswordOpen(false);
+      setResetPasswordUser(null);
+      setNewPassword('');
+    } catch (err) {
+      setUsersError(err.userMessage || 'Failed to reset password');
+    }
+  };
+
+  const baseSections = [
+    { id: 'profile', label: 'Profile', icon: IconUser, description: 'Your account' },
     { id: 'theme', label: 'Theme', icon: IconPalette, description: 'Color scheme' },
     { id: 'accents', label: 'Page Accents', icon: IconBrush, description: 'Section colors' },
     { id: 'general', label: 'General', icon: IconSettings, description: 'App preferences', disabled: true },
   ];
+
+  const sections = user?.is_admin
+    ? [...baseSections.slice(0, 1), { id: 'users', label: 'Users', icon: IconUsers, description: 'Manage users' }, ...baseSections.slice(1)]
+    : baseSections;
 
   // Theme Section
   const themeOptions = availableThemes.map((themeName) => ({
@@ -219,6 +410,343 @@ function Settings() {
     </Stack>
   );
 
+  const renderProfileSection = () => (
+    <Stack spacing="xl">
+      <div>
+        <Title order={2} mb="xs">Profile</Title>
+        <Text size="sm" color="dimmed">
+          Manage your account information
+        </Text>
+      </div>
+
+      {/* Profile Info */}
+      <Paper shadow="sm" p="lg" withBorder>
+        <form onSubmit={handleProfileSubmit}>
+          <Stack spacing="md">
+            <Group align="flex-start">
+              <Avatar
+                src={profileForm.avatar_url}
+                size={80}
+                radius="md"
+                color="blue"
+              >
+                {user?.username?.charAt(0).toUpperCase()}
+              </Avatar>
+              <div style={{ flex: 1 }}>
+                <Text size="sm" weight={500} mb={4}>Username</Text>
+                <Text size="sm" color="dimmed">{user?.username}</Text>
+                <Text size="xs" color="dimmed" mt={4}>Username cannot be changed</Text>
+              </div>
+            </Group>
+
+            <TextInput
+              label="Display Name"
+              placeholder="How you want to be called"
+              value={profileForm.display_name}
+              onChange={(e) => setProfileForm({ ...profileForm, display_name: e.target.value })}
+            />
+
+            <TextInput
+              label="Email"
+              type="email"
+              placeholder="your@email.com"
+              value={profileForm.email}
+              onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
+              required
+            />
+
+            <TextInput
+              label="Avatar URL"
+              placeholder="https://example.com/avatar.jpg"
+              value={profileForm.avatar_url}
+              onChange={(e) => setProfileForm({ ...profileForm, avatar_url: e.target.value })}
+            />
+
+            <TextInput
+              label="Bio"
+              placeholder="A short bio about yourself"
+              value={profileForm.bio}
+              onChange={(e) => setProfileForm({ ...profileForm, bio: e.target.value })}
+            />
+
+            {profileError && <Alert color="red">{profileError}</Alert>}
+            {profileSuccess && <Alert color="green">{profileSuccess}</Alert>}
+
+            <Group justify="flex-end">
+              <Button type="submit" loading={profileLoading}>
+                Save Profile
+              </Button>
+            </Group>
+          </Stack>
+        </form>
+      </Paper>
+
+      {/* Change Password */}
+      <Paper shadow="sm" p="lg" withBorder>
+        <Title order={4} mb="md">Change Password</Title>
+        <form onSubmit={handlePasswordSubmit}>
+          <Stack spacing="md">
+            <PasswordInput
+              label="Current Password"
+              placeholder="Enter current password"
+              value={passwordForm.current_password}
+              onChange={(e) => setPasswordForm({ ...passwordForm, current_password: e.target.value })}
+              required
+            />
+
+            <PasswordInput
+              label="New Password"
+              placeholder="Enter new password"
+              description="At least 8 characters with uppercase, lowercase, and a number"
+              value={passwordForm.new_password}
+              onChange={(e) => setPasswordForm({ ...passwordForm, new_password: e.target.value })}
+              required
+            />
+
+            <PasswordInput
+              label="Confirm New Password"
+              placeholder="Confirm new password"
+              value={passwordForm.confirm_password}
+              onChange={(e) => setPasswordForm({ ...passwordForm, confirm_password: e.target.value })}
+              required
+            />
+
+            {passwordError && <Alert color="red">{passwordError}</Alert>}
+            {passwordSuccess && <Alert color="green">{passwordSuccess}</Alert>}
+
+            <Group justify="flex-end">
+              <Button type="submit" loading={passwordLoading}>
+                Change Password
+              </Button>
+            </Group>
+          </Stack>
+        </form>
+      </Paper>
+    </Stack>
+  );
+
+  const renderUsersSection = () => (
+    <Stack spacing="xl">
+      <Group justify="space-between" align="center">
+        <div>
+          <Title order={2} mb="xs">User Management</Title>
+          <Text size="sm" color="dimmed">
+            Manage system users and permissions
+          </Text>
+        </div>
+        <Button leftSection={<IconPlus size={16} />} onClick={openCreateUserModal}>
+          Add User
+        </Button>
+      </Group>
+
+      {usersError && <Alert color="red" mb="md">{usersError}</Alert>}
+
+      <Paper shadow="sm" p="lg" withBorder>
+        {usersLoading ? (
+          <Group justify="center" py="xl">
+            <Loader />
+          </Group>
+        ) : (
+          <Table>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th>User</Table.Th>
+                <Table.Th>Email</Table.Th>
+                <Table.Th>Role</Table.Th>
+                <Table.Th>Status</Table.Th>
+                <Table.Th>Actions</Table.Th>
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              {users.map((u) => (
+                <Table.Tr key={u.id}>
+                  <Table.Td>
+                    <Group spacing="sm">
+                      <Avatar src={u.avatar_url} size={32} radius="xl" color="blue">
+                        {u.username?.charAt(0).toUpperCase()}
+                      </Avatar>
+                      <div>
+                        <Text size="sm" weight={500}>{u.display_name || u.username}</Text>
+                        <Text size="xs" color="dimmed">@{u.username}</Text>
+                      </div>
+                    </Group>
+                  </Table.Td>
+                  <Table.Td>
+                    <Text size="sm">{u.email}</Text>
+                  </Table.Td>
+                  <Table.Td>
+                    <Badge color={u.is_admin ? 'red' : 'blue'} variant="light">
+                      {u.is_admin ? 'Admin' : 'User'}
+                    </Badge>
+                  </Table.Td>
+                  <Table.Td>
+                    <Badge color={u.is_active ? 'green' : 'gray'} variant="light">
+                      {u.is_active ? 'Active' : 'Inactive'}
+                    </Badge>
+                  </Table.Td>
+                  <Table.Td>
+                    <Group spacing="xs">
+                      <ActionIcon
+                        variant="subtle"
+                        color="blue"
+                        onClick={() => openEditUserModal(u)}
+                        title="Edit user"
+                      >
+                        <IconEdit size={16} />
+                      </ActionIcon>
+                      <ActionIcon
+                        variant="subtle"
+                        color="orange"
+                        onClick={() => {
+                          setResetPasswordUser(u);
+                          setResetPasswordOpen(true);
+                        }}
+                        title="Reset password"
+                      >
+                        <IconUser size={16} />
+                      </ActionIcon>
+                      {u.id !== user?.id && (
+                        <ActionIcon
+                          variant="subtle"
+                          color="red"
+                          onClick={() => {
+                            setUserToDelete(u);
+                            setDeleteConfirmOpen(true);
+                          }}
+                          title="Delete user"
+                        >
+                          <IconTrash size={16} />
+                        </ActionIcon>
+                      )}
+                    </Group>
+                  </Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+        )}
+      </Paper>
+
+      {/* Create/Edit User Modal */}
+      <Modal
+        opened={userModalOpen}
+        onClose={() => setUserModalOpen(false)}
+        title={editingUser ? 'Edit User' : 'Create User'}
+      >
+        <form onSubmit={handleUserFormSubmit}>
+          <Stack spacing="md">
+            {!editingUser && (
+              <TextInput
+                label="Username"
+                placeholder="username"
+                value={userForm.username}
+                onChange={(e) => setUserForm({ ...userForm, username: e.target.value })}
+                required
+              />
+            )}
+
+            <TextInput
+              label="Email"
+              type="email"
+              placeholder="user@example.com"
+              value={userForm.email}
+              onChange={(e) => setUserForm({ ...userForm, email: e.target.value })}
+              required
+            />
+
+            <TextInput
+              label="Display Name"
+              placeholder="Display Name"
+              value={userForm.display_name}
+              onChange={(e) => setUserForm({ ...userForm, display_name: e.target.value })}
+            />
+
+            {!editingUser && (
+              <PasswordInput
+                label="Password"
+                placeholder="Initial password"
+                description="At least 8 characters with uppercase, lowercase, and a number"
+                value={userForm.password}
+                onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
+                required
+              />
+            )}
+
+            <Switch
+              label="Administrator"
+              description="Admins can manage users and system settings"
+              checked={userForm.is_admin}
+              onChange={(e) => setUserForm({ ...userForm, is_admin: e.currentTarget.checked })}
+            />
+
+            {userFormError && <Alert color="red">{userFormError}</Alert>}
+
+            <Group justify="flex-end">
+              <Button variant="subtle" onClick={() => setUserModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" loading={userFormLoading}>
+                {editingUser ? 'Save Changes' : 'Create User'}
+              </Button>
+            </Group>
+          </Stack>
+        </form>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        opened={deleteConfirmOpen}
+        onClose={() => setDeleteConfirmOpen(false)}
+        title="Confirm Delete"
+        size="sm"
+      >
+        <Stack spacing="md">
+          <Text>
+            Are you sure you want to delete user <strong>{userToDelete?.username}</strong>?
+            This action cannot be undone.
+          </Text>
+          <Group justify="flex-end">
+            <Button variant="subtle" onClick={() => setDeleteConfirmOpen(false)}>
+              Cancel
+            </Button>
+            <Button color="red" onClick={handleDeleteUser}>
+              Delete User
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      {/* Reset Password Modal */}
+      <Modal
+        opened={resetPasswordOpen}
+        onClose={() => setResetPasswordOpen(false)}
+        title="Reset Password"
+        size="sm"
+      >
+        <Stack spacing="md">
+          <Text>
+            Set a new password for <strong>{resetPasswordUser?.username}</strong>
+          </Text>
+          <PasswordInput
+            label="New Password"
+            placeholder="Enter new password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            required
+          />
+          <Group justify="flex-end">
+            <Button variant="subtle" onClick={() => setResetPasswordOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleResetPassword}>
+              Reset Password
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+    </Stack>
+  );
+
   return (
     <div className="settings-page">
       <div className="page-header">
@@ -261,6 +789,8 @@ function Settings() {
         </Grid.Col>
 
         <Grid.Col span={9}>
+          {activeSection === 'profile' && renderProfileSection()}
+          {activeSection === 'users' && user?.is_admin && renderUsersSection()}
           {activeSection === 'theme' && renderThemeSection()}
           {activeSection === 'accents' && renderAccentsSection()}
           {activeSection === 'general' && renderGeneralSection()}

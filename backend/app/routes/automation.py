@@ -1,7 +1,9 @@
 """Automation routes with extensible executor support."""
 
 from flask import Blueprint, request
+from flask_jwt_extended import jwt_required
 
+from app import limiter
 from app.models import AutomationJob, Device, JobStatus
 from app.schemas.automation import AutomationJobCreate
 from app.services.executors import registry
@@ -17,6 +19,8 @@ automation_bp = Blueprint("automation", __name__)
 
 
 @automation_bp.route("", methods=["POST"])
+@jwt_required()
+@limiter.limit("10 per minute")
 @validate_request(AutomationJobCreate)
 def trigger_automation():
     """Trigger an automation job.
@@ -113,6 +117,7 @@ def trigger_automation():
 
 
 @automation_bp.route("/<int:job_id>", methods=["GET"])
+@jwt_required()
 def get_job_status(job_id: int):
     """Get automation job status.
     ---
@@ -144,6 +149,7 @@ def get_job_status(job_id: int):
 
 
 @automation_bp.route("/<int:job_id>/logs", methods=["GET"])
+@jwt_required()
 def get_job_logs(job_id: int):
     """Get automation job logs.
     ---
@@ -180,6 +186,7 @@ def get_job_logs(job_id: int):
 
 
 @automation_bp.route("/executors", methods=["GET"])
+@jwt_required()
 def list_executors():
     """List available executor types.
     ---
@@ -220,6 +227,7 @@ def list_executors():
 
 
 @automation_bp.route("/executors/<executor_type>/actions", methods=["GET"])
+@jwt_required()
 def list_executor_actions(executor_type: str):
     """List available actions for an executor type.
     ---
@@ -275,6 +283,7 @@ def list_executor_actions(executor_type: str):
 
 
 @automation_bp.route("/jobs", methods=["GET"])
+@jwt_required()
 def list_jobs():
     """List automation jobs with optional filtering.
     ---

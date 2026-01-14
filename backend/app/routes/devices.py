@@ -1,6 +1,7 @@
 """Device routes with improved error handling and validation."""
 
 from flask import Blueprint, request
+from flask_jwt_extended import jwt_required
 
 from app.models import Device, DeviceStatus, DeviceType
 from app.schemas.device import DeviceCreate, DeviceUpdate
@@ -16,6 +17,7 @@ devices_bp = Blueprint("devices", __name__)
 
 
 @devices_bp.route("", methods=["GET"])
+@jwt_required()
 def list_devices():
     """List all devices.
     ---
@@ -38,6 +40,7 @@ def list_devices():
 
 
 @devices_bp.route("/<int:device_id>", methods=["GET"])
+@jwt_required()
 def get_device(device_id: int):
     """Get a specific device.
     ---
@@ -68,6 +71,7 @@ def get_device(device_id: int):
 
 
 @devices_bp.route("", methods=["POST"])
+@jwt_required()
 @validate_request(DeviceCreate)
 def create_device():
     """Create a new device.
@@ -147,6 +151,7 @@ def create_device():
 
 
 @devices_bp.route("/<int:device_id>", methods=["PUT"])
+@jwt_required()
 @validate_request(DeviceUpdate)
 def update_device(device_id: int):
     """Update a device.
@@ -221,6 +226,7 @@ def update_device(device_id: int):
 
 
 @devices_bp.route("/<int:device_id>", methods=["DELETE"])
+@jwt_required()
 def delete_device(device_id: int):
     """Delete a device.
     ---
@@ -256,6 +262,7 @@ def delete_device(device_id: int):
 
 
 @devices_bp.route("/<int:device_id>/services", methods=["GET"])
+@jwt_required()
 def get_device_services(device_id: int):
     """Get all services for a device.
     ---
@@ -290,6 +297,7 @@ def get_device_services(device_id: int):
 
 
 @devices_bp.route("/<int:device_id>/metrics", methods=["GET"])
+@jwt_required()
 def get_device_metrics(device_id: int):
     """Get metrics for a device.
     ---

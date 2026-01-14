@@ -12,6 +12,20 @@ const api = axios.create({
   timeout: 10000, // 10 second timeout
 });
 
+// Request interceptor to add auth token
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('homelab-token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
 // Response interceptor for consistent error handling
 api.interceptors.response.use(
   (response) => response,
@@ -27,6 +41,31 @@ api.interceptors.response.use(
     // Server returned an error response
     const status = error.response.status;
     const data = error.response.data;
+
+    // Handle 401 Unauthorized - redirect to login
+    if (status === 401) {
+      // Clear stored auth data
+      localStorage.removeItem('homelab-token');
+      localStorage.removeItem('homelab-user');
+      // Redirect to login page (unless already on login page)
+      if (!window.location.pathname.includes('/login')) {
+        window.location.href = '/login';
+      }
+      error.userMessage = 'Session expired. Please log in again.';
+      return Promise.reject(error);
+    }
+
+    // Handle 403 Forbidden
+    if (status === 403) {
+      error.userMessage = data?.error || 'You do not have permission to perform this action';
+      return Promise.reject(error);
+    }
+
+    // Handle 429 Rate Limit
+    if (status === 429) {
+      error.userMessage = 'Too many requests. Please try again later.';
+      return Promise.reject(error);
+    }
 
     // Add user-friendly messages based on status code
     if (status === 404) {
@@ -111,5 +150,25 @@ export const deleteDeviceInterface = (deviceId, interfaceId) =>
   api.delete(`/devices/${deviceId}/interfaces/${interfaceId}`);
 export const setPrimaryInterface = (deviceId, interfaceId) =>
   api.put(`/devices/${deviceId}/interfaces/${interfaceId}/set-primary`);
+
+// Authentication
+export const login = (username, password) =>
+  api.post('/auth/login', { username, password });
+export const getCurrentUser = () => api.get('/auth/me');
+export const updateCurrentUser = (data) => api.put('/auth/me', data);
+export const changePassword = (currentPassword, newPassword) =>
+  api.put('/auth/me/password', {
+    current_password: currentPassword,
+    new_password: newPassword,
+  });
+
+// User Management (admin only)
+export const getUsers = () => api.get('/auth/users');
+export const getUser = (userId) => api.get(`/auth/users/${userId}`);
+export const createUser = (data) => api.post('/auth/users', data);
+export const updateUser = (userId, data) => api.put(`/auth/users/${userId}`, data);
+export const deleteUser = (userId) => api.delete(`/auth/users/${userId}`);
+export const resetUserPassword = (userId, newPassword) =>
+  api.post(`/auth/users/${userId}/reset-password`, { new_password: newPassword });
 
 export default api;

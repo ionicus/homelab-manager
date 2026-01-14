@@ -1,6 +1,9 @@
 """Ansible playbook executor implementation."""
 
+import ipaddress
 import logging
+import os
+import re
 import subprocess
 import threading
 from pathlib import Path
@@ -12,6 +15,9 @@ from app.models import AutomationJob, JobStatus
 from .base import ActionInfo, BaseExecutor
 
 logger = logging.getLogger(__name__)
+
+# Pattern for valid playbook names: alphanumeric, underscore, hyphen only
+SAFE_ACTION_NAME_PATTERN = re.compile(r"^[a-zA-Z0-9_-]+$")
 
 
 class AnsibleExecutor(BaseExecutor):
@@ -81,16 +87,28 @@ class AnsibleExecutor(BaseExecutor):
         return sorted(actions, key=lambda a: a.name)
 
     def validate_config(self, action_name: str, config: dict | None) -> bool:
-        """Validate that the playbook exists.
+        """Validate that the playbook exists and action name is safe.
 
         Args:
             action_name: Name of the playbook
             config: Configuration (not used for Ansible)
 
         Returns:
-            True if playbook file exists
+            True if action name is safe and playbook file exists
         """
-        playbook_path = self.playbooks_dir / f"{action_name}.yml"
+        # Validate action name contains only safe characters (prevent path traversal)
+        if not SAFE_ACTION_NAME_PATTERN.match(action_name):
+            logger.warning(f"Invalid action name rejected: {action_name}")
+            return False
+
+        # Build path and resolve to absolute
+        playbook_path = (self.playbooks_dir / f"{action_name}.yml").resolve()
+
+        # Ensure the resolved path is within the playbooks directory (prevent symlink attacks)
+        if not str(playbook_path).startswith(str(self.playbooks_dir.resolve())):
+            logger.warning(f"Path traversal attempt blocked: {action_name}")
+            return False
+
         return playbook_path.exists()
 
     def _get_playbook_description(self, playbook_path: Path) -> str:
@@ -220,6 +238,40 @@ class AnsibleExecutor(BaseExecutor):
         finally:
             db.close()
 
+    def _sanitize_inventory_value(self, value: str) -> str:
+        """Sanitize a value for use in Ansible inventory.
+
+        Removes characters that could be used for injection attacks.
+
+        Args:
+            value: Raw input value
+
+        Returns:
+            Sanitized value safe for inventory files
+        """
+        # Remove newlines, quotes, backslashes, and other dangerous characters
+        sanitized = re.sub(r"[\n\r'\"\\\[\]{}]", "", value)
+        return sanitized.strip()
+
+    def _validate_ip_address(self, ip_str: str) -> str:
+        """Validate and return IP address.
+
+        Args:
+            ip_str: IP address string
+
+        Returns:
+            Validated IP address string
+
+        Raises:
+            ValueError: If IP address is invalid
+        """
+        try:
+            # This validates both IPv4 and IPv6
+            ip = ipaddress.ip_address(ip_str)
+            return str(ip)
+        except ValueError as e:
+            raise ValueError(f"Invalid IP address: {ip_str}") from e
+
     def _generate_inventory(self, device_ip: str, device_name: str) -> str:
         """Generate Ansible inventory for a single device.
 
@@ -229,11 +281,36 @@ class AnsibleExecutor(BaseExecutor):
 
         Returns:
             Inventory file content in INI format
+
+        Raises:
+            ValueError: If device_ip is not a valid IP address
         """
-        ssh_args = "-o StrictHostKeyChecking=no"
+        # Validate and sanitize inputs
+        safe_ip = self._validate_ip_address(device_ip)
+        safe_name = self._sanitize_inventory_value(device_name)
+
+        # Use a safe inventory hostname (alphanumeric only)
+        if not re.match(r"^[a-zA-Z0-9_-]+$", safe_name):
+            safe_name = f"device_{hash(safe_name) % 10000}"
+
+        # Get configurable Ansible user from environment (default: ansible, not root)
+        ansible_user = os.getenv("ANSIBLE_USER", "ansible")
+        ansible_user = self._sanitize_inventory_value(ansible_user)
+
+        # Use accept-new to accept new host keys but reject changed ones
+        ssh_host_key_checking = os.getenv("ANSIBLE_HOST_KEY_CHECKING", "accept-new")
+
+        # Build SSH args securely
+        ssh_args = f"-o StrictHostKeyChecking={ssh_host_key_checking}"
+
+        # Optionally add SSH key path
+        ssh_key_path = os.getenv("ANSIBLE_SSH_KEY")
+        if ssh_key_path:
+            ssh_args += f" -o IdentityFile={ssh_key_path}"
+
         host_line = (
-            f"{device_name} ansible_host={device_ip} "
-            f"ansible_user=root ansible_ssh_common_args='{ssh_args}'"
+            f"{safe_name} ansible_host={safe_ip} "
+            f"ansible_user={ansible_user} ansible_ssh_common_args='{ssh_args}'"
         )
         return f"""[homelab]
 {host_line}

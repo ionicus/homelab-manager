@@ -1,6 +1,7 @@
 """Metrics routes with improved error handling and validation."""
 
 from flask import Blueprint, request
+from flask_jwt_extended import jwt_required
 
 from app.models import Device, Metric
 from app.schemas.metric import MetricCreate
@@ -15,6 +16,7 @@ metrics_bp = Blueprint("metrics", __name__)
 
 
 @metrics_bp.route("", methods=["POST"])
+@jwt_required()
 @validate_request(MetricCreate)
 def submit_metrics():
     """Submit new metrics for a device.

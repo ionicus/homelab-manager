@@ -1,6 +1,7 @@
 """Network interface routes with improved error handling and validation."""
 
 from flask import Blueprint, request
+from flask_jwt_extended import jwt_required
 
 from app.models import Device, InterfaceStatus, NetworkInterface
 from app.schemas.network_interface import (
@@ -29,6 +30,7 @@ interfaces_bp = Blueprint("interfaces", __name__)
 
 
 @interfaces_bp.route("/devices/<int:device_id>/interfaces", methods=["GET"])
+@jwt_required()
 def list_device_interfaces(device_id: int):
     """List all interfaces for a device.
     ---
@@ -74,6 +76,7 @@ def list_device_interfaces(device_id: int):
 @interfaces_bp.route(
     "/devices/<int:device_id>/interfaces/<int:interface_id>", methods=["GET"]
 )
+@jwt_required()
 def get_device_interface(device_id: int, interface_id: int):
     """Get a specific interface for a device.
     ---
@@ -118,6 +121,7 @@ def get_device_interface(device_id: int, interface_id: int):
 
 
 @interfaces_bp.route("/devices/<int:device_id>/interfaces", methods=["POST"])
+@jwt_required()
 @validate_request(NetworkInterfaceCreate)
 def create_device_interface(device_id: int):
     """Create a new interface for a device.
@@ -233,6 +237,7 @@ def create_device_interface(device_id: int):
 @interfaces_bp.route(
     "/devices/<int:device_id>/interfaces/<int:interface_id>", methods=["PUT"]
 )
+@jwt_required()
 @validate_request(NetworkInterfaceUpdate)
 def update_device_interface(device_id: int, interface_id: int):
     """Update an interface.
@@ -340,6 +345,7 @@ def update_device_interface(device_id: int, interface_id: int):
 @interfaces_bp.route(
     "/devices/<int:device_id>/interfaces/<int:interface_id>", methods=["DELETE"]
 )
+@jwt_required()
 def delete_device_interface(device_id: int, interface_id: int):
     """Delete an interface.
     ---
@@ -404,6 +410,7 @@ def delete_device_interface(device_id: int, interface_id: int):
     "/devices/<int:device_id>/interfaces/<int:interface_id>/set-primary",
     methods=["PUT"],
 )
+@jwt_required()
 def set_primary_interface(device_id: int, interface_id: int):
     """Set an interface as the primary interface for the device.
     ---
@@ -454,6 +461,7 @@ def set_primary_interface(device_id: int, interface_id: int):
 
 
 @interfaces_bp.route("/interfaces", methods=["GET"])
+@jwt_required()
 def list_all_interfaces():
     """List all interfaces with optional filtering.
     ---
@@ -514,6 +522,7 @@ def list_all_interfaces():
 
 
 @interfaces_bp.route("/interfaces/<int:interface_id>", methods=["GET"])
+@jwt_required()
 def get_interface(interface_id: int):
     """Get a specific interface by ID.
     ---
@@ -544,6 +553,7 @@ def get_interface(interface_id: int):
 
 
 @interfaces_bp.route("/interfaces/by-mac/<string:mac_address>", methods=["GET"])
+@jwt_required()
 def get_interface_by_mac(mac_address: str):
     """Find interfaces by MAC address.
     ---
@@ -580,6 +590,7 @@ def get_interface_by_mac(mac_address: str):
 
 
 @interfaces_bp.route("/interfaces/by-ip/<string:ip_address>", methods=["GET"])
+@jwt_required()
 def get_interface_by_ip(ip_address: str):
     """Find interfaces by IP address.
     ---

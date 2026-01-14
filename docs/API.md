@@ -1,11 +1,13 @@
 # Homelab Manager API Documentation
 
-Version: 0.2.0
+Version: 0.3.0
 Base URL: `http://localhost:5000/api`
 
 ## Table of Contents
 
 - [Overview](#overview)
+- [Getting Started](#getting-started)
+- [CLI Commands](#cli-commands)
 - [Authentication](#authentication)
 - [Error Handling](#error-handling)
 - [Devices](#devices)
@@ -40,11 +42,245 @@ Swagger UI is available at `http://localhost:5000/apidocs/` for interactive API 
 
 ---
 
+## Getting Started
+
+### Prerequisites
+
+1. PostgreSQL database
+2. Python 3.11+
+3. Node.js 18+ (for frontend)
+
+### Initial Setup
+
+1. Clone the repository and install dependencies:
+   ```bash
+   cd backend
+   python -m venv .venv
+   source .venv/bin/activate
+   pip install -e .
+   ```
+
+2. Configure environment variables in `backend/.env`
+
+3. Initialize the database:
+   ```bash
+   flask db upgrade  # If using migrations
+   ```
+
+4. Create the initial admin user:
+   ```bash
+   flask create-admin
+   ```
+
+5. Start the backend:
+   ```bash
+   flask run
+   ```
+
+---
+
+## CLI Commands
+
+The backend provides CLI commands for administration tasks. Run from the `backend` directory with the virtual environment activated.
+
+### Create Admin User
+
+Create an initial administrator account:
+
+```bash
+# Interactive mode (prompts for all values)
+flask create-admin
+
+# With command-line options
+flask create-admin --username admin --email admin@example.com
+```
+
+**Options:**
+- `--username` - Admin username (prompted if not provided)
+- `--email` - Admin email address (prompted if not provided)
+- `--password` - Admin password (prompted securely if not provided)
+
+**Example session:**
+```
+$ flask create-admin
+Username: admin
+Email: admin@homelab.local
+Password: ********
+Repeat for confirmation: ********
+Admin user 'admin' created successfully!
+  Username: admin
+  Email: admin@homelab.local
+  Admin: Yes
+```
+
+### List Users
+
+Display all users in the system:
+
+```bash
+flask list-users
+```
+
+**Example output:**
+```
+ID    Username             Email                          Admin   Active
+---------------------------------------------------------------------------
+1     admin                admin@homelab.local            Yes     Yes
+2     operator             operator@homelab.local         No      Yes
+
+Total: 2 user(s)
+```
+
+### Reset Password
+
+Reset a user's password from the command line:
+
+```bash
+# Interactive mode
+flask reset-password --username admin
+
+# The password is always prompted securely
+```
+
+---
+
 ## Authentication
 
-**Current Status**: Authentication is not yet implemented. All endpoints are publicly accessible.
+All API endpoints (except `/health` and `/api/auth/login`) require JWT authentication.
 
-**Planned**: JWT-based authentication using `flask-jwt-extended`.
+### Login
+
+```http
+POST /api/auth/login
+```
+
+**Request Body:**
+```json
+{
+  "username": "admin",
+  "password": "your-password"
+}
+```
+
+**Response** `200 OK`:
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "id": 1,
+    "username": "admin",
+    "email": "admin@example.com",
+    "display_name": "Admin User",
+    "is_admin": true
+  }
+}
+```
+
+**Errors:**
+- `401` - Invalid credentials
+- `429` - Too many login attempts (rate limited to 5/minute)
+
+### Using the Token
+
+Include the JWT token in the `Authorization` header for all authenticated requests:
+
+```http
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+
+### Get Current User
+
+```http
+GET /api/auth/me
+```
+
+Returns the currently authenticated user's profile.
+
+### Update Profile
+
+```http
+PUT /api/auth/me
+```
+
+**Request Body:**
+```json
+{
+  "email": "newemail@example.com",
+  "display_name": "New Display Name",
+  "bio": "A short bio",
+  "avatar_url": "https://example.com/avatar.jpg"
+}
+```
+
+### Change Password
+
+```http
+PUT /api/auth/me/password
+```
+
+**Request Body:**
+```json
+{
+  "current_password": "old-password",
+  "new_password": "new-password"
+}
+```
+
+**Password Requirements:**
+- Minimum 8 characters
+- At least one uppercase letter
+- At least one lowercase letter
+- At least one digit
+
+### User Management (Admin Only)
+
+#### List Users
+
+```http
+GET /api/auth/users
+```
+
+#### Create User
+
+```http
+POST /api/auth/users
+```
+
+**Request Body:**
+```json
+{
+  "username": "newuser",
+  "email": "newuser@example.com",
+  "password": "SecurePass123",
+  "display_name": "New User",
+  "is_admin": false
+}
+```
+
+#### Update User
+
+```http
+PUT /api/auth/users/{user_id}
+```
+
+#### Delete User
+
+```http
+DELETE /api/auth/users/{user_id}
+```
+
+#### Reset User Password
+
+```http
+POST /api/auth/users/{user_id}/reset-password
+```
+
+**Request Body:**
+```json
+{
+  "new_password": "NewSecurePass123"
+}
+```
 
 ---
 
@@ -83,8 +319,11 @@ When request validation fails, detailed field-level errors are returned:
 | `200` | Success - Request completed successfully |
 | `201` | Created - Resource created successfully |
 | `400` | Bad Request - Invalid request data or validation error |
+| `401` | Unauthorized - Missing or invalid authentication token |
+| `403` | Forbidden - Insufficient permissions for this action |
 | `404` | Not Found - Resource does not exist |
 | `409` | Conflict - Resource already exists or constraint violation |
+| `429` | Too Many Requests - Rate limit exceeded |
 | `500` | Internal Server Error - Unexpected server error |
 
 ---
@@ -886,13 +1125,48 @@ GET /api/automation/{job_id}/logs
 
 ## Rate Limiting
 
-**Current Status**: Not implemented. No rate limiting is currently enforced.
+Rate limiting is enforced to protect the API from abuse.
 
-**Planned**: Rate limiting will be added in future versions.
+### Default Limits
+
+- **Global**: 200 requests per day, 50 requests per hour per IP
+- **Login**: 5 attempts per minute (to prevent brute force attacks)
+
+### Rate Limit Response
+
+When you exceed the rate limit, you'll receive:
+
+```http
+HTTP/1.1 429 Too Many Requests
+```
+
+```json
+{
+  "error": "Rate limit exceeded. Please try again later."
+}
+```
 
 ---
 
 ## Changelog
+
+### Version 0.3.0 (2026-01-13)
+
+- **Security**: Complete authentication system with JWT tokens
+- **Security**: User model with password hashing (Werkzeug)
+- **Security**: Role-based access control (admin/user roles)
+- **Security**: Rate limiting with Flask-Limiter
+- **Security**: CORS configuration (no more wildcard origins)
+- **Security**: Secrets required in production environment
+- **Security**: Fixed Ansible path traversal vulnerability
+- **Security**: Fixed Ansible inventory injection vulnerability
+- **Security**: Audit logging for security events
+- Added CLI commands: `create-admin`, `list-users`, `reset-password`
+- Added `/api/auth/*` endpoints for authentication
+- Added user profile management
+- Added admin user management endpoints
+- Frontend: Login page, protected routes, logout button
+- Frontend: Profile and user management in Settings
 
 ### Version 0.2.0 (2026-01-13)
 

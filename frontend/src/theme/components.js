@@ -78,18 +78,8 @@ export const components = {
         blur: 3,
       },
     },
-    styles: (theme) => ({
-      content: {
-        backgroundColor: theme.colorScheme === 'dark'
-          ? theme.colors.dark[7]
-          : theme.white,
-      },
-      header: {
-        backgroundColor: theme.colorScheme === 'dark'
-          ? theme.colors.dark[6]
-          : theme.colors.gray[0],
-      },
-    }),
+    // Note: Removed styles that used deprecated theme.colorScheme (Mantine v8)
+    // Modal now uses Mantine's default styling which respects color scheme properly
   },
 
   TextInput: {

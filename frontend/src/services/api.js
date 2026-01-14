@@ -4,6 +4,20 @@ import axios from 'axios';
 const API_URL = import.meta.env.VITE_API_URL ||
   `${window.location.protocol}//${window.location.hostname}:5000/api`;
 
+// Base URL for the backend server (without /api)
+const BACKEND_URL = API_URL.replace(/\/api$/, '');
+
+// Helper to get full URL for uploaded files
+export const getUploadUrl = (path) => {
+  if (!path) return null;
+  // If it's already a full URL, return as-is
+  if (path.startsWith('http://') || path.startsWith('https://')) {
+    return path;
+  }
+  // Otherwise, prepend the backend URL
+  return `${BACKEND_URL}${path}`;
+};
+
 const api = axios.create({
   baseURL: API_URL,
   headers: {
@@ -146,6 +160,14 @@ export const changePassword = (currentPassword, newPassword) =>
     current_password: currentPassword,
     new_password: newPassword,
   });
+export const uploadAvatar = (file) => {
+  const formData = new FormData();
+  formData.append('avatar', file);
+  return api.post('/auth/me/avatar', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+};
+export const deleteAvatar = () => api.delete('/auth/me/avatar');
 
 // User Management (admin only)
 export const getUsers = () => api.get('/auth/users');

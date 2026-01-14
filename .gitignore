@@ -117,6 +117,9 @@ Thumbs.db
 *.bak
 *.backup
 
+# Uploads
+backend/uploads/
+
 # AI assistant settings
 .claude/
 claude.md

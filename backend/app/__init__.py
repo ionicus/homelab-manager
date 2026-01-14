@@ -7,7 +7,7 @@ from logging.handlers import RotatingFileHandler
 from flasgger import Swagger
 from flask import Flask, jsonify
 from flask_cors import CORS
-from flask_jwt_extended import JWTManager, get_jwt
+from flask_jwt_extended import JWTManager
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.config import Config
@@ -109,7 +109,13 @@ def create_app(config_class=Config):
     setup_logging(app)
 
     # Initialize extensions
-    CORS(app, origins=app.config["CORS_ORIGINS"])
+    CORS(
+        app,
+        origins=app.config["CORS_ORIGINS"],
+        supports_credentials=True,
+        allow_headers=["Content-Type", "Authorization"],
+        methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    )
     jwt = JWTManager(app)
     limiter.init_app(app)
 

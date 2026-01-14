@@ -1,19 +1,20 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Title, Paper, Stack, SegmentedControl, Text, Card, Group, Button,
   ColorSwatch, useMantineTheme, NavLink, Grid, TextInput, PasswordInput,
-  Switch, Table, ActionIcon, Modal, Alert, Badge, Loader, Avatar
+  Switch, Table, ActionIcon, Modal, Alert, Badge, Loader, Avatar, FileButton
 } from '@mantine/core';
-import { IconPalette, IconBrush, IconSettings, IconUsers, IconUser, IconTrash, IconEdit, IconPlus } from '@tabler/icons-react';
+import { IconPalette, IconBrush, IconSettings, IconUsers, IconUser, IconTrash, IconEdit, IconPlus, IconUpload } from '@tabler/icons-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
-import { getUsers, createUser, updateUser, deleteUser, resetUserPassword } from '../services/api';
+import { getUsers, createUser, updateUser, deleteUser, resetUserPassword, getUploadUrl } from '../services/api';
 
 function Settings() {
   const [activeSection, setActiveSection] = useState('profile');
   const { currentTheme, switchTheme, availableThemes, pageAccents, updatePageAccent, resetAccents } = useTheme();
-  const { user, updateProfile, changePassword } = useAuth();
+  const { user, updateProfile, changePassword, uploadAvatar, deleteAvatar } = useAuth();
   const theme = useMantineTheme();
+  const resetFileRef = useRef(null);
 
   // Profile state
   const [profileForm, setProfileForm] = useState({
@@ -25,6 +26,8 @@ function Settings() {
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState(null);
   const [profileSuccess, setProfileSuccess] = useState(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarError, setAvatarError] = useState(null);
 
   // Password change state
   const [passwordForm, setPasswordForm] = useState({
@@ -102,6 +105,32 @@ function Settings() {
       setProfileError(err.userMessage || 'Failed to update profile');
     } finally {
       setProfileLoading(false);
+    }
+  };
+
+  const handleAvatarUpload = async (file) => {
+    if (!file) return;
+    setAvatarUploading(true);
+    setAvatarError(null);
+    const result = await uploadAvatar(file);
+    setAvatarUploading(false);
+    if (result.success) {
+      setProfileForm(prev => ({ ...prev, avatar_url: result.avatarUrl }));
+      resetFileRef.current?.();
+    } else {
+      setAvatarError(result.error);
+    }
+  };
+
+  const handleAvatarDelete = async () => {
+    setAvatarUploading(true);
+    setAvatarError(null);
+    const result = await deleteAvatar();
+    setAvatarUploading(false);
+    if (result.success) {
+      setProfileForm(prev => ({ ...prev, avatar_url: '' }));
+    } else {
+      setAvatarError(result.error);
     }
   };
 
@@ -424,20 +453,54 @@ function Settings() {
         <form onSubmit={handleProfileSubmit}>
           <Stack spacing="md">
             <Group align="flex-start">
-              <Avatar
-                src={profileForm.avatar_url}
-                size={80}
-                radius="md"
-                color="blue"
-              >
-                {user?.username?.charAt(0).toUpperCase()}
-              </Avatar>
+              <Stack spacing="xs" align="center">
+                <Avatar
+                  src={getUploadUrl(profileForm.avatar_url || user?.avatar_url)}
+                  size={80}
+                  radius="md"
+                  color="blue"
+                >
+                  {user?.username?.charAt(0).toUpperCase()}
+                </Avatar>
+                <Group spacing="xs">
+                  <FileButton
+                    resetRef={resetFileRef}
+                    onChange={handleAvatarUpload}
+                    accept="image/png,image/jpeg,image/gif,image/webp"
+                  >
+                    {(props) => (
+                      <Button
+                        {...props}
+                        size="xs"
+                        variant="light"
+                        loading={avatarUploading}
+                        leftSection={<IconUpload size={14} />}
+                      >
+                        Upload
+                      </Button>
+                    )}
+                  </FileButton>
+                  {(profileForm.avatar_url || user?.avatar_url) && (
+                    <Button
+                      size="xs"
+                      variant="subtle"
+                      color="red"
+                      onClick={handleAvatarDelete}
+                      loading={avatarUploading}
+                    >
+                      Remove
+                    </Button>
+                  )}
+                </Group>
+              </Stack>
               <div style={{ flex: 1 }}>
-                <Text size="sm" weight={500} mb={4}>Username</Text>
-                <Text size="sm" color="dimmed">{user?.username}</Text>
-                <Text size="xs" color="dimmed" mt={4}>Username cannot be changed</Text>
+                <Text size="sm" fw={500} mb={4}>Username</Text>
+                <Text size="sm" c="dimmed">{user?.username}</Text>
+                <Text size="xs" c="dimmed" mt={4}>Username cannot be changed</Text>
               </div>
             </Group>
+
+            {avatarError && <Alert color="red" mb="xs">{avatarError}</Alert>}
 
             <TextInput
               label="Display Name"
@@ -457,7 +520,8 @@ function Settings() {
 
             <TextInput
               label="Avatar URL"
-              placeholder="https://example.com/avatar.jpg"
+              placeholder="https://example.com/avatar.jpg (or upload above)"
+              description="You can enter a URL or upload an image file above"
               value={profileForm.avatar_url}
               onChange={(e) => setProfileForm({ ...profileForm, avatar_url: e.target.value })}
             />
@@ -562,7 +626,7 @@ function Settings() {
                 <Table.Tr key={u.id}>
                   <Table.Td>
                     <Group spacing="sm">
-                      <Avatar src={u.avatar_url} size={32} radius="xl" color="blue">
+                      <Avatar src={getUploadUrl(u.avatar_url)} size={32} radius="xl" color="blue">
                         {u.username?.charAt(0).toUpperCase()}
                       </Avatar>
                       <div>

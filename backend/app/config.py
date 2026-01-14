@@ -97,6 +97,9 @@ class Config:
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
     LOG_FILE = os.getenv("LOG_FILE", "app.log")
 
+    # File Uploads (max request size for avatar uploads)
+    MAX_CONTENT_LENGTH = 5 * 1024 * 1024  # 5 MB max upload size
+
 
 class DevelopmentConfig(Config):
     """Development configuration."""

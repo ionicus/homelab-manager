@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from flask import Blueprint, request
+from flask import Blueprint, Response, request
 from flask_jwt_extended import (
     create_access_token,
     get_jwt_identity,
@@ -21,6 +21,16 @@ from app.utils.errors import (
     success_response,
 )
 from app.utils.validation import validate_request
+
+
+# Allowed MIME types for avatar uploads
+ALLOWED_AVATAR_MIME_TYPES = {
+    "image/png",
+    "image/jpeg",
+    "image/gif",
+    "image/webp",
+}
+MAX_AVATAR_SIZE = 5 * 1024 * 1024  # 5 MB
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -177,6 +187,10 @@ def update_current_user():
             user.display_name = data.display_name
         if data.avatar_url is not None:
             user.avatar_url = data.avatar_url
+            # Clear uploaded avatar when setting external URL
+            if data.avatar_url:
+                user.avatar_data = None
+                user.avatar_mime_type = None
         if data.bio is not None:
             user.bio = data.bio
 
@@ -233,6 +247,147 @@ def change_password():
         db.commit()
 
         return success_response(message="Password changed successfully")
+
+
+@auth_bp.route("/me/avatar", methods=["POST"])
+@jwt_required()
+def upload_avatar():
+    """Upload avatar image for current user (stored in database).
+    ---
+    tags:
+      - Authentication
+    security:
+      - Bearer: []
+    consumes:
+      - multipart/form-data
+    parameters:
+      - name: avatar
+        in: formData
+        type: file
+        required: true
+        description: Avatar image file (PNG, JPG, GIF, WebP, max 5MB)
+    responses:
+      200:
+        description: Avatar uploaded successfully
+        schema:
+          type: object
+          properties:
+            avatar_url:
+              type: string
+              description: URL to the uploaded avatar
+      400:
+        description: Invalid file or no file provided
+      401:
+        description: Not authenticated
+    """
+    user_id = int(get_jwt_identity())
+
+    if "avatar" not in request.files:
+        raise ValidationError("No avatar file provided")
+
+    file = request.files["avatar"]
+    if file.filename == "":
+        raise ValidationError("No file selected")
+
+    # Validate MIME type
+    mime_type = file.content_type
+    if mime_type not in ALLOWED_AVATAR_MIME_TYPES:
+        raise ValidationError("Invalid file type. Allowed: PNG, JPG, GIF, WebP")
+
+    # Read file data
+    file_data = file.read()
+
+    # Validate file size
+    if len(file_data) > MAX_AVATAR_SIZE:
+        raise ValidationError("File too large. Maximum size is 5MB")
+
+    with DatabaseSession() as db:
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            raise NotFoundError("User", user_id)
+
+        # Store avatar in database
+        user.avatar_data = file_data
+        user.avatar_mime_type = mime_type
+        user.avatar_url = None  # Clear external URL when uploading
+
+        db.commit()
+        db.refresh(user)
+
+        return success_response({
+            "avatar_url": f"/api/auth/users/{user_id}/avatar",
+            "user": user.to_dict(include_email=True),
+        })
+
+
+@auth_bp.route("/me/avatar", methods=["DELETE"])
+@jwt_required()
+def delete_avatar():
+    """Delete avatar for current user.
+    ---
+    tags:
+      - Authentication
+    security:
+      - Bearer: []
+    responses:
+      200:
+        description: Avatar deleted successfully
+      401:
+        description: Not authenticated
+    """
+    user_id = int(get_jwt_identity())
+
+    with DatabaseSession() as db:
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            raise NotFoundError("User", user_id)
+
+        # Clear both uploaded and external avatar
+        user.avatar_data = None
+        user.avatar_mime_type = None
+        user.avatar_url = None
+
+        db.commit()
+        db.refresh(user)
+
+        return success_response({
+            "message": "Avatar deleted successfully",
+            "user": user.to_dict(include_email=True),
+        })
+
+
+@auth_bp.route("/users/<int:user_id>/avatar", methods=["GET"])
+def get_user_avatar(user_id: int):
+    """Get user's avatar image.
+    ---
+    tags:
+      - Users
+    parameters:
+      - name: user_id
+        in: path
+        type: integer
+        required: true
+    responses:
+      200:
+        description: Avatar image
+      404:
+        description: User or avatar not found
+    """
+    with DatabaseSession() as db:
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            raise NotFoundError("User", user_id)
+
+        if not user.avatar_data:
+            raise NotFoundError("Avatar", user_id)
+
+        return Response(
+            user.avatar_data,
+            mimetype=user.avatar_mime_type or "image/png",
+            headers={
+                "Cache-Control": "public, max-age=86400",  # Cache for 1 day
+            },
+        )
 
 
 # Admin-only user management routes

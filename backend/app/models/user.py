@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, Column, DateTime, Integer, String, Text
+from sqlalchemy import Boolean, Column, DateTime, Integer, LargeBinary, String, Text
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from app.database import Base
@@ -20,7 +20,9 @@ class User(Base):
 
     # Profile information
     display_name = Column(String(100), nullable=True)
-    avatar_url = Column(String(500), nullable=True)
+    avatar_url = Column(String(500), nullable=True)  # For external URLs
+    avatar_data = Column(LargeBinary, nullable=True)  # For uploaded images
+    avatar_mime_type = Column(String(50), nullable=True)  # e.g., "image/png"
     bio = Column(Text, nullable=True)
 
     # Permissions
@@ -48,11 +50,18 @@ class User(Base):
         Args:
             include_email: Whether to include email in response (for profile views)
         """
+        # Determine avatar URL: uploaded avatar takes precedence over external URL
+        if self.avatar_data:
+            avatar_url = f"/api/auth/users/{self.id}/avatar"
+        else:
+            avatar_url = self.avatar_url
+
         data = {
             "id": self.id,
             "username": self.username,
             "display_name": self.display_name or self.username,
-            "avatar_url": self.avatar_url,
+            "avatar_url": avatar_url,
+            "has_uploaded_avatar": self.avatar_data is not None,
             "bio": self.bio,
             "is_admin": self.is_admin,
             "is_active": self.is_active,

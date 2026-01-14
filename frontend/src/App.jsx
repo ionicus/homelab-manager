@@ -1,7 +1,8 @@
 import { BrowserRouter as Router, Routes, Route, Link, NavLink } from 'react-router-dom'
-import { MantineProvider, createTheme, Button, Group } from '@mantine/core'
+import { MantineProvider, createTheme, Button, Group, Avatar } from '@mantine/core'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ThemeProvider, useTheme } from './contexts/ThemeContext'
+import { getUploadUrl } from './services/api'
 import { themes } from './theme'
 import { components } from './theme/components'
 import ProtectedRoute from './components/ProtectedRoute'
@@ -42,8 +43,18 @@ function AppContent() {
                   <li><NavLink to="/automation">Automation</NavLink></li>
                   <li><NavLink to="/settings">Settings</NavLink></li>
                 </ul>
-                <Group className="nav-user">
-                  <span className="nav-username">{user.display_name || user.username}</span>
+                <Group className="nav-user" gap="xs">
+                  <Link to="/settings" className="nav-user-link">
+                    <Avatar
+                      src={getUploadUrl(user.avatar_url)}
+                      size={28}
+                      radius="xl"
+                      color="blue"
+                    >
+                      {user.username?.charAt(0).toUpperCase()}
+                    </Avatar>
+                  </Link>
+                  <Link to="/settings" className="nav-username">{user.display_name || user.username}</Link>
                   <Button size="xs" variant="subtle" onClick={logout}>Logout</Button>
                 </Group>
               </>

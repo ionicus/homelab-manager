@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useCallback } from 'react';
-import api from '../services/api';
+import api, { uploadAvatar as uploadAvatarApi, deleteAvatar as deleteAvatarApi } from '../services/api';
 
 const AuthContext = createContext(null);
 
@@ -103,6 +103,30 @@ export function AuthProvider({ children }) {
     }
   }, [token]);
 
+  const uploadAvatar = useCallback(async (file) => {
+    try {
+      const response = await uploadAvatarApi(file);
+      const updatedUser = response.data.user;
+      setUser(updatedUser);
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(updatedUser));
+      return { success: true, avatarUrl: response.data.avatar_url };
+    } catch (err) {
+      return { success: false, error: err.response?.data?.error || 'Failed to upload avatar' };
+    }
+  }, []);
+
+  const deleteAvatar = useCallback(async () => {
+    try {
+      const response = await deleteAvatarApi();
+      const updatedUser = response.data.user;
+      setUser(updatedUser);
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(updatedUser));
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err.response?.data?.error || 'Failed to delete avatar' };
+    }
+  }, []);
+
   return (
     <AuthContext.Provider value={{
       user,
@@ -116,6 +140,8 @@ export function AuthProvider({ children }) {
       updateProfile,
       changePassword,
       refreshUser,
+      uploadAvatar,
+      deleteAvatar,
     }}>
       {children}
     </AuthContext.Provider>

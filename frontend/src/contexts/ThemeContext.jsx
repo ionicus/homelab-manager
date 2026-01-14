@@ -62,9 +62,14 @@ export function ThemeProvider({ children }) {
       hasSyncedFromUser.current = true;
     }
 
-    // Reset sync flag when user logs out
-    if (!isAuthenticated) {
+    // Reset to defaults when user logs out
+    if (!isAuthenticated && hasSyncedFromUser.current) {
       hasSyncedFromUser.current = false;
+      // Clear user preferences and reset to defaults
+      setCurrentTheme(DEFAULT_THEME);
+      setPageAccents(DEFAULT_ACCENTS);
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(ACCENTS_STORAGE_KEY);
     }
   }, [isAuthenticated, user]);
 

@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Button, Group, Collapse } from '@mantine/core';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   getDevice,
   getDeviceServices,
@@ -23,50 +24,58 @@ import AutomationJobsList from '../components/AutomationJobsList';
 
 function DeviceDetail() {
   const { id } = useParams();
-  const [device, setDevice] = useState(null);
-  const [services, setServices] = useState([]);
-  const [metrics, setMetrics] = useState([]);
-  const [interfaces, setInterfaces] = useState([]);
-  const [automationJobs, setAutomationJobs] = useState([]);
+  const queryClient = useQueryClient();
   const [showInterfaceForm, setShowInterfaceForm] = useState(false);
   const [editingInterface, setEditingInterface] = useState(null);
   const [showServiceForm, setShowServiceForm] = useState(false);
   const [automationExpanded, setAutomationExpanded] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
-  useEffect(() => {
-    fetchDeviceData();
-  }, [id]);
+  // Device query
+  const {
+    data: device,
+    isLoading: deviceLoading,
+    error: deviceError,
+    refetch: refetchDevice,
+  } = useQuery({
+    queryKey: ['device', id],
+    queryFn: async () => {
+      const res = await getDevice(id);
+      return res.data || res;
+    },
+  });
 
-  const fetchDeviceData = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [deviceRes, servicesRes, metricsRes, interfacesRes, jobsRes] = await Promise.all([
-        getDevice(id),
-        getDeviceServices(id),
-        getDeviceMetrics(id, 50),
-        getDeviceInterfaces(id),
-        getAutomationJobs(id),
-      ]);
+  // Services query
+  const { data: services = [] } = useQuery({
+    queryKey: ['device', id, 'services'],
+    queryFn: async () => safeGetArray(await getDeviceServices(id)),
+    enabled: !!device,
+  });
 
-      setDevice(deviceRes.data || deviceRes);
-      setServices(safeGetArray(servicesRes));
-      setMetrics(safeGetArray(metricsRes));
-      setInterfaces(safeGetArray(interfacesRes));
-      setAutomationJobs(safeGetArray(jobsRes));
-      setLoading(false);
-    } catch (err) {
-      setError(err);
-      setLoading(false);
-    }
-  };
+  // Metrics query
+  const { data: metrics = [] } = useQuery({
+    queryKey: ['device', id, 'metrics'],
+    queryFn: async () => safeGetArray(await getDeviceMetrics(id, 50)),
+    enabled: !!device,
+  });
 
-  const handleInterfaceUpdate = async () => {
+  // Interfaces query
+  const { data: interfaces = [] } = useQuery({
+    queryKey: ['device', id, 'interfaces'],
+    queryFn: async () => safeGetArray(await getDeviceInterfaces(id)),
+    enabled: !!device,
+  });
+
+  // Automation jobs query
+  const { data: automationJobs = [] } = useQuery({
+    queryKey: ['device', id, 'jobs'],
+    queryFn: async () => safeGetArray(await getAutomationJobs(id)),
+    enabled: !!device,
+  });
+
+  const handleInterfaceUpdate = () => {
     setShowInterfaceForm(false);
     setEditingInterface(null);
-    await fetchDeviceData();
+    queryClient.invalidateQueries({ queryKey: ['device', id, 'interfaces'] });
   };
 
   const handleEditInterface = (iface) => {
@@ -79,18 +88,18 @@ function DeviceDetail() {
     setEditingInterface(null);
   };
 
-  const handleServiceUpdate = async () => {
+  const handleServiceUpdate = () => {
     setShowServiceForm(false);
-    await fetchDeviceData();
+    queryClient.invalidateQueries({ queryKey: ['device', id, 'services'] });
   };
 
-  const handlePlaybookExecute = async () => {
-    await fetchDeviceData();
+  const handlePlaybookExecute = () => {
+    queryClient.invalidateQueries({ queryKey: ['device', id, 'jobs'] });
   };
 
-  if (loading) return <LoadingSkeleton type="device-detail" />;
-  if (error) return <ErrorDisplay error={error} onRetry={fetchDeviceData} />;
-  if (!device) return <ErrorDisplay error="Device not found" onRetry={fetchDeviceData} />;
+  if (deviceLoading) return <LoadingSkeleton type="device-detail" />;
+  if (deviceError) return <ErrorDisplay error={deviceError} onRetry={refetchDevice} />;
+  if (!device) return <ErrorDisplay error="Device not found" onRetry={refetchDevice} />;
 
   const hasMetadata = device.metadata && Object.keys(device.metadata).length > 0;
 
@@ -178,7 +187,7 @@ function DeviceDetail() {
           <InterfaceList
             interfaces={interfaces}
             deviceId={id}
-            onUpdate={fetchDeviceData}
+            onUpdate={() => queryClient.invalidateQueries({ queryKey: ['device', id, 'interfaces'] })}
             onEdit={handleEditInterface}
           />
         </div>
@@ -205,7 +214,7 @@ function DeviceDetail() {
           <ServiceList
             services={services}
             deviceId={id}
-            onUpdate={fetchDeviceData}
+            onUpdate={() => queryClient.invalidateQueries({ queryKey: ['device', id, 'services'] })}
           />
         </div>
 

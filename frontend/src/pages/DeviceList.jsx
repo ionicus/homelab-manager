@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@mantine/core';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getDevices, deleteDevice } from '../services/api';
 import { safeGetArray } from '../utils/validation';
 import ErrorDisplay from '../components/ErrorDisplay';
@@ -8,42 +8,39 @@ import LoadingSkeleton from '../components/LoadingSkeleton';
 import StatusBadge from '../components/StatusBadge';
 
 function DeviceList() {
-  const [devices, setDevices] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    fetchDevices();
-  }, []);
-
-  const fetchDevices = async () => {
-    setLoading(true);
-    setError(null);
-    try {
+  const {
+    data: devices = [],
+    isLoading,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: ['devices'],
+    queryFn: async () => {
       const response = await getDevices();
-      const devicesData = safeGetArray(response);
-      setDevices(devicesData);
-      setLoading(false);
-    } catch (err) {
-      setError(err);
-      setLoading(false);
-    }
-  };
+      return safeGetArray(response);
+    },
+  });
 
-  const handleDelete = async (id) => {
+  const deleteMutation = useMutation({
+    mutationFn: deleteDevice,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['devices'] });
+    },
+    onError: (err) => {
+      alert(err.userMessage || 'Failed to delete device');
+    },
+  });
+
+  const handleDelete = (id) => {
     if (window.confirm('Are you sure you want to delete this device?')) {
-      try {
-        await deleteDevice(id);
-        fetchDevices();
-      } catch (err) {
-        const message = err.userMessage || 'Failed to delete device';
-        alert(message);
-      }
+      deleteMutation.mutate(id);
     }
   };
 
-  if (loading) return <LoadingSkeleton type="device-list" count={6} />;
-  if (error) return <ErrorDisplay error={error} onRetry={fetchDevices} />;
+  if (isLoading) return <LoadingSkeleton type="device-list" count={6} />;
+  if (error) return <ErrorDisplay error={error} onRetry={refetch} />;
 
   const activeDevices = devices.filter(d => d.status === 'active').length;
   const maintenanceDevices = devices.filter(d => d.status === 'maintenance').length;

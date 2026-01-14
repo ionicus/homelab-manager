@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button, Select, Group } from '@mantine/core';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getAutomationJobs, getDevices } from '../services/api';
 import { safeGetArray } from '../utils/validation';
 import { formatShortTimestamp } from '../utils/formatting';
@@ -11,37 +12,29 @@ import AutomationForm from '../components/AutomationForm';
 
 function Automation() {
   const navigate = useNavigate();
-  const [jobs, setJobs] = useState([]);
-  const [devices, setDevices] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const queryClient = useQueryClient();
   const [filterDevice, setFilterDevice] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [showDeviceSelector, setShowDeviceSelector] = useState(false);
   const [showAutomationForm, setShowAutomationForm] = useState(false);
   const [selectedDeviceId, setSelectedDeviceId] = useState(null);
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  // Jobs query
+  const {
+    data: jobs = [],
+    isLoading: jobsLoading,
+    error: jobsError,
+    refetch: refetchJobs,
+  } = useQuery({
+    queryKey: ['automation-jobs'],
+    queryFn: async () => safeGetArray(await getAutomationJobs()),
+  });
 
-  const fetchData = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [jobsRes, devicesRes] = await Promise.all([
-        getAutomationJobs(),
-        getDevices(),
-      ]);
-
-      setJobs(safeGetArray(jobsRes));
-      setDevices(safeGetArray(devicesRes));
-      setLoading(false);
-    } catch (err) {
-      setError(err);
-      setLoading(false);
-    }
-  };
+  // Devices query
+  const { data: devices = [] } = useQuery({
+    queryKey: ['devices'],
+    queryFn: async () => safeGetArray(await getDevices()),
+  });
 
   const handleNewJobClick = () => {
     setShowDeviceSelector(true);
@@ -62,7 +55,7 @@ function Automation() {
   const handleAutomationSuccess = () => {
     setShowAutomationForm(false);
     setSelectedDeviceId(null);
-    fetchData();
+    queryClient.invalidateQueries({ queryKey: ['automation-jobs'] });
   };
 
   const handleAutomationCancel = () => {
@@ -70,8 +63,8 @@ function Automation() {
     setSelectedDeviceId(null);
   };
 
-  if (loading) return <LoadingSkeleton type="list" />;
-  if (error) return <ErrorDisplay error={error} onRetry={fetchData} />;
+  if (jobsLoading) return <LoadingSkeleton type="list" />;
+  if (jobsError) return <ErrorDisplay error={jobsError} onRetry={refetchJobs} />;
 
   // Apply filters
   const filteredJobs = jobs.filter((job) => {

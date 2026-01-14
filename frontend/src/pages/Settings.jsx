@@ -5,6 +5,7 @@ import {
   Switch, Table, ActionIcon, Modal, Alert, Badge, Loader, Avatar, FileButton
 } from '@mantine/core';
 import { IconPalette, IconBrush, IconSettings, IconUsers, IconUser, IconTrash, IconEdit, IconPlus, IconUpload } from '@tabler/icons-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { getUsers, createUser, updateUser, deleteUser, resetUserPassword, getUploadUrl } from '../services/api';
@@ -40,9 +41,7 @@ function Settings() {
   const [passwordSuccess, setPasswordSuccess] = useState(null);
 
   // Users management state (admin only)
-  const [users, setUsers] = useState([]);
-  const [usersLoading, setUsersLoading] = useState(false);
-  const [usersError, setUsersError] = useState(null);
+  const queryClient = useQueryClient();
   const [userModalOpen, setUserModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [userForm, setUserForm] = useState({
@@ -52,7 +51,6 @@ function Settings() {
     password: '',
     is_admin: false,
   });
-  const [userFormLoading, setUserFormLoading] = useState(false);
   const [userFormError, setUserFormError] = useState(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState(null);
@@ -72,25 +70,57 @@ function Settings() {
     }
   }, [user]);
 
-  // Fetch users when admin views users section
-  useEffect(() => {
-    if (activeSection === 'users' && user?.is_admin) {
-      fetchUsers();
-    }
-  }, [activeSection, user?.is_admin]);
-
-  const fetchUsers = async () => {
-    setUsersLoading(true);
-    setUsersError(null);
-    try {
+  // Fetch users with TanStack Query (only when admin views users section)
+  const {
+    data: usersData,
+    isLoading: usersLoading,
+    error: usersQueryError,
+  } = useQuery({
+    queryKey: ['users'],
+    queryFn: async () => {
       const response = await getUsers();
-      setUsers(response.data.users || response.data);
-    } catch (err) {
-      setUsersError(err.userMessage || 'Failed to load users');
-    } finally {
-      setUsersLoading(false);
-    }
-  };
+      return response.data.users || response.data;
+    },
+    enabled: activeSection === 'users' && user?.is_admin,
+  });
+
+  const users = usersData || [];
+  const usersError = usersQueryError?.userMessage || (usersQueryError ? 'Failed to load users' : null);
+
+  // Mutations for user CRUD operations
+  const createUserMutation = useMutation({
+    mutationFn: createUser,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      setUserModalOpen(false);
+    },
+  });
+
+  const updateUserMutation = useMutation({
+    mutationFn: ({ id, data }) => updateUser(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      setUserModalOpen(false);
+    },
+  });
+
+  const deleteUserMutation = useMutation({
+    mutationFn: deleteUser,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      setDeleteConfirmOpen(false);
+      setUserToDelete(null);
+    },
+  });
+
+  const resetPasswordMutation = useMutation({
+    mutationFn: ({ id, password }) => resetUserPassword(id, password),
+    onSuccess: () => {
+      setResetPasswordOpen(false);
+      setResetPasswordUser(null);
+      setNewPassword('');
+    },
+  });
 
   // Profile handlers
   const handleProfileSubmit = async (e) => {
@@ -175,53 +205,37 @@ function Settings() {
     setUserModalOpen(true);
   };
 
-  const handleUserFormSubmit = async (e) => {
+  const handleUserFormSubmit = (e) => {
     e.preventDefault();
-    setUserFormLoading(true);
     setUserFormError(null);
-    try {
-      if (editingUser) {
-        const updateData = {
-          email: userForm.email,
-          display_name: userForm.display_name,
-          is_admin: userForm.is_admin,
-        };
-        await updateUser(editingUser.id, updateData);
-      } else {
-        await createUser(userForm);
-      }
-      setUserModalOpen(false);
-      fetchUsers();
-    } catch (err) {
-      setUserFormError(err.userMessage || 'Failed to save user');
-    } finally {
-      setUserFormLoading(false);
+    if (editingUser) {
+      const updateData = {
+        email: userForm.email,
+        display_name: userForm.display_name,
+        is_admin: userForm.is_admin,
+      };
+      updateUserMutation.mutate(
+        { id: editingUser.id, data: updateData },
+        { onError: (err) => setUserFormError(err.userMessage || 'Failed to save user') }
+      );
+    } else {
+      createUserMutation.mutate(userForm, {
+        onError: (err) => setUserFormError(err.userMessage || 'Failed to save user'),
+      });
     }
   };
 
-  const handleDeleteUser = async () => {
+  const handleDeleteUser = () => {
     if (!userToDelete) return;
-    try {
-      await deleteUser(userToDelete.id);
-      setDeleteConfirmOpen(false);
-      setUserToDelete(null);
-      fetchUsers();
-    } catch (err) {
-      setUsersError(err.userMessage || 'Failed to delete user');
-    }
+    deleteUserMutation.mutate(userToDelete.id);
   };
 
-  const handleResetPassword = async () => {
+  const handleResetPassword = () => {
     if (!resetPasswordUser || !newPassword) return;
-    try {
-      await resetUserPassword(resetPasswordUser.id, newPassword);
-      setResetPasswordOpen(false);
-      setResetPasswordUser(null);
-      setNewPassword('');
-    } catch (err) {
-      setUsersError(err.userMessage || 'Failed to reset password');
-    }
+    resetPasswordMutation.mutate({ id: resetPasswordUser.id, password: newPassword });
   };
+
+  const userFormLoading = createUserMutation.isPending || updateUserMutation.isPending;
 
   const baseSections = [
     { id: 'profile', label: 'Profile', icon: IconUser, description: 'Your account' },

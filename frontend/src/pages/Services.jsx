@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button, Group, Select } from '@mantine/core';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getServices, getDevices, deleteService, updateServiceStatus } from '../services/api';
 import { safeGetArray } from '../utils/validation';
 import ErrorDisplay from '../components/ErrorDisplay';
@@ -10,64 +11,61 @@ import ServiceForm from '../components/ServiceForm';
 
 function Services() {
   const navigate = useNavigate();
-  const [services, setServices] = useState([]);
-  const [devices, setDevices] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const queryClient = useQueryClient();
   const [showServiceForm, setShowServiceForm] = useState(false);
   const [showDeviceSelector, setShowDeviceSelector] = useState(false);
   const [selectedDeviceId, setSelectedDeviceId] = useState(null);
   const [filterDevice, setFilterDevice] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
-  const [updatingStatus, setUpdatingStatus] = useState({});
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  // Services query
+  const {
+    data: services = [],
+    isLoading: servicesLoading,
+    error: servicesError,
+    refetch: refetchServices,
+  } = useQuery({
+    queryKey: ['services'],
+    queryFn: async () => safeGetArray(await getServices()),
+  });
 
-  const fetchData = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [servicesRes, devicesRes] = await Promise.all([
-        getServices(),
-        getDevices(),
-      ]);
+  // Devices query (for the device selector and names)
+  const { data: devices = [] } = useQuery({
+    queryKey: ['devices'],
+    queryFn: async () => safeGetArray(await getDevices()),
+  });
 
-      setServices(safeGetArray(servicesRes));
-      setDevices(safeGetArray(devicesRes));
-      setLoading(false);
-    } catch (err) {
-      setError(err);
-      setLoading(false);
-    }
-  };
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: deleteService,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['services'] });
+    },
+    onError: (err) => {
+      alert(err.userMessage || 'Failed to delete service');
+    },
+  });
 
-  const handleDelete = async (serviceId, serviceName) => {
+  // Status update mutation
+  const statusMutation = useMutation({
+    mutationFn: ({ id, status }) => updateServiceStatus(id, status),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['services'] });
+    },
+    onError: (err) => {
+      alert(err.userMessage || 'Failed to update service status');
+    },
+  });
+
+  const handleDelete = (serviceId, serviceName) => {
     if (window.confirm(`Are you sure you want to delete service "${serviceName}"?`)) {
-      try {
-        await deleteService(serviceId);
-        fetchData();
-      } catch (err) {
-        const message = err.userMessage || 'Failed to delete service';
-        alert(message);
-      }
+      deleteMutation.mutate(serviceId);
     }
   };
 
-  const handleStatusToggle = async (serviceId, currentStatus) => {
+  const handleStatusToggle = (serviceId, currentStatus) => {
     const newStatus = currentStatus === 'running' ? 'stopped' : 'running';
-    setUpdatingStatus(prev => ({ ...prev, [serviceId]: true }));
-
-    try {
-      await updateServiceStatus(serviceId, newStatus);
-      fetchData();
-    } catch (err) {
-      const message = err.userMessage || 'Failed to update service status';
-      alert(message);
-    } finally {
-      setUpdatingStatus(prev => ({ ...prev, [serviceId]: false }));
-    }
+    statusMutation.mutate({ id: serviceId, status: newStatus });
   };
 
   const handleAddServiceClick = () => {
@@ -89,7 +87,7 @@ function Services() {
   const handleServiceUpdate = () => {
     setShowServiceForm(false);
     setSelectedDeviceId(null);
-    fetchData();
+    queryClient.invalidateQueries({ queryKey: ['services'] });
   };
 
   const getDeviceName = (deviceId) => {
@@ -113,8 +111,8 @@ function Services() {
     error: services.filter(s => s.status === 'error').length,
   };
 
-  if (loading) return <LoadingSkeleton type="device-list" count={6} />;
-  if (error) return <ErrorDisplay error={error} onRetry={fetchData} />;
+  if (servicesLoading) return <LoadingSkeleton type="device-list" count={6} />;
+  if (servicesError) return <ErrorDisplay error={servicesError} onRetry={refetchServices} />;
 
   return (
     <div className="services-page">
@@ -281,17 +279,16 @@ function Services() {
                   size="xs"
                   color={service.status === 'running' ? 'yellow' : 'green'}
                   onClick={() => handleStatusToggle(service.id, service.status)}
-                  disabled={updatingStatus[service.id]}
+                  disabled={statusMutation.isPending}
                   title={service.status === 'running' ? 'Stop service' : 'Start service'}
                 >
-                  {updatingStatus[service.id] ? '...' : (
-                    service.status === 'running' ? 'Stop' : 'Start'
-                  )}
+                  {service.status === 'running' ? 'Stop' : 'Start'}
                 </Button>
                 <Button
                   size="xs"
                   color="red"
                   onClick={() => handleDelete(service.id, service.name)}
+                  disabled={deleteMutation.isPending}
                   title="Delete service"
                 >
                   Delete

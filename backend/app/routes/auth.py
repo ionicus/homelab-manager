@@ -1,6 +1,7 @@
 """Authentication routes."""
 
 from datetime import datetime
+from io import BytesIO
 
 from flask import Blueprint, Response, request
 from flask_jwt_extended import (
@@ -8,6 +9,7 @@ from flask_jwt_extended import (
     get_jwt_identity,
     jwt_required,
 )
+from PIL import Image
 
 from app.extensions import limiter
 from app.models import User
@@ -31,6 +33,37 @@ ALLOWED_AVATAR_MIME_TYPES = {
     "image/webp",
 }
 MAX_AVATAR_SIZE = 5 * 1024 * 1024  # 5 MB
+AVATAR_MAX_DIMENSION = 256  # Max width/height for avatars
+
+
+def process_avatar_image(file_data: bytes) -> tuple[bytes, str]:
+    """Process and optimize avatar image.
+
+    Resizes to max 256x256 while preserving aspect ratio,
+    converts to PNG for consistency, and optimizes file size.
+
+    Returns:
+        Tuple of (processed_image_bytes, mime_type)
+    """
+    img = Image.open(BytesIO(file_data))
+
+    # Handle different image modes
+    if img.mode in ("RGBA", "LA", "P"):
+        # Keep alpha channel for transparency
+        img = img.convert("RGBA")
+    else:
+        img = img.convert("RGB")
+
+    # Resize if larger than max dimension
+    if img.width > AVATAR_MAX_DIMENSION or img.height > AVATAR_MAX_DIMENSION:
+        img.thumbnail((AVATAR_MAX_DIMENSION, AVATAR_MAX_DIMENSION), Image.Resampling.LANCZOS)
+
+    # Save as PNG with optimization
+    output = BytesIO()
+    img.save(output, format="PNG", optimize=True)
+
+    return output.getvalue(), "image/png"
+
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -301,14 +334,20 @@ def upload_avatar():
     if len(file_data) > MAX_AVATAR_SIZE:
         raise ValidationError("File too large. Maximum size is 5MB")
 
+    # Process image: resize and optimize
+    try:
+        processed_data, processed_mime = process_avatar_image(file_data)
+    except Exception:
+        raise ValidationError("Invalid image file")
+
     with DatabaseSession() as db:
         user = db.query(User).filter(User.id == user_id).first()
         if not user:
             raise NotFoundError("User", user_id)
 
-        # Store avatar in database
-        user.avatar_data = file_data
-        user.avatar_mime_type = mime_type
+        # Store processed avatar in database
+        user.avatar_data = processed_data
+        user.avatar_mime_type = processed_mime
         user.avatar_url = None  # Clear external URL when uploading
 
         db.commit()

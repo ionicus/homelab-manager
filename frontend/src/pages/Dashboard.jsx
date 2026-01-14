@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@mantine/core';
+import { useQuery } from '@tanstack/react-query';
 import { getDevices } from '../services/api';
 import { safeGetArray } from '../utils/validation';
 import ErrorDisplay from '../components/ErrorDisplay';
@@ -8,30 +8,18 @@ import LoadingSkeleton from '../components/LoadingSkeleton';
 import StatusBadge from '../components/StatusBadge';
 
 function Dashboard() {
-  const [devices, setDevices] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const {
+    data: devices = [],
+    isLoading,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: ['devices'],
+    queryFn: async () => safeGetArray(await getDevices()),
+  });
 
-  useEffect(() => {
-    fetchDevices();
-  }, []);
-
-  const fetchDevices = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await getDevices();
-      const devicesData = safeGetArray(response);
-      setDevices(devicesData);
-      setLoading(false);
-    } catch (err) {
-      setError(err);
-      setLoading(false);
-    }
-  };
-
-  if (loading) return <LoadingSkeleton type="dashboard" />;
-  if (error) return <ErrorDisplay error={error} onRetry={fetchDevices} />;
+  if (isLoading) return <LoadingSkeleton type="dashboard" />;
+  if (error) return <ErrorDisplay error={error} onRetry={refetch} />;
 
   const activeDevices = devices.filter(d => d.status === 'active').length;
   const maintenanceDevices = devices.filter(d => d.status === 'maintenance').length;

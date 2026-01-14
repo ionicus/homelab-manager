@@ -76,7 +76,9 @@ export function AuthProvider({ children }) {
       localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(updatedUser));
       return { success: true, user: updatedUser };
     } catch (err) {
-      return { success: false, error: err.response?.data?.error || 'Failed to update profile' };
+      const error = new Error(err.response?.data?.error || 'Failed to update profile');
+      error.userMessage = error.message;
+      throw error;
     }
   }, []);
 
@@ -88,7 +90,9 @@ export function AuthProvider({ children }) {
       });
       return { success: true };
     } catch (err) {
-      return { success: false, error: err.response?.data?.error || 'Failed to change password' };
+      const error = new Error(err.response?.data?.error || 'Failed to change password');
+      error.userMessage = error.message;
+      throw error;
     }
   }, []);
 

@@ -1,12 +1,15 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import { themes, defaultTheme } from '../theme';
+import { themes } from '../theme';
+import { useAuth } from './AuthContext';
+import { updatePreferences } from '../services/api';
 
 const ThemeContext = createContext();
 
 const STORAGE_KEY = 'homelab-theme';
 const ACCENTS_STORAGE_KEY = 'homelab-accents';
 
+const DEFAULT_THEME = 'dark';
 const DEFAULT_ACCENTS = {
   dashboard: 'violet',
   devices: 'blue',
@@ -15,14 +18,20 @@ const DEFAULT_ACCENTS = {
 };
 
 export function ThemeProvider({ children }) {
+  const { user, isAuthenticated } = useAuth();
+  const [currentPage, setCurrentPage] = useState('dashboard');
+  const location = useLocation();
+
+  // Track if we've synced from user to avoid repeated syncs
+  const hasSyncedFromUser = useRef(false);
+
+  // Initialize theme from localStorage (for quick load) or defaults
   const [currentTheme, setCurrentTheme] = useState(() => {
-    // Load theme from localStorage or use default
     const saved = localStorage.getItem(STORAGE_KEY);
-    return saved && themes[saved] ? saved : defaultTheme;
+    return saved && themes[saved] ? saved : DEFAULT_THEME;
   });
 
   const [pageAccents, setPageAccents] = useState(() => {
-    // Load custom accents from localStorage or use defaults
     const saved = localStorage.getItem(ACCENTS_STORAGE_KEY);
     if (saved) {
       try {
@@ -34,8 +43,30 @@ export function ThemeProvider({ children }) {
     return DEFAULT_ACCENTS;
   });
 
-  const [currentPage, setCurrentPage] = useState('dashboard');
-  const location = useLocation();
+  // Sync from user preferences when authenticated
+  useEffect(() => {
+    if (isAuthenticated && user && !hasSyncedFromUser.current) {
+      // Load user's theme preference
+      if (user.theme_preference && themes[user.theme_preference]) {
+        setCurrentTheme(user.theme_preference);
+        localStorage.setItem(STORAGE_KEY, user.theme_preference);
+      }
+
+      // Load user's page accents
+      if (user.page_accents && typeof user.page_accents === 'object') {
+        const mergedAccents = { ...DEFAULT_ACCENTS, ...user.page_accents };
+        setPageAccents(mergedAccents);
+        localStorage.setItem(ACCENTS_STORAGE_KEY, JSON.stringify(mergedAccents));
+      }
+
+      hasSyncedFromUser.current = true;
+    }
+
+    // Reset sync flag when user logs out
+    if (!isAuthenticated) {
+      hasSyncedFromUser.current = false;
+    }
+  }, [isAuthenticated, user]);
 
   // Detect current page from route
   useEffect(() => {
@@ -51,15 +82,13 @@ export function ThemeProvider({ children }) {
     }
   }, [location]);
 
-  // Set theme attributes for CSS customization when theme changes
+  // Set theme attributes for CSS customization
   useEffect(() => {
     const themeConfig = themes[currentTheme];
     const colorScheme = themeConfig?.colorScheme || 'dark';
 
-    // Set Mantine's color scheme attribute on the root element
     document.documentElement.setAttribute('data-mantine-color-scheme', colorScheme);
 
-    // Set midnight theme attribute for additional CSS customization
     if (currentTheme === 'midnight') {
       document.body.setAttribute('data-midnight-theme', 'true');
     } else {
@@ -67,32 +96,56 @@ export function ThemeProvider({ children }) {
     }
   }, [currentTheme]);
 
-  // Persist theme to localStorage
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, currentTheme);
-  }, [currentTheme]);
+  // Save preferences to backend (debounced)
+  const saveToBackend = useCallback(async (themePreference, accents) => {
+    if (!isAuthenticated) return;
 
-  // Persist accents to localStorage
-  useEffect(() => {
-    localStorage.setItem(ACCENTS_STORAGE_KEY, JSON.stringify(pageAccents));
-  }, [pageAccents]);
+    try {
+      await updatePreferences({
+        theme_preference: themePreference,
+        page_accents: accents,
+      });
+    } catch (err) {
+      // Silently fail - preferences are still saved to localStorage
+      console.warn('Failed to save preferences to backend:', err);
+    }
+  }, [isAuthenticated]);
 
-  const switchTheme = (themeName) => {
+  const switchTheme = useCallback((themeName) => {
     if (themes[themeName]) {
       setCurrentTheme(themeName);
+      localStorage.setItem(STORAGE_KEY, themeName);
+
+      // Save to backend if authenticated
+      if (isAuthenticated) {
+        saveToBackend(themeName, pageAccents);
+      }
     }
-  };
+  }, [isAuthenticated, pageAccents, saveToBackend]);
 
-  const updatePageAccent = (page, color) => {
-    setPageAccents(prev => ({
-      ...prev,
-      [page]: color,
-    }));
-  };
+  const updatePageAccent = useCallback((page, color) => {
+    setPageAccents(prev => {
+      const newAccents = { ...prev, [page]: color };
+      localStorage.setItem(ACCENTS_STORAGE_KEY, JSON.stringify(newAccents));
 
-  const resetAccents = () => {
+      // Save to backend if authenticated
+      if (isAuthenticated) {
+        saveToBackend(currentTheme, newAccents);
+      }
+
+      return newAccents;
+    });
+  }, [isAuthenticated, currentTheme, saveToBackend]);
+
+  const resetAccents = useCallback(() => {
     setPageAccents(DEFAULT_ACCENTS);
-  };
+    localStorage.setItem(ACCENTS_STORAGE_KEY, JSON.stringify(DEFAULT_ACCENTS));
+
+    // Save to backend if authenticated
+    if (isAuthenticated) {
+      saveToBackend(currentTheme, DEFAULT_ACCENTS);
+    }
+  }, [isAuthenticated, currentTheme, saveToBackend]);
 
   const value = {
     currentTheme,

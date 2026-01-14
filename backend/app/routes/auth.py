@@ -13,7 +13,7 @@ from PIL import Image
 
 from app.extensions import limiter
 from app.models import User
-from app.schemas.auth import LoginRequest, PasswordChange, UserCreate, UserUpdate
+from app.schemas.auth import LoginRequest, PasswordChange, ThemePreferences, UserCreate, UserUpdate
 from app.utils.audit import log_login_failure, log_login_success
 from app.utils.errors import (
     ConflictError,
@@ -280,6 +280,54 @@ def change_password():
         db.commit()
 
         return success_response(message="Password changed successfully")
+
+
+@auth_bp.route("/me/preferences", methods=["PUT"])
+@jwt_required()
+@validate_request(ThemePreferences)
+def update_preferences():
+    """Update current user's theme preferences.
+    ---
+    tags:
+      - Authentication
+    security:
+      - Bearer: []
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          properties:
+            theme_preference:
+              type: string
+              enum: [dark, light, midnight]
+            page_accents:
+              type: object
+              description: Page-specific accent colors
+    responses:
+      200:
+        description: Preferences updated
+      401:
+        description: Not authenticated
+    """
+    user_id = int(get_jwt_identity())
+    data = request.validated_data
+
+    with DatabaseSession() as db:
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            raise NotFoundError("User", user_id)
+
+        if data.theme_preference is not None:
+            user.theme_preference = data.theme_preference
+        if data.page_accents is not None:
+            user.page_accents = data.page_accents
+
+        db.commit()
+        db.refresh(user)
+
+        return success_response(user.to_dict(include_email=True))
 
 
 @auth_bp.route("/me/avatar", methods=["POST"])

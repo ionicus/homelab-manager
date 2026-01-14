@@ -107,3 +107,41 @@ class UserResponse(BaseModel):
     is_active: bool
     created_at: Optional[str] = None
     last_login: Optional[str] = None
+
+
+class ThemePreferences(BaseModel):
+    """Schema for updating user theme preferences."""
+
+    theme_preference: Optional[str] = Field(
+        default=None, description="Theme name (dark, light, midnight)"
+    )
+    page_accents: Optional[dict] = Field(
+        default=None, description="Page-specific accent colors"
+    )
+
+    @field_validator("theme_preference")
+    @classmethod
+    def validate_theme(cls, v: Optional[str]) -> Optional[str]:
+        """Validate theme is one of the allowed values."""
+        if v is not None:
+            allowed_themes = {"dark", "light", "midnight"}
+            if v not in allowed_themes:
+                raise ValueError(f"Theme must be one of: {', '.join(allowed_themes)}")
+        return v
+
+    @field_validator("page_accents")
+    @classmethod
+    def validate_accents(cls, v: Optional[dict]) -> Optional[dict]:
+        """Validate page accents have valid structure."""
+        if v is not None:
+            allowed_pages = {"dashboard", "devices", "services", "automation"}
+            allowed_colors = {
+                "red", "pink", "grape", "violet", "indigo", "blue", "cyan",
+                "teal", "green", "lime", "yellow", "orange", "purple"
+            }
+            for page, color in v.items():
+                if page not in allowed_pages:
+                    raise ValueError(f"Invalid page: {page}")
+                if color not in allowed_colors:
+                    raise ValueError(f"Invalid color: {color}")
+        return v

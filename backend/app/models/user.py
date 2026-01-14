@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, Column, DateTime, Integer, LargeBinary, String, Text
+from sqlalchemy import Boolean, Column, DateTime, Integer, JSON, LargeBinary, String, Text
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from app.database import Base
@@ -24,6 +24,10 @@ class User(Base):
     avatar_data = Column(LargeBinary, nullable=True)  # For uploaded images
     avatar_mime_type = Column(String(50), nullable=True)  # e.g., "image/png"
     bio = Column(Text, nullable=True)
+
+    # Theme preferences
+    theme_preference = Column(String(50), default="dark", nullable=False)
+    page_accents = Column(JSON, nullable=True)  # {"dashboard": "violet", "devices": "blue", ...}
 
     # Permissions
     is_admin = Column(Boolean, default=False, nullable=False)
@@ -67,6 +71,8 @@ class User(Base):
             "is_active": self.is_active,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "last_login": self.last_login.isoformat() if self.last_login else None,
+            "theme_preference": self.theme_preference,
+            "page_accents": self.page_accents,
         }
         if include_email:
             data["email"] = self.email

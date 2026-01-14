@@ -168,6 +168,7 @@ export const uploadAvatar = (file) => {
   });
 };
 export const deleteAvatar = () => api.delete('/auth/me/avatar');
+export const updatePreferences = (data) => api.put('/auth/me/preferences', data);
 
 // User Management (admin only)
 export const getUsers = () => api.get('/auth/users');

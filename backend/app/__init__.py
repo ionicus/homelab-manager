@@ -1,11 +1,13 @@
 """Homelab Manager Flask Application."""
 
 import logging
+import sys
+from logging.handlers import RotatingFileHandler
 
 from flasgger import Swagger
 from flask import Flask, jsonify
 from flask_cors import CORS
-from flask_jwt_extended import JWTManager
+from flask_jwt_extended import JWTManager, get_jwt
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.config import Config
@@ -13,6 +15,52 @@ from app.extensions import limiter
 from app.utils.errors import APIError, handle_database_exception
 
 logger = logging.getLogger(__name__)
+
+
+def setup_logging(app):
+    """Configure application logging."""
+    log_level = getattr(logging, app.config.get("LOG_LEVEL", "INFO").upper(), logging.INFO)
+    log_file = app.config.get("LOG_FILE", "app.log")
+
+    # Create formatter
+    formatter = logging.Formatter(
+        "[%(asctime)s] %(levelname)s in %(module)s: %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S"
+    )
+
+    # Configure root logger
+    root_logger = logging.getLogger()
+    root_logger.setLevel(log_level)
+
+    # Clear existing handlers to avoid duplicates
+    root_logger.handlers.clear()
+
+    # Console handler (always enabled)
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setLevel(log_level)
+    console_handler.setFormatter(formatter)
+    root_logger.addHandler(console_handler)
+
+    # File handler (if log file is configured)
+    if log_file:
+        try:
+            file_handler = RotatingFileHandler(
+                log_file,
+                maxBytes=10 * 1024 * 1024,  # 10 MB
+                backupCount=5
+            )
+            file_handler.setLevel(log_level)
+            file_handler.setFormatter(formatter)
+            root_logger.addHandler(file_handler)
+            logger.info(f"Logging to file: {log_file}")
+        except (OSError, PermissionError) as e:
+            logger.warning(f"Could not create log file {log_file}: {e}")
+
+    # Set werkzeug logger level (Flask's internal logger)
+    logging.getLogger("werkzeug").setLevel(logging.WARNING)
+
+    logger.info(f"Logging configured at level: {logging.getLevelName(log_level)}")
+
 
 SWAGGER_TEMPLATE = {
     "info": {
@@ -57,10 +105,30 @@ def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
 
+    # Set up logging first
+    setup_logging(app)
+
     # Initialize extensions
     CORS(app, origins=app.config["CORS_ORIGINS"])
-    JWTManager(app)
+    jwt = JWTManager(app)
     limiter.init_app(app)
+
+    # JWT error handlers for better debugging
+    @jwt.invalid_token_loader
+    def invalid_token_callback(error_string):
+        logger.warning(f"Invalid JWT token: {error_string}")
+        return jsonify({"error": "Invalid token", "details": error_string}), 401
+
+    @jwt.unauthorized_loader
+    def unauthorized_callback(error_string):
+        logger.warning(f"Missing JWT token: {error_string}")
+        return jsonify({"error": "Missing authorization token"}), 401
+
+    @jwt.expired_token_loader
+    def expired_token_callback(jwt_header, jwt_payload):
+        logger.warning(f"Expired JWT token for user: {jwt_payload.get('sub')}")
+        return jsonify({"error": "Token has expired"}), 401
+
     Swagger(app, template=SWAGGER_TEMPLATE, config=SWAGGER_CONFIG)
 
     # Late imports to avoid circular imports

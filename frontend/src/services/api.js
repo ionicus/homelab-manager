@@ -9,7 +9,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 10000, // 10 second timeout
+  timeout: 10000,
 });
 
 // Request interceptor to add auth token
@@ -21,12 +21,10 @@ api.interceptors.request.use(
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// Response interceptor for consistent error handling
+// Response interceptor for error handling
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -34,53 +32,40 @@ api.interceptors.response.use(
     if (!error.response) {
       error.isNetworkError = true;
       error.userMessage = 'Cannot connect to backend server. Please check that the server is running.';
-      console.error('Network error:', error.message);
       return Promise.reject(error);
     }
 
-    // Server returned an error response
     const status = error.response.status;
     const data = error.response.data;
 
-    // Handle 401 Unauthorized - redirect to login
+    // Handle 401 Unauthorized - redirect to login (unless already there)
     if (status === 401) {
-      // Clear stored auth data
-      localStorage.removeItem('homelab-token');
-      localStorage.removeItem('homelab-user');
-      // Redirect to login page (unless already on login page)
       if (!window.location.pathname.includes('/login')) {
+        localStorage.removeItem('homelab-token');
+        localStorage.removeItem('homelab-user');
         window.location.href = '/login';
       }
       error.userMessage = 'Session expired. Please log in again.';
       return Promise.reject(error);
     }
 
-    // Handle 403 Forbidden
+    // Handle other common status codes
     if (status === 403) {
       error.userMessage = data?.error || 'You do not have permission to perform this action';
-      return Promise.reject(error);
-    }
-
-    // Handle 429 Rate Limit
-    if (status === 429) {
-      error.userMessage = 'Too many requests. Please try again later.';
-      return Promise.reject(error);
-    }
-
-    // Add user-friendly messages based on status code
-    if (status === 404) {
+    } else if (status === 404) {
       error.userMessage = data?.error || 'Resource not found';
     } else if (status === 400) {
       error.userMessage = data?.error || 'Invalid request';
     } else if (status === 409) {
       error.userMessage = data?.error || 'Resource already exists';
+    } else if (status === 429) {
+      error.userMessage = 'Too many requests. Please try again later.';
     } else if (status === 500) {
       error.userMessage = 'Server error occurred';
     } else {
       error.userMessage = data?.error || 'An error occurred';
     }
 
-    console.error(`API Error (${status}):`, data?.error || error.message);
     return Promise.reject(error);
   }
 );
@@ -93,7 +78,7 @@ export const updateDevice = (id, data) => api.put(`/devices/${id}`, data);
 export const deleteDevice = (id) => api.delete(`/devices/${id}`);
 
 // Metrics
-export const getDeviceMetrics = (deviceId, limit = 100) => 
+export const getDeviceMetrics = (deviceId, limit = 100) =>
   api.get(`/devices/${deviceId}/metrics?limit=${limit}`);
 export const submitMetrics = (data) => api.post('/metrics', data);
 

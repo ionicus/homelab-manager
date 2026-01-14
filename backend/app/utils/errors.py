@@ -22,7 +22,7 @@ class APIError(Exception):
         status_code: int = 400,
         payload: Optional[Dict[str, Any]] = None,
     ):
-        super().__init__()
+        super().__init__(message)
         self.message = message
         self.status_code = status_code
         self.payload = payload or {}

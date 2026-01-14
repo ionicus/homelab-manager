@@ -82,12 +82,13 @@ def login():
         # Update last login timestamp
         user.last_login = datetime.utcnow()
         db.commit()
+        db.refresh(user)
 
         # Log successful login
         log_login_success(user.id, user.username)
 
-        # Create access token with user ID as identity
-        access_token = create_access_token(identity=user.id)
+        # Create access token with user ID as identity (must be string for JWT)
+        access_token = create_access_token(identity=str(user.id))
 
         return success_response({
             "access_token": access_token,
@@ -113,7 +114,7 @@ def get_current_user():
       401:
         description: Not authenticated
     """
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
 
     with DatabaseSession() as db:
         user = db.query(User).filter(User.id == user_id).first()
@@ -155,7 +156,7 @@ def update_current_user():
       401:
         description: Not authenticated
     """
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
     data = request.validated_data
 
     with DatabaseSession() as db:
@@ -217,7 +218,7 @@ def change_password():
       401:
         description: Not authenticated
     """
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
     data = request.validated_data
 
     with DatabaseSession() as db:
@@ -256,7 +257,7 @@ def list_users():
       403:
         description: Admin access required
     """
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
 
     with DatabaseSession() as db:
         current_user = db.query(User).filter(User.id == user_id).first()
@@ -314,7 +315,7 @@ def create_user():
       409:
         description: User already exists
     """
-    admin_id = get_jwt_identity()
+    admin_id = int(get_jwt_identity())
     data = request.validated_data
 
     with DatabaseSession() as db:
@@ -369,7 +370,7 @@ def get_user(user_id: int):
       404:
         description: User not found
     """
-    admin_id = get_jwt_identity()
+    admin_id = int(get_jwt_identity())
 
     with DatabaseSession() as db:
         current_user = db.query(User).filter(User.id == admin_id).first()
@@ -423,7 +424,7 @@ def update_user(user_id: int):
       404:
         description: User not found
     """
-    admin_id = get_jwt_identity()
+    admin_id = int(get_jwt_identity())
     data = request.validated_data
 
     with DatabaseSession() as db:
@@ -490,7 +491,7 @@ def delete_user(user_id: int):
       404:
         description: User not found
     """
-    admin_id = get_jwt_identity()
+    admin_id = int(get_jwt_identity())
 
     with DatabaseSession() as db:
         current_user = db.query(User).filter(User.id == admin_id).first()
@@ -546,7 +547,7 @@ def admin_reset_password(user_id: int):
       404:
         description: User not found
     """
-    admin_id = get_jwt_identity()
+    admin_id = int(get_jwt_identity())
 
     with DatabaseSession() as db:
         current_user = db.query(User).filter(User.id == admin_id).first()

@@ -10,7 +10,9 @@ from app.config import Config
 engine = create_engine(Config.DATABASE_URL, echo=Config.SQLALCHEMY_ECHO)
 
 # Create session factory
-session_factory = sessionmaker(bind=engine)
+# expire_on_commit=False prevents attributes from being expired after commit,
+# which avoids "detached instance" errors when accessing attributes after commit
+session_factory = sessionmaker(bind=engine, expire_on_commit=False)
 Session = scoped_session(session_factory)
 
 # Create base class for models

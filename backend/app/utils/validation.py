@@ -6,6 +6,8 @@ from typing import Any, Callable, Type
 from flask import jsonify, request
 from pydantic import BaseModel, ValidationError
 
+from app.utils.errors import APIError
+
 
 def validate_request(schema: Type[BaseModel]):
     """
@@ -53,6 +55,10 @@ def validate_request(schema: Type[BaseModel]):
                     errors.append({"field": field, "message": message})
 
                 return jsonify({"error": "Validation failed", "details": errors}), 400
+
+            except APIError:
+                # Let our custom API errors propagate to Flask's error handler
+                raise
 
             except Exception as e:
                 return jsonify({"error": f"Validation error: {str(e)}"}), 400

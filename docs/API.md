@@ -47,7 +47,7 @@ Swagger UI is available at `http://localhost:5000/apidocs/` for interactive API 
 ### Prerequisites
 
 1. PostgreSQL database
-2. Python 3.11+
+2. Python 3.14+
 3. Node.js 18+ (for frontend)
 
 ### Initial Setup
@@ -55,16 +55,16 @@ Swagger UI is available at `http://localhost:5000/apidocs/` for interactive API 
 1. Clone the repository and install dependencies:
    ```bash
    cd backend
-   python -m venv .venv
+   uv venv
    source .venv/bin/activate
-   pip install -e .
+   uv pip install -e .
    ```
 
 2. Configure environment variables in `backend/.env`
 
 3. Initialize the database:
    ```bash
-   flask db upgrade  # If using migrations
+   alembic upgrade head
    ```
 
 4. Create the initial admin user:

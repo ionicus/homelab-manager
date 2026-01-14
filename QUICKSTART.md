@@ -49,10 +49,13 @@ GRANT ALL PRIVILEGES ON DATABASE homelab_db TO homelab;
 alembic upgrade head
 ```
 
-### Step 3: Start Backend
+### Step 3: Create Admin User & Start Backend
 
 ```bash
-# From backend directory
+# Create initial admin user
+flask create-admin
+
+# Start the backend
 python -m app.main
 
 # Backend will be available at http://localhost:5000
@@ -124,15 +127,19 @@ docker-compose down -v
 ### Test Backend API
 
 ```bash
-# Health check
-curl http://localhost:5000/health
+# Login to get access token
+TOKEN=$(curl -s -X POST http://localhost:5000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "YOUR_PASSWORD"}' | jq -r '.access_token')
 
-# Get devices (should return empty array initially)
-curl http://localhost:5000/api/devices
+# Get devices (requires auth)
+curl http://localhost:5000/api/devices \
+  -H "Authorization: Bearer $TOKEN"
 
 # Create a test device
 curl -X POST http://localhost:5000/api/devices \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
   -d '{
     "name": "test-server",
     "type": "server",
@@ -144,9 +151,10 @@ curl -X POST http://localhost:5000/api/devices \
 ### Test Frontend
 
 1. Open http://localhost:5173 in your browser
-2. You should see the Dashboard
-3. Click "Devices" to view the device list
-4. Try adding a device through the UI
+2. Log in with your admin credentials
+3. You should see the Dashboard
+4. Click "Devices" to view the device list
+5. Try adding a device through the UI
 
 ## Next Steps
 

@@ -20,11 +20,13 @@ import ErrorBoundary from './components/ErrorBoundary'
 import './App.css'
 
 function AppContent() {
-  const { currentTheme } = useTheme();
+  const { currentTheme, currentPage, pageAccents } = useTheme();
   const { user, logout } = useAuth();
 
+  // Apply page-specific accent color as primaryColor
   const theme = createTheme({
     ...themes[currentTheme],
+    primaryColor: pageAccents[currentPage] || 'blue',
     components,
   });
 

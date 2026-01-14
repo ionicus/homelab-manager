@@ -11,6 +11,7 @@ from app.utils.errors import (
     NotFoundError,
     success_response,
 )
+from app.utils.pagination import get_pagination_params, paginate_query, paginated_response
 from app.utils.validation import validate_request
 
 devices_bp = Blueprint("devices", __name__)
@@ -19,13 +20,24 @@ devices_bp = Blueprint("devices", __name__)
 @devices_bp.route("", methods=["GET"])
 @jwt_required()
 def list_devices():
-    """List all devices.
+    """List devices with pagination.
     ---
     tags:
       - Devices
+    parameters:
+      - name: page
+        in: query
+        type: integer
+        default: 1
+        description: Page number
+      - name: per_page
+        in: query
+        type: integer
+        default: 20
+        description: Items per page (max 100)
     responses:
       200:
-        description: List of all devices
+        description: Paginated list of devices
         schema:
           type: object
           properties:
@@ -33,10 +45,27 @@ def list_devices():
               type: array
               items:
                 $ref: '#/definitions/Device'
+            pagination:
+              type: object
+              properties:
+                page:
+                  type: integer
+                per_page:
+                  type: integer
+                total:
+                  type: integer
+                total_pages:
+                  type: integer
     """
+    page, per_page = get_pagination_params()
+
     with DatabaseSession() as db:
-        devices = db.query(Device).all()
-        return success_response([device.to_dict() for device in devices])
+        query = db.query(Device).order_by(Device.name)
+        devices, total = paginate_query(query, page, per_page)
+        return paginated_response(
+            [device.to_dict() for device in devices],
+            total, page, per_page
+        )
 
 
 @devices_bp.route("/<int:device_id>", methods=["GET"])

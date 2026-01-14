@@ -10,6 +10,7 @@ from app.utils.errors import (
     NotFoundError,
     success_response,
 )
+from app.utils.pagination import get_pagination_params, paginate_query, paginated_response
 from app.utils.validation import validate_request
 
 services_bp = Blueprint("services", __name__)
@@ -18,13 +19,24 @@ services_bp = Blueprint("services", __name__)
 @services_bp.route("", methods=["GET"])
 @jwt_required()
 def list_services():
-    """List all services.
+    """List services with pagination.
     ---
     tags:
       - Services
+    parameters:
+      - name: page
+        in: query
+        type: integer
+        default: 1
+        description: Page number
+      - name: per_page
+        in: query
+        type: integer
+        default: 20
+        description: Items per page (max 100)
     responses:
       200:
-        description: List of all services
+        description: Paginated list of services
         schema:
           type: object
           properties:
@@ -32,10 +44,18 @@ def list_services():
               type: array
               items:
                 $ref: '#/definitions/Service'
+            pagination:
+              type: object
     """
+    page, per_page = get_pagination_params()
+
     with DatabaseSession() as db:
-        services = db.query(Service).all()
-        return success_response([service.to_dict() for service in services])
+        query = db.query(Service).order_by(Service.name)
+        services, total = paginate_query(query, page, per_page)
+        return paginated_response(
+            [service.to_dict() for service in services],
+            total, page, per_page
+        )
 
 
 @services_bp.route("/<int:service_id>", methods=["GET"])

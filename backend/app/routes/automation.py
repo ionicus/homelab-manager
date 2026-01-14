@@ -13,6 +13,7 @@ from app.utils.errors import (
     ValidationError,
     success_response,
 )
+from app.utils.pagination import get_pagination_params, paginate_query, paginated_response
 from app.utils.validation import validate_request
 
 automation_bp = Blueprint("automation", __name__)
@@ -285,7 +286,7 @@ def list_executor_actions(executor_type: str):
 @automation_bp.route("/jobs", methods=["GET"])
 @jwt_required()
 def list_jobs():
-    """List automation jobs with optional filtering.
+    """List automation jobs with optional filtering and pagination.
     ---
     tags:
       - Automation
@@ -298,9 +299,19 @@ def list_jobs():
         in: query
         type: string
         description: Filter by executor type
+      - name: page
+        in: query
+        type: integer
+        default: 1
+        description: Page number
+      - name: per_page
+        in: query
+        type: integer
+        default: 20
+        description: Items per page (max 100)
     responses:
       200:
-        description: List of automation jobs
+        description: Paginated list of automation jobs
         schema:
           type: object
           properties:
@@ -308,11 +319,14 @@ def list_jobs():
               type: array
               items:
                 $ref: '#/definitions/AutomationJob'
+            pagination:
+              type: object
       404:
         description: Device not found (if device_id filter specified)
     """
     device_id = request.args.get("device_id", type=int)
     executor_type = request.args.get("executor_type", type=str)
+    page, per_page = get_pagination_params()
 
     with DatabaseSession() as db:
         query = db.query(AutomationJob)
@@ -328,6 +342,10 @@ def list_jobs():
             query = query.filter(AutomationJob.executor_type == executor_type)
 
         # Order by id descending (newest first)
-        jobs = query.order_by(AutomationJob.id.desc()).all()
+        query = query.order_by(AutomationJob.id.desc())
+        jobs, total = paginate_query(query, page, per_page)
 
-        return success_response([job.to_dict() for job in jobs])
+        return paginated_response(
+            [job.to_dict() for job in jobs],
+            total, page, per_page
+        )

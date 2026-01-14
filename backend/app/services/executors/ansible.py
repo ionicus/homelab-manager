@@ -6,6 +6,7 @@ import os
 import re
 import subprocess
 import threading
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -163,6 +164,7 @@ class AnsibleExecutor(BaseExecutor):
 
             # Update job status to running
             job.status = JobStatus.RUNNING
+            job.started_at = datetime.utcnow()
             db.commit()
             logger.info(f"Job {job_id} status updated to RUNNING")
 
@@ -202,6 +204,7 @@ class AnsibleExecutor(BaseExecutor):
             job.log_output = log_output
 
             # Update job status based on result
+            job.completed_at = datetime.utcnow()
             if result.returncode == 0:
                 job.status = JobStatus.COMPLETED
                 logger.info(f"Job {job_id} completed successfully")
@@ -223,6 +226,7 @@ class AnsibleExecutor(BaseExecutor):
             logger.error(f"Job {job_id} timed out")
             if job:
                 job.status = JobStatus.FAILED
+                job.completed_at = datetime.utcnow()
                 job.log_output = (
                     job.log_output or ""
                 ) + "\n\nERROR: Execution timed out after 10 minutes"
@@ -232,6 +236,7 @@ class AnsibleExecutor(BaseExecutor):
             logger.exception(f"Error executing job {job_id}")
             if job:
                 job.status = JobStatus.FAILED
+                job.completed_at = datetime.utcnow()
                 job.log_output = (job.log_output or "") + f"\n\nERROR: {str(e)}"
                 db.commit()
 

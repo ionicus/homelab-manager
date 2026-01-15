@@ -284,6 +284,17 @@ def delete_device(device_id: int):
         if not device:
             raise NotFoundError("Device", device_id)
 
+        # Manually cascade delete related records (in case DB constraints aren't set)
+        from app.models import AutomationJob, Service, Metric, NetworkInterface, HardwareSpec
+        from app.models.device_variables import DeviceVariables
+
+        db.query(AutomationJob).filter(AutomationJob.device_id == device_id).delete(synchronize_session=False)
+        db.query(Service).filter(Service.device_id == device_id).delete(synchronize_session=False)
+        db.query(Metric).filter(Metric.device_id == device_id).delete(synchronize_session=False)
+        db.query(NetworkInterface).filter(NetworkInterface.device_id == device_id).delete(synchronize_session=False)
+        db.query(HardwareSpec).filter(HardwareSpec.device_id == device_id).delete(synchronize_session=False)
+        db.query(DeviceVariables).filter(DeviceVariables.device_id == device_id).delete(synchronize_session=False)
+
         db.delete(device)
         db.commit()
 

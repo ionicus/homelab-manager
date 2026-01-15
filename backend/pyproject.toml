@@ -2,7 +2,7 @@
 name = "homelab-manager"
 version = "0.1.0"
 description = "Homelab infrastructure management system"
-requires-python = ">=3.14"
+requires-python = ">=3.12"
 dependencies = [
     "flask>=3.0.0",
     "flask-cors>=4.0.0",
@@ -40,7 +40,7 @@ packages = ["app"]
 
 [tool.black]
 line-length = 88
-target-version = ['py314']
+target-version = ['py312']
 include = '\.pyi?$'
 
 [tool.isort]
@@ -48,7 +48,7 @@ profile = "black"
 line_length = 88
 
 [tool.mypy]
-python_version = "3.14"
+python_version = "3.12"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true

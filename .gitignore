@@ -69,7 +69,8 @@ yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
 .pnpm-debug.log*
-package-lock.json
+# Keep package-lock.json for reproducible builds
+# package-lock.json
 yarn.lock
 
 # Build outputs

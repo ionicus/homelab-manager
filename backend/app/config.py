@@ -92,13 +92,6 @@ class Config:
     ANSIBLE_PLAYBOOK_DIR = os.getenv(
         "ANSIBLE_PLAYBOOK_DIR", "automation/ansible/playbooks"
     )
-    ANSIBLE_INVENTORY_DIR = os.getenv(
-        "ANSIBLE_INVENTORY_DIR", "automation/ansible/inventory"
-    )
-
-    # Monitoring
-    METRICS_RETENTION_DAYS = int(os.getenv("METRICS_RETENTION_DAYS", "30"))
-    ALERT_CHECK_INTERVAL = int(os.getenv("ALERT_CHECK_INTERVAL", "60"))
 
     # Logging
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")

@@ -29,14 +29,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for caching
-COPY backend/pyproject.toml backend/uv.lock /app/
+COPY backend/pyproject.toml /app/
 
 # Install all dependencies including dev
 RUN uv pip install --system -e .
 
 # Copy application (will be overridden by volume mount in dev)
 COPY backend/ /app/
-COPY automation/ /app/automation/
 
 # Development runs as root for convenience
 EXPOSE 5000
@@ -49,7 +48,7 @@ CMD ["python", "-m", "app.main"]
 FROM base AS builder
 
 # Copy only what's needed for installation
-COPY backend/pyproject.toml backend/uv.lock /app/
+COPY backend/pyproject.toml /app/
 
 # Install production dependencies only
 RUN uv pip install --system -e . --no-dev
@@ -76,9 +75,8 @@ RUN groupadd -r homelab && useradd -r -g homelab homelab
 COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 
-# Copy application code
+# Copy application code (automation/ is inside backend/)
 COPY backend/ /app/
-COPY automation/ /app/automation/
 
 # Set ownership
 RUN chown -R homelab:homelab /app

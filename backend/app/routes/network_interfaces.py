@@ -506,7 +506,7 @@ def list_all_interfaces():
             try:
                 query = query.filter(NetworkInterface.status == InterfaceStatus(status))
             except ValueError:
-                raise ValidationError(f"Invalid status value: {status}")
+                raise ValidationError(f"Invalid status value: {status}") from None
 
         # Filter by is_primary
         is_primary = request.args.get("is_primary")

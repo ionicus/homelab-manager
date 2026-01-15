@@ -97,17 +97,13 @@ def process_avatar_image(file_data: bytes) -> tuple[bytes, str]:
         verify_img = Image.open(BytesIO(file_data))
         verify_img.verify()  # Checks for corruption/truncation
     except Exception as e:
-        raise ValueError(f"Invalid or corrupted image file: {e}")
+        raise ValueError(f"Invalid or corrupted image file: {e}") from e
 
     # Re-open the image for actual processing (verify() consumes the file)
     img = Image.open(BytesIO(file_data))
 
-    # Handle different image modes
-    if img.mode in ("RGBA", "LA", "P"):
-        # Keep alpha channel for transparency
-        img = img.convert("RGBA")
-    else:
-        img = img.convert("RGB")
+    # Handle different image modes - keep alpha channel for transparency
+    img = img.convert("RGBA") if img.mode in ("RGBA", "LA", "P") else img.convert("RGB")
 
     # Resize if larger than max dimension
     if img.width > AVATAR_MAX_DIMENSION or img.height > AVATAR_MAX_DIMENSION:
@@ -482,9 +478,9 @@ def upload_avatar():
     try:
         processed_data, processed_mime = process_avatar_image(file_data)
     except ValueError as e:
-        raise ValidationError(str(e))
+        raise ValidationError(str(e)) from e
     except Exception:
-        raise ValidationError("Invalid or corrupted image file")
+        raise ValidationError("Invalid or corrupted image file") from None
 
     with DatabaseSession() as db:
         user = db.query(User).filter(User.id == user_id).first()

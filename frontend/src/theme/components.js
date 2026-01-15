@@ -29,7 +29,7 @@ export const components = {
     defaultProps: {
       radius: 'md',
     },
-    styles: (theme) => ({
+    styles: () => ({
       root: {
         fontWeight: 500,
         transition: 'all 0.2s ease',

@@ -25,11 +25,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from app.celery_app import celery_app  # noqa: E402
-
 # Import tasks to register them
 import app.tasks.automation  # noqa: E402, F401
-
+from app.celery_app import celery_app  # noqa: E402
 
 if __name__ == "__main__":
     # Run worker directly for development

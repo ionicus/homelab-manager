@@ -1,6 +1,7 @@
 """Basic health check tests."""
 
 import pytest
+
 from app import create_app
 from app.config import TestingConfig
 

@@ -49,7 +49,7 @@ class NetworkInterfaceBase(BaseModel):
             ipaddress.ip_address(v)
             return v
         except ValueError:
-            raise ValueError(f"Invalid IP address format: {v}")
+            raise ValueError(f"Invalid IP address format: {v}") from None
 
     @field_validator("status")
     @classmethod
@@ -100,7 +100,7 @@ class NetworkInterfaceUpdate(BaseModel):
             ipaddress.ip_address(v)
             return v
         except ValueError:
-            raise ValueError(f"Invalid IP address format: {v}")
+            raise ValueError(f"Invalid IP address format: {v}") from None
 
     @field_validator("status")
     @classmethod

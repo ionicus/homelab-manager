@@ -70,10 +70,7 @@ def setup_logging(app):
     log_format = app.config.get("LOG_FORMAT", "text")
 
     # Select formatter based on environment
-    if log_format == "json":
-        formatter = JSONFormatter()
-    else:
-        formatter = TextFormatter()
+    formatter = JSONFormatter() if log_format == "json" else TextFormatter()
 
     # Configure root logger
     root_logger = logging.getLogger()

@@ -127,7 +127,7 @@ function DynamicVariableForm({ schema, values = {}, onChange, disabled = false }
           />
         );
 
-      case 'array':
+      case 'array': {
         const arrayValue = value ?? propSchema.default ?? [];
         return (
           <Paper key={key} withBorder p="sm" radius="sm">
@@ -181,6 +181,7 @@ function DynamicVariableForm({ schema, values = {}, onChange, disabled = false }
             </Stack>
           </Paper>
         );
+      }
 
       case 'string':
       default:

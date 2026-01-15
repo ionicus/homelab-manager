@@ -43,7 +43,7 @@ function AutomationJobsList({ jobs }) {
   if (!jobs || jobs.length === 0) {
     return (
       <div className="empty-state">
-        <p>No automation jobs yet. Click "Run Playbook" to start.</p>
+        <p>No automation jobs yet. Click &quot;Run Playbook&quot; to start.</p>
       </div>
     );
   }

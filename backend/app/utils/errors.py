@@ -262,11 +262,10 @@ class DatabaseSession:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Close database session and handle exceptions."""
-        if exc_type is not None:
+        if exc_type is not None and self.db:
             # Rollback on exception
-            if self.db:
-                self.db.rollback()
-                logger.warning(f"Database transaction rolled back due to: {exc_val}")
+            self.db.rollback()
+            logger.warning(f"Database transaction rolled back due to: {exc_val}")
 
         # Always close the session
         if self.db:

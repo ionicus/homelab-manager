@@ -1,5 +1,6 @@
 """Celery tasks for automation execution."""
 
+import contextlib
 import ipaddress
 import json
 import logging
@@ -173,11 +174,11 @@ ansible_python_interpreter=/usr/bin/python3
     # - Unpredictable filename (random suffix)
     # - Restrictive permissions (0o600 - owner read/write only)
     # - delete=False so we can pass path to ansible, cleanup manually later
-    fd = tempfile.NamedTemporaryFile(
+    fd = tempfile.NamedTemporaryFile(  # noqa: SIM115
         mode="w",
         prefix=f"ansible_inv_{job_id}_",
         suffix=".ini",
-        delete=False,
+        delete=False,  # Need to pass path to ansible subprocess
     )
     try:
         fd.write(inventory_content)
@@ -350,10 +351,8 @@ def _execute_with_streaming(
 
             # Publish to Redis for real-time streaming (if available)
             if redis_client:
-                try:
+                with contextlib.suppress(Exception):
                     redis_client.publish(log_channel, safe_line)
-                except Exception:
-                    pass  # Non-critical, continue execution
 
             # Track progress from TASK lines
             if TASK_PATTERN.match(line):
@@ -399,10 +398,8 @@ def _execute_with_streaming(
 
         # Publish completion signal to Redis
         if redis_client:
-            try:
+            with contextlib.suppress(Exception):
                 redis_client.publish(log_channel, "[[STREAM_COMPLETE]]")
-            except Exception:
-                pass
 
 
 @shared_task(
@@ -512,11 +509,11 @@ def run_ansible_playbook(
 
         # Add extra vars if present (use JSON file for safety)
         if safe_extra_vars:
-            fd = tempfile.NamedTemporaryFile(
+            fd = tempfile.NamedTemporaryFile(  # noqa: SIM115
                 mode="w",
                 prefix=f"ansible_vars_{job_id}_",
                 suffix=".json",
-                delete=False,
+                delete=False,  # Need to pass path to ansible subprocess
             )
             try:
                 json.dump(safe_extra_vars, fd)

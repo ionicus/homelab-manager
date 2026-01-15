@@ -1,5 +1,6 @@
 """Audit logging utility for tracking security-relevant actions."""
 
+import contextlib
 import logging
 from collections.abc import Callable
 from functools import wraps
@@ -120,10 +121,8 @@ def audit_action(
                 # Extract details if function provided
                 details = None
                 if get_details:
-                    try:
+                    with contextlib.suppress(Exception):
                         details = get_details(request, result)
-                    except Exception:
-                        pass
 
                 # Log successful action
                 audit_log(action, resource_type, resource_id, details, "success")

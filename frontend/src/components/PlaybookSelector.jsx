@@ -35,7 +35,7 @@ function PlaybookSelector({ deviceId, onExecute }) {
     try {
       setExecuting(playbookName);
       setError(null);
-      const response = await triggerAutomation(deviceId, playbookName);
+      const response = await triggerAutomation({ deviceId, actionName: playbookName });
       if (onExecute) {
         onExecute(response.data);
       }

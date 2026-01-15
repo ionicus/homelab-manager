@@ -50,16 +50,20 @@ class AnsibleExecutor(BaseExecutor):
         action_name: str,
         config: dict[str, Any] | None = None,
         extra_vars: dict[str, Any] | None = None,
+        devices: list[dict[str, str]] | None = None,
     ) -> str:
         """Queue an Ansible playbook for execution via Celery.
 
+        Supports both single-device and multi-device execution.
+
         Args:
             job_id: Database ID of the automation job
-            device_ip: Target device IP address
-            device_name: Target device name
+            device_ip: Target device IP address (single device mode)
+            device_name: Target device name (single device mode)
             action_name: Name of the playbook to execute (without .yml)
             config: Optional extra configuration (not used for Ansible)
             extra_vars: Optional variables to pass to the playbook
+            devices: Optional list of device dicts for multi-device execution
 
         Returns:
             Celery task ID for tracking
@@ -70,8 +74,13 @@ class AnsibleExecutor(BaseExecutor):
             device_name=device_name,
             playbook_name=action_name,
             extra_vars=extra_vars,
+            devices=devices,
         )
-        logger.info(f"Queued playbook execution for job {job_id}, task_id={task.id}")
+        device_count = len(devices) if devices else 1
+        logger.info(
+            f"Queued playbook execution for job {job_id}, "
+            f"task_id={task.id}, devices={device_count}"
+        )
         return task.id
 
     def list_available_actions(self) -> list[ActionInfo]:

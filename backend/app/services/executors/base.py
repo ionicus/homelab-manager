@@ -40,16 +40,21 @@ class BaseExecutor(ABC):
         action_name: str,
         config: dict[str, Any] | None = None,
         extra_vars: dict[str, Any] | None = None,
+        devices: list[dict[str, str]] | None = None,
     ) -> str | None:
         """Execute an automation action in a background thread.
 
+        Supports both single-device and multi-device execution.
+
         Args:
             job_id: Database ID of the automation job
-            device_ip: Target device IP address
-            device_name: Target device name
+            device_ip: Target device IP address (single device mode)
+            device_name: Target device name (single device mode)
             action_name: Name of the action to execute
             config: Optional action-specific configuration
             extra_vars: Optional variables to pass to the action
+            devices: Optional list of device dicts for multi-device execution
+                     Each dict contains 'ip' and 'name' keys
 
         Returns:
             Task ID for tracking (if async), or None

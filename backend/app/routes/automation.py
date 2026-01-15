@@ -89,22 +89,48 @@ def trigger_automation():
         )
 
     with DatabaseSession() as db:
-        # Determine device ID (device_id takes precedence, otherwise use first from device_ids)
-        device_id = data.device_id
-        if device_id is None and data.device_ids:
-            device_id = data.device_ids[0]
+        # Build list of target devices
+        devices_list = []
+        all_device_ids = []
 
-        # Verify device exists
-        device = db.query(Device).filter(Device.id == device_id).first()
-        if not device:
-            raise NotFoundError("Device", device_id)
+        if data.device_ids and len(data.device_ids) > 0:
+            # Multi-device mode: fetch all specified devices
+            all_device_ids = data.device_ids
+            devices = db.query(Device).filter(Device.id.in_(all_device_ids)).all()
 
-        # Validate device has IP address
-        if not device.ip_address:
-            raise ValidationError("Device must have an IP address for automation")
+            # Verify all devices were found
+            found_ids = {d.id for d in devices}
+            missing_ids = set(all_device_ids) - found_ids
+            if missing_ids:
+                raise NotFoundError("Device", list(missing_ids)[0])
 
+            # Validate all devices have IP addresses
+            for device in devices:
+                if not device.ip_address:
+                    raise ValidationError(
+                        f"Device '{device.name}' (ID: {device.id}) must have an IP address"
+                    )
+                devices_list.append({"ip": device.ip_address, "name": device.name})
+
+            # Use first device as the primary for the relationship
+            primary_device = devices[0]
+        else:
+            # Single device mode
+            device_id = data.device_id
+            device = db.query(Device).filter(Device.id == device_id).first()
+            if not device:
+                raise NotFoundError("Device", device_id)
+
+            if not device.ip_address:
+                raise ValidationError("Device must have an IP address for automation")
+
+            primary_device = device
+            all_device_ids = [device_id]
+
+        # Create the job
         job = AutomationJob(
-            device_id=device_id,
+            device_id=primary_device.id,
+            device_ids=all_device_ids if len(all_device_ids) > 1 else None,
             executor_type=data.executor_type,
             action_name=data.action_name,
             action_config=data.action_config,
@@ -119,11 +145,12 @@ def trigger_automation():
         # Queue automation for background execution via Celery
         celery_task_id = executor.execute(
             job_id=job.id,
-            device_ip=device.ip_address,
-            device_name=device.name,
+            device_ip=primary_device.ip_address,
+            device_name=primary_device.name,
             action_name=data.action_name,
             config=data.action_config,
             extra_vars=data.extra_vars,
+            devices=devices_list if len(devices_list) > 1 else None,
         )
 
         # Store the Celery task ID for tracking

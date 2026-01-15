@@ -140,15 +140,18 @@ export const getAutomationJobs = (deviceId = null, executorType = null) => {
 };
 
 // Trigger automation job
-export const triggerAutomation = (
-  deviceId,
+// Supports both single device (deviceId) and multi-device (deviceIds) modes
+export const triggerAutomation = ({
+  deviceId = null,
+  deviceIds = null,
   actionName,
   executorType = 'ansible',
   actionConfig = null,
-  extraVars = null
-) =>
+  extraVars = null,
+}) =>
   api.post('/automation', {
     device_id: deviceId,
+    device_ids: deviceIds,
     action_name: actionName,
     executor_type: executorType,
     action_config: actionConfig,

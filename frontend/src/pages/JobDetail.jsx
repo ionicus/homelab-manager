@@ -139,7 +139,12 @@ function JobDetail() {
 
     try {
       setRerunning(true);
-      await triggerAutomation(job.device_id, job.action_name || job.playbook_name, job.executor_type || 'ansible');
+      await triggerAutomation({
+        deviceId: job.device_ids ? null : job.device_id,
+        deviceIds: job.device_ids || null,
+        actionName: job.action_name || job.playbook_name,
+        executorType: job.executor_type || 'ansible',
+      });
       alert('New job created successfully! Refresh the page to see it.');
     } catch (err) {
       console.error('Failed to re-run job:', err);

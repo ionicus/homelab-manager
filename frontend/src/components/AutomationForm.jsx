@@ -15,7 +15,11 @@ import { getExecutorActions, getActionSchema, triggerAutomation } from '../servi
 import ErrorDisplay from './ErrorDisplay';
 import DynamicVariableForm from './DynamicVariableForm';
 
-function AutomationForm({ deviceId, onSuccess, onCancel }) {
+function AutomationForm({ deviceId, deviceIds, devices = [], onSuccess, onCancel }) {
+  // Support both single device (deviceId) and multi-device (deviceIds) modes
+  const targetDeviceIds = deviceIds && deviceIds.length > 0 ? deviceIds : (deviceId ? [deviceId] : []);
+  const isMultiDevice = targetDeviceIds.length > 1;
+  const selectedDevices = devices.filter(d => targetDeviceIds.includes(d.id));
   const [playbooks, setPlaybooks] = useState([]);
   const [selectedPlaybook, setSelectedPlaybook] = useState('');
   const [loading, setLoading] = useState(false);
@@ -108,13 +112,14 @@ function AutomationForm({ deviceId, onSuccess, onCancel }) {
       // Only pass extra_vars if there are any non-default values
       const varsToSend = Object.keys(extraVars).length > 0 ? extraVars : null;
 
-      const response = await triggerAutomation(
-        deviceId,
-        selectedPlaybook,
-        'ansible',
-        null,
-        varsToSend
-      );
+      const response = await triggerAutomation({
+        deviceId: isMultiDevice ? null : targetDeviceIds[0],
+        deviceIds: isMultiDevice ? targetDeviceIds : null,
+        actionName: selectedPlaybook,
+        executorType: 'ansible',
+        actionConfig: null,
+        extraVars: varsToSend,
+      });
       if (onSuccess) {
         onSuccess(response.data.data);
       }
@@ -133,7 +138,16 @@ function AutomationForm({ deviceId, onSuccess, onCancel }) {
     <div className="form-modal" onClick={onCancel}>
       <div className="form-modal-content" onClick={(e) => e.stopPropagation()}>
         <Group justify="space-between" mb="md">
-          <h2 style={{ margin: 0 }}>Run Ansible Playbook</h2>
+          <div>
+            <h2 style={{ margin: 0 }}>Run Ansible Playbook</h2>
+            {selectedDevices.length > 0 && (
+              <Text size="sm" c="dimmed" mt={4}>
+                {isMultiDevice
+                  ? `Target: ${selectedDevices.length} devices (${selectedDevices.map(d => d.name).join(', ')})`
+                  : `Target: ${selectedDevices[0]?.name || 'Unknown device'}`}
+              </Text>
+            )}
+          </div>
           <CloseButton onClick={onCancel} size="lg" />
         </Group>
 

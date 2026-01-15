@@ -225,6 +225,78 @@ ansible_python_interpreter=/usr/bin/python3
     return inventory_path
 
 
+def _generate_multi_device_inventory(
+    devices: list[dict[str, str]], job_id: int
+) -> str:
+    """Generate Ansible inventory for multiple devices.
+
+    Creates an inventory file with all devices in the [homelab] group.
+
+    Args:
+        devices: List of dicts with 'ip' and 'name' keys for each device
+        job_id: Job ID for unique naming
+
+    Returns:
+        Path to the inventory file
+
+    Raises:
+        ValueError: If any device has invalid IP address
+    """
+    ansible_user = os.getenv("ANSIBLE_USER", "ansible")
+    ansible_user = _sanitize_inventory_value(ansible_user)
+
+    ssh_host_key_checking = os.getenv("ANSIBLE_HOST_KEY_CHECKING", "accept-new")
+    ssh_args = f"-o StrictHostKeyChecking={ssh_host_key_checking}"
+
+    ssh_key_path = os.getenv("ANSIBLE_SSH_KEY")
+    if ssh_key_path:
+        ssh_args += f" -o IdentityFile={ssh_key_path}"
+
+    # Build host lines for each device
+    host_lines = []
+    for device in devices:
+        safe_ip = _validate_ip_address(device["ip"])
+        safe_name = _sanitize_inventory_value(device["name"])
+
+        if not re.match(r"^[a-zA-Z0-9_-]+$", safe_name):
+            safe_name = f"device_{hash(safe_name) % 10000}"
+
+        host_line = (
+            f"{safe_name} ansible_host={safe_ip} "
+            f"ansible_user={ansible_user} ansible_ssh_common_args='{ssh_args}'"
+        )
+
+        # Add password authentication if configured
+        ansible_password = os.getenv("ANSIBLE_PASSWORD")
+        if ansible_password:
+            host_line += f" ansible_password={ansible_password}"
+            host_line += " ansible_ssh_extra_args='-o PubkeyAuthentication=no'"
+
+        host_lines.append(host_line)
+
+    inventory_content = f"""[homelab]
+{chr(10).join(host_lines)}
+
+[all:vars]
+ansible_python_interpreter=/usr/bin/python3
+"""
+
+    fd = tempfile.NamedTemporaryFile(  # noqa: SIM115
+        mode="w",
+        prefix=f"ansible_inv_{job_id}_",
+        suffix=".ini",
+        delete=False,  # Need to pass path to ansible subprocess
+    )
+    try:
+        fd.write(inventory_content)
+        inventory_path = fd.name
+    finally:
+        fd.close()
+
+    os.chmod(inventory_path, 0o600)
+    return inventory_path
+
+
 def _categorize_error(error: Exception) -> str:
     """Categorize an error for better user feedback.
 
@@ -461,6 +533,7 @@ def run_ansible_playbook(
     device_name: str,
     playbook_name: str,
     extra_vars: dict[str, Any] | None = None,
+    devices: list[dict[str, str]] | None = None,
 ) -> dict:
     """Execute an Ansible playbook as a Celery task.
 
@@ -468,12 +541,17 @@ def run_ansible_playbook(
     It supports automatic retries, timeout handling, result persistence,
     real-time log streaming, progress tracking, and cancellation.
 
+    Supports both single-device and multi-device execution:
+    - Single device: uses device_ip and device_name
+    - Multi-device: uses devices list (list of {'ip': ..., 'name': ...})
+
     Args:
         job_id: Database ID of the automation job
-        device_ip: Target device IP address
-        device_name: Target device name
+        device_ip: Target device IP address (single device mode)
+        device_name: Target device name (single device mode)
         playbook_name: Name of the playbook to execute (without .yml)
         extra_vars: Optional extra variables to pass to ansible-playbook
+        devices: Optional list of device dicts for multi-device execution
 
     Returns:
         Dict with job status and details
@@ -529,8 +607,12 @@ def run_ansible_playbook(
         job.task_count = _count_tasks_in_playbook(playbook_path)
         db.commit()
 
-        # Generate inventory
-        inventory_file = _generate_inventory(device_ip, device_name, job_id)
+        # Generate inventory - use multi-device if devices list provided
+        if devices and len(devices) > 0:
+            inventory_file = _generate_multi_device_inventory(devices, job_id)
+            logger.info(f"Generated multi-device inventory for {len(devices)} hosts")
+        else:
+            inventory_file = _generate_inventory(device_ip, device_name, job_id)
 
         # Merge extra vars: parameter takes precedence over job.extra_vars
         merged_extra_vars = {}

@@ -41,6 +41,9 @@ class AutomationJob(Base):
     device_id = Column(
         Integer, ForeignKey("devices.id", ondelete="CASCADE"), nullable=False
     )
+    # Multiple device IDs for batch execution (JSON array)
+    # When set, the job runs on all devices; device_id is the "primary" for the relationship
+    device_ids = Column(JSON, nullable=True)
     executor_type = Column(String(50), nullable=False, default="ansible")
     action_name = Column(String(255), nullable=False)
     action_config = Column(JSON, nullable=True)
@@ -75,6 +78,7 @@ class AutomationJob(Base):
         return {
             "id": self.id,
             "device_id": self.device_id,
+            "device_ids": self.device_ids,
             "executor_type": self.executor_type,
             "action_name": self.action_name,
             "action_config": self.action_config,

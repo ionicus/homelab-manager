@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Button, Select, Group } from '@mantine/core';
+import { Button, MultiSelect, Group, Text } from '@mantine/core';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getAutomationJobs, getDevices } from '../services/api';
 import { safeGetArray } from '../utils/validation';
@@ -17,7 +17,7 @@ function Automation() {
   const [filterStatus, setFilterStatus] = useState('');
   const [showDeviceSelector, setShowDeviceSelector] = useState(false);
   const [showAutomationForm, setShowAutomationForm] = useState(false);
-  const [selectedDeviceId, setSelectedDeviceId] = useState(null);
+  const [selectedDeviceIds, setSelectedDeviceIds] = useState([]);
 
   // Jobs query
   const {
@@ -40,9 +40,8 @@ function Automation() {
     setShowDeviceSelector(true);
   };
 
-  const handleDeviceSelect = (deviceId) => {
-    if (deviceId) {
-      setSelectedDeviceId(parseInt(deviceId));
+  const handleDeviceSelect = () => {
+    if (selectedDeviceIds.length > 0) {
       setShowDeviceSelector(false);
       setShowAutomationForm(true);
     }
@@ -50,17 +49,18 @@ function Automation() {
 
   const handleCancelDeviceSelector = () => {
     setShowDeviceSelector(false);
+    setSelectedDeviceIds([]);
   };
 
   const handleAutomationSuccess = () => {
     setShowAutomationForm(false);
-    setSelectedDeviceId(null);
+    setSelectedDeviceIds([]);
     queryClient.invalidateQueries({ queryKey: ['automation-jobs'] });
   };
 
   const handleAutomationCancel = () => {
     setShowAutomationForm(false);
-    setSelectedDeviceId(null);
+    setSelectedDeviceIds([]);
   };
 
   if (jobsLoading) return <LoadingSkeleton type="list" />;
@@ -103,26 +103,34 @@ function Automation() {
       {showDeviceSelector && (
         <div className="form-modal" onClick={handleCancelDeviceSelector}>
           <div className="form-modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2>Select Device</h2>
-            <p>Choose a device to run automation on:</p>
-            <Select
-              placeholder="Select a device"
+            <h2>Select Devices</h2>
+            <Text size="sm" c="dimmed" mb="md">
+              Choose one or more devices to run automation on:
+            </Text>
+            <MultiSelect
+              placeholder="Select devices"
               data={devicesWithIp.map(d => ({ value: String(d.id), label: `${d.name} (${d.ip_address})` }))}
-              onChange={handleDeviceSelect}
+              value={selectedDeviceIds.map(String)}
+              onChange={(values) => setSelectedDeviceIds(values.map(v => parseInt(v)))}
               searchable
+              clearable
             />
             <Group mt="md" justify="flex-end">
               <Button variant="default" onClick={handleCancelDeviceSelector}>
                 Cancel
+              </Button>
+              <Button onClick={handleDeviceSelect} disabled={selectedDeviceIds.length === 0}>
+                Continue
               </Button>
             </Group>
           </div>
         </div>
       )}
 
-      {showAutomationForm && selectedDeviceId && (
+      {showAutomationForm && selectedDeviceIds.length > 0 && (
         <AutomationForm
-          deviceId={selectedDeviceId}
+          deviceIds={selectedDeviceIds}
+          devices={devicesWithIp}
           onSuccess={handleAutomationSuccess}
           onCancel={handleAutomationCancel}
         />

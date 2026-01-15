@@ -1,0 +1,30 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Basic Server Setup
+description: Install essential packages and configure basic system settings
+type: object
+properties:
+  packages_to_install:
+    type: array
+    items:
+      type: string
+    description: List of packages to install
+    default:
+      - vim
+      - git
+      - htop
+      - curl
+      - wget
+  timezone:
+    type: string
+    description: System timezone
+    default: UTC
+    examples:
+      - UTC
+      - America/New_York
+      - Europe/London
+  configure_hostname:
+    type: boolean
+    description: Set the hostname to match inventory name
+    default: true
+required: []
+additionalProperties: false

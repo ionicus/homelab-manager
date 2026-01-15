@@ -5,6 +5,8 @@ import re
 from pathlib import Path
 from typing import Any
 
+import yaml
+
 from app.config import Config
 from app.tasks.automation import run_ansible_playbook
 
@@ -47,6 +49,7 @@ class AnsibleExecutor(BaseExecutor):
         device_name: str,
         action_name: str,
         config: dict[str, Any] | None = None,
+        extra_vars: dict[str, Any] | None = None,
     ) -> str:
         """Queue an Ansible playbook for execution via Celery.
 
@@ -56,6 +59,7 @@ class AnsibleExecutor(BaseExecutor):
             device_name: Target device name
             action_name: Name of the playbook to execute (without .yml)
             config: Optional extra configuration (not used for Ansible)
+            extra_vars: Optional variables to pass to the playbook
 
         Returns:
             Celery task ID for tracking
@@ -65,6 +69,7 @@ class AnsibleExecutor(BaseExecutor):
             device_ip=device_ip,
             device_name=device_name,
             playbook_name=action_name,
+            extra_vars=extra_vars,
         )
         logger.info(f"Queued playbook execution for job {job_id}, task_id={task.id}")
         return task.id
@@ -137,3 +142,51 @@ class AnsibleExecutor(BaseExecutor):
         except Exception:
             pass
         return f"Execute {playbook_path.stem} playbook"
+
+    def get_action_schema(self, action_name: str) -> dict | None:
+        """Get the variable schema for a playbook.
+
+        Loads schema from schemas/<action_name>.schema.yml if it exists.
+
+        Args:
+            action_name: Name of the playbook (without .yml)
+
+        Returns:
+            JSON Schema dict or None if no schema exists
+        """
+        # Validate action name first
+        if not SAFE_ACTION_NAME_PATTERN.match(action_name):
+            return None
+
+        schema_path = self.playbooks_dir / "schemas" / f"{action_name}.schema.yml"
+
+        if not schema_path.exists():
+            return None
+
+        try:
+            with open(schema_path, "r") as f:
+                schema = yaml.safe_load(f)
+                return schema if isinstance(schema, dict) else None
+        except Exception as e:
+            logger.warning(f"Failed to load schema for {action_name}: {e}")
+            return None
+
+    def get_schema_defaults(self, action_name: str) -> dict:
+        """Extract default values from a playbook's schema.
+
+        Args:
+            action_name: Name of the playbook
+
+        Returns:
+            Dict of variable names to default values
+        """
+        schema = self.get_action_schema(action_name)
+        if not schema or "properties" not in schema:
+            return {}
+
+        defaults = {}
+        for var_name, var_schema in schema.get("properties", {}).items():
+            if "default" in var_schema:
+                defaults[var_name] = var_schema["default"]
+
+        return defaults

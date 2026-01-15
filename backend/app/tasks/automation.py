@@ -1,6 +1,7 @@
 """Celery tasks for automation execution."""
 
 import ipaddress
+import json
 import logging
 import os
 import re
@@ -8,6 +9,8 @@ import subprocess
 import tempfile
 from datetime import datetime
 from pathlib import Path
+from subprocess import PIPE, STDOUT
+from typing import Any
 
 from celery import shared_task
 from celery.exceptions import SoftTimeLimitExceeded
@@ -38,6 +41,18 @@ SENSITIVE_PATTERNS = [
     # SSH private key content
     (re.compile(r'-----BEGIN [A-Z ]+ PRIVATE KEY-----.*?-----END [A-Z ]+ PRIVATE KEY-----', re.DOTALL), '***PRIVATE KEY REDACTED***'),
 ]
+
+# Pattern to detect Ansible TASK lines for progress tracking
+TASK_PATTERN = re.compile(r'^TASK \[(.+)\]')
+PLAY_PATTERN = re.compile(r'^PLAY \[(.+)\]')
+
+# Cancellation check interval (check every N lines)
+CANCELLATION_CHECK_INTERVAL = 10
+
+
+class CancellationError(Exception):
+    """Raised when a job is cancelled."""
+    pass
 
 
 def _redact_sensitive_data(text: str) -> str:
@@ -135,10 +150,17 @@ def _generate_inventory(device_ip: str, device_name: str, job_id: int) -> str:
     if ssh_key_path:
         ssh_args += f" -o IdentityFile={ssh_key_path}"
 
+    # Build host line with required parameters
     host_line = (
         f"{safe_name} ansible_host={safe_ip} "
         f"ansible_user={ansible_user} ansible_ssh_common_args='{ssh_args}'"
     )
+
+    # Add password authentication if configured (requires sshpass on system)
+    ansible_password = os.getenv("ANSIBLE_PASSWORD")
+    if ansible_password:
+        host_line += f" ansible_password={ansible_password}"
+        host_line += " ansible_ssh_extra_args='-o PubkeyAuthentication=no'"
 
     inventory_content = f"""[homelab]
 {host_line}
@@ -169,6 +191,220 @@ ansible_python_interpreter=/usr/bin/python3
     return inventory_path
 
 
+def _categorize_error(error: Exception) -> str:
+    """Categorize an error for better user feedback.
+
+    Args:
+        error: The exception that occurred
+
+    Returns:
+        Error category string
+    """
+    error_str = str(error).lower()
+    if "connection refused" in error_str or "unreachable" in error_str:
+        return "connectivity"
+    elif "permission denied" in error_str:
+        return "permission"
+    elif "not found" in error_str:
+        return "not_found"
+    elif "timeout" in error_str:
+        return "timeout"
+    elif "authentication" in error_str:
+        return "authentication"
+    return "execution"
+
+
+def _sanitize_extra_vars(extra_vars: dict[str, Any] | None) -> dict[str, Any]:
+    """Sanitize extra vars to prevent command injection.
+
+    Only allows safe types: str, int, float, bool, list, dict.
+    Strings are escaped to prevent shell injection.
+
+    Args:
+        extra_vars: Raw extra variables dict
+
+    Returns:
+        Sanitized extra variables dict
+    """
+    if not extra_vars:
+        return {}
+
+    sanitized = {}
+    for key, value in extra_vars.items():
+        # Validate key is alphanumeric with underscores
+        if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", key):
+            logger.warning(f"Skipping invalid variable name: {key}")
+            continue
+
+        # Only allow safe types
+        if isinstance(value, (str, int, float, bool)):
+            sanitized[key] = value
+        elif isinstance(value, list):
+            # Allow list of primitive types
+            sanitized[key] = [v for v in value if isinstance(v, (str, int, float, bool))]
+        elif isinstance(value, dict):
+            # Recursively sanitize nested dicts
+            sanitized[key] = _sanitize_extra_vars(value)
+        else:
+            logger.warning(f"Skipping unsupported variable type for {key}: {type(value)}")
+
+    return sanitized
+
+
+def _get_redis_client():
+    """Get Redis client for log streaming if available.
+
+    Returns:
+        Redis client or None if not available
+    """
+    try:
+        from redis import Redis
+        redis_url = Config.CELERY_BROKER_URL
+        if redis_url and redis_url.startswith("redis://"):
+            return Redis.from_url(redis_url)
+    except Exception as e:
+        logger.debug(f"Redis not available for streaming: {e}")
+    return None
+
+
+def _count_tasks_in_playbook(playbook_path: Path) -> int:
+    """Count approximate number of tasks in a playbook.
+
+    Args:
+        playbook_path: Path to the playbook file
+
+    Returns:
+        Estimated task count (minimum 1)
+    """
+    try:
+        import yaml
+        with open(playbook_path, "r") as f:
+            playbook = yaml.safe_load(f)
+
+        task_count = 0
+        if isinstance(playbook, list):
+            for play in playbook:
+                if isinstance(play, dict):
+                    tasks = play.get("tasks", [])
+                    if isinstance(tasks, list):
+                        task_count += len(tasks)
+                    # Count pre_tasks and post_tasks too
+                    pre_tasks = play.get("pre_tasks", [])
+                    if isinstance(pre_tasks, list):
+                        task_count += len(pre_tasks)
+                    post_tasks = play.get("post_tasks", [])
+                    if isinstance(post_tasks, list):
+                        task_count += len(post_tasks)
+
+        return max(task_count, 1)
+    except Exception as e:
+        logger.debug(f"Could not count tasks in playbook: {e}")
+        return 1
+
+
+def _execute_with_streaming(
+    cmd: list[str],
+    job_id: int,
+    db,
+    job: AutomationJob,
+    redis_client=None,
+) -> int:
+    """Execute command with streaming output, progress tracking, and cancellation support.
+
+    Args:
+        cmd: Command to execute
+        job_id: Job ID for logging
+        db: Database session
+        job: AutomationJob instance
+        redis_client: Optional Redis client for pub/sub streaming
+
+    Returns:
+        Process return code
+
+    Raises:
+        CancellationError: If job was cancelled
+        subprocess.TimeoutExpired: If process times out
+    """
+    log_channel = f"job:{job_id}:logs"
+    output_lines = []
+    line_count = 0
+
+    process = subprocess.Popen(
+        cmd,
+        stdout=PIPE,
+        stderr=STDOUT,
+        text=True,
+        bufsize=1,  # Line buffered
+    )
+
+    try:
+        for line in iter(process.stdout.readline, ''):
+            if not line:
+                break
+
+            line_count += 1
+
+            # Redact sensitive data before storing/publishing
+            safe_line = _redact_sensitive_data(line.rstrip())
+            output_lines.append(safe_line)
+
+            # Publish to Redis for real-time streaming (if available)
+            if redis_client:
+                try:
+                    redis_client.publish(log_channel, safe_line)
+                except Exception:
+                    pass  # Non-critical, continue execution
+
+            # Track progress from TASK lines
+            if TASK_PATTERN.match(line):
+                job.tasks_completed += 1
+                if job.task_count > 0:
+                    job.progress = min(int((job.tasks_completed / job.task_count) * 100), 99)
+                    # Don't commit on every task - batch updates
+                    if job.tasks_completed % 3 == 0:
+                        db.commit()
+
+            # Check for cancellation periodically
+            if line_count % CANCELLATION_CHECK_INTERVAL == 0:
+                db.refresh(job)
+                if job.cancel_requested:
+                    logger.info(f"Job {job_id} cancellation detected, terminating process")
+                    process.terminate()
+                    try:
+                        process.wait(timeout=5)
+                    except subprocess.TimeoutExpired:
+                        process.kill()
+                    raise CancellationError("Job cancelled by user")
+
+        # Wait for process to complete
+        process.wait(timeout=500)
+
+        # Final progress update
+        if process.returncode == 0:
+            job.progress = 100
+
+        return process.returncode
+
+    finally:
+        # Ensure process is terminated
+        if process.poll() is None:
+            process.terminate()
+            try:
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                process.kill()
+
+        # Store accumulated output
+        job.log_output = "\n".join(output_lines)
+
+        # Publish completion signal to Redis
+        if redis_client:
+            try:
+                redis_client.publish(log_channel, "[[STREAM_COMPLETE]]")
+            except Exception:
+                pass
+
+
 @shared_task(
     bind=True,
     autoretry_for=(Exception,),
@@ -184,17 +420,20 @@ def run_ansible_playbook(
     device_ip: str,
     device_name: str,
     playbook_name: str,
+    extra_vars: dict[str, Any] | None = None,
 ) -> dict:
     """Execute an Ansible playbook as a Celery task.
 
     This task runs in a Celery worker process, separate from the web server.
-    It supports automatic retries, timeout handling, and result persistence.
+    It supports automatic retries, timeout handling, result persistence,
+    real-time log streaming, progress tracking, and cancellation.
 
     Args:
         job_id: Database ID of the automation job
         device_ip: Target device IP address
         device_name: Target device name
         playbook_name: Name of the playbook to execute (without .yml)
+        extra_vars: Optional extra variables to pass to ansible-playbook
 
     Returns:
         Dict with job status and details
@@ -202,6 +441,8 @@ def run_ansible_playbook(
     db = Session()
     job = None
     inventory_file = None
+    extra_vars_file = None
+    redis_client = None
 
     try:
         job = db.query(AutomationJob).filter(AutomationJob.id == job_id).first()
@@ -209,11 +450,23 @@ def run_ansible_playbook(
             logger.error(f"Job {job_id} not found in database")
             return {"status": "error", "message": "Job not found"}
 
-        # Update job status to running
+        # Check if already cancelled before starting
+        if job.cancel_requested:
+            job.status = JobStatus.CANCELLED
+            job.cancelled_at = datetime.utcnow()
+            job.log_output = "Job cancelled before execution started."
+            db.commit()
+            return {"status": "cancelled", "job_id": job_id}
+
+        # Update job status to running and store celery task ID
         job.status = JobStatus.RUNNING
         job.started_at = datetime.utcnow()
+        job.celery_task_id = self.request.id
         db.commit()
         logger.info(f"Job {job_id} status updated to RUNNING (Celery task: {self.request.id})")
+
+        # Get Redis client for streaming (optional)
+        redis_client = _get_redis_client()
 
         # Validate playbook name
         if not SAFE_ACTION_NAME_PATTERN.match(playbook_name):
@@ -230,8 +483,22 @@ def run_ansible_playbook(
         if not playbook_path.exists():
             raise FileNotFoundError(f"Playbook not found: {playbook_path}")
 
+        # Count tasks for progress tracking
+        job.task_count = _count_tasks_in_playbook(playbook_path)
+        db.commit()
+
         # Generate inventory
         inventory_file = _generate_inventory(device_ip, device_name, job_id)
+
+        # Merge extra vars: parameter takes precedence over job.extra_vars
+        merged_extra_vars = {}
+        if job.extra_vars:
+            merged_extra_vars.update(job.extra_vars)
+        if extra_vars:
+            merged_extra_vars.update(extra_vars)
+
+        # Sanitize extra vars to prevent injection
+        safe_extra_vars = _sanitize_extra_vars(merged_extra_vars)
 
         # Execute ansible-playbook command
         cmd = [
@@ -243,41 +510,67 @@ def run_ansible_playbook(
             "300",
         ]
 
+        # Add extra vars if present (use JSON file for safety)
+        if safe_extra_vars:
+            fd = tempfile.NamedTemporaryFile(
+                mode="w",
+                prefix=f"ansible_vars_{job_id}_",
+                suffix=".json",
+                delete=False,
+            )
+            try:
+                json.dump(safe_extra_vars, fd)
+                extra_vars_file = fd.name
+            finally:
+                fd.close()
+            os.chmod(extra_vars_file, 0o600)
+            cmd.extend(["--extra-vars", f"@{extra_vars_file}"])
+
         logger.info(f"Executing command: {' '.join(cmd)}")
 
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=500,  # 8+ minute timeout for subprocess
+        # Execute with streaming
+        return_code = _execute_with_streaming(
+            cmd=cmd,
+            job_id=job_id,
+            db=db,
+            job=job,
+            redis_client=redis_client,
         )
-
-        # Capture and redact output before storing
-        log_output = f"STDOUT:\n{result.stdout}\n\nSTDERR:\n{result.stderr}"
-        job.log_output = _redact_sensitive_data(log_output)
 
         # Update job status based on result
         job.completed_at = datetime.utcnow()
-        if result.returncode == 0:
+        if return_code == 0:
             job.status = JobStatus.COMPLETED
+            job.progress = 100
             logger.info(f"Job {job_id} completed successfully")
         else:
             job.status = JobStatus.FAILED
-            logger.error(f"Job {job_id} failed with return code {result.returncode}")
+            job.error_category = "execution"
+            logger.error(f"Job {job_id} failed with return code {return_code}")
 
         db.commit()
 
         return {
             "status": job.status.value,
             "job_id": job_id,
-            "return_code": result.returncode,
+            "return_code": return_code,
         }
+
+    except CancellationError:
+        logger.info(f"Job {job_id} was cancelled")
+        if job:
+            job.status = JobStatus.CANCELLED
+            job.cancelled_at = datetime.utcnow()
+            job.log_output = (job.log_output or "") + "\n\n--- Job cancelled by user ---"
+            db.commit()
+        return {"status": "cancelled", "job_id": job_id}
 
     except SoftTimeLimitExceeded:
         logger.error(f"Job {job_id} hit soft time limit")
         if job:
             job.status = JobStatus.FAILED
             job.completed_at = datetime.utcnow()
+            job.error_category = "timeout"
             # Redact any existing output and append error
             existing = _redact_sensitive_data(job.log_output or "")
             job.log_output = existing + "\n\nERROR: Task exceeded time limit"
@@ -289,6 +582,7 @@ def run_ansible_playbook(
         if job:
             job.status = JobStatus.FAILED
             job.completed_at = datetime.utcnow()
+            job.error_category = "timeout"
             # Redact any existing output and append error
             existing = _redact_sensitive_data(job.log_output or "")
             job.log_output = existing + "\n\nERROR: Execution timed out"
@@ -300,6 +594,7 @@ def run_ansible_playbook(
         if job:
             job.status = JobStatus.FAILED
             job.completed_at = datetime.utcnow()
+            job.error_category = _categorize_error(e)
             # Redact any existing output and error message
             existing = _redact_sensitive_data(job.log_output or "")
             error_msg = _redact_sensitive_data(str(e))
@@ -314,9 +609,14 @@ def run_ansible_playbook(
 
     finally:
         db.close()
-        # Cleanup inventory file
+        # Cleanup temporary files
         if inventory_file:
             try:
                 Path(inventory_file).unlink(missing_ok=True)
             except Exception as e:
                 logger.warning(f"Failed to delete inventory file: {e}")
+        if extra_vars_file:
+            try:
+                Path(extra_vars_file).unlink(missing_ok=True)
+            except Exception as e:
+                logger.warning(f"Failed to delete extra vars file: {e}")

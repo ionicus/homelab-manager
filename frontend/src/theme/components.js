@@ -104,6 +104,9 @@ export const components = {
   Select: {
     defaultProps: {
       radius: 'md',
+      comboboxProps: {
+        zIndex: 1100, // Higher than modal z-index (1000)
+      },
     },
     styles: (theme) => ({
       input: {

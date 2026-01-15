@@ -125,6 +125,8 @@ export const updateServiceStatus = (serviceId, status) =>
 export const getExecutors = () => api.get('/automation/executors');
 export const getExecutorActions = (executorType) =>
   api.get(`/automation/executors/${executorType}/actions`);
+export const getActionSchema = (executorType, actionName) =>
+  api.get(`/automation/executors/${executorType}/actions/${actionName}/schema`);
 
 // Automation - Jobs
 export const getAutomationJobs = (deviceId = null, executorType = null) => {
@@ -140,17 +142,24 @@ export const triggerAutomation = (
   deviceId,
   actionName,
   executorType = 'ansible',
-  actionConfig = null
+  actionConfig = null,
+  extraVars = null
 ) =>
   api.post('/automation', {
     device_id: deviceId,
     action_name: actionName,
     executor_type: executorType,
     action_config: actionConfig,
+    extra_vars: extraVars,
   });
 
 export const getJobStatus = (jobId) => api.get(`/automation/${jobId}`);
 export const getJobLogs = (jobId) => api.get(`/automation/${jobId}/logs`);
+export const cancelJob = (jobId) => api.post(`/automation/${jobId}/cancel`);
+
+// Get the URL for SSE log streaming (for EventSource)
+export const getJobLogStreamUrl = (jobId, includeExisting = true) =>
+  `${API_URL}/automation/${jobId}/logs/stream?include_existing=${includeExisting}`;
 
 // Network Interfaces
 export const getDeviceInterfaces = (deviceId) =>

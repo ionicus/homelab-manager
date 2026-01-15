@@ -2,7 +2,17 @@
 
 import enum
 
-from sqlalchemy import JSON, Column, DateTime, Enum, ForeignKey, Integer, String, Text
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Column,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+)
 from sqlalchemy.orm import relationship
 
 from app.database import Base
@@ -15,6 +25,7 @@ class JobStatus(enum.Enum):
     RUNNING = "running"
     COMPLETED = "completed"
     FAILED = "failed"
+    CANCELLED = "cancelled"
 
 
 class AutomationJob(Base):
@@ -33,10 +44,26 @@ class AutomationJob(Base):
     executor_type = Column(String(50), nullable=False, default="ansible")
     action_name = Column(String(255), nullable=False)
     action_config = Column(JSON, nullable=True)
+    extra_vars = Column(JSON, nullable=True)  # Extra variables for executor (e.g., Ansible extra-vars)
     status = Column(Enum(JobStatus), default=JobStatus.PENDING)
     started_at = Column(DateTime, nullable=True)
     completed_at = Column(DateTime, nullable=True)
     log_output = Column(Text, nullable=True)
+
+    # Progress tracking
+    progress = Column(Integer, default=0)  # 0-100 percentage
+    task_count = Column(Integer, default=0)  # Total tasks in playbook
+    tasks_completed = Column(Integer, default=0)  # Tasks finished so far
+
+    # Error categorization
+    error_category = Column(String(50), nullable=True)  # connectivity, permission, etc.
+
+    # Cancellation support
+    cancel_requested = Column(Boolean, default=False)
+    cancelled_at = Column(DateTime, nullable=True)
+
+    # Celery task tracking
+    celery_task_id = Column(String(255), nullable=True)
 
     # Relationship
     device = relationship("Device", backref="automation_jobs")
@@ -49,6 +76,7 @@ class AutomationJob(Base):
             "executor_type": self.executor_type,
             "action_name": self.action_name,
             "action_config": self.action_config,
+            "extra_vars": self.extra_vars,
             "status": self.status.value if self.status else None,
             "started_at": (
                 self.started_at.isoformat() if self.started_at else None
@@ -57,6 +85,19 @@ class AutomationJob(Base):
                 self.completed_at.isoformat() if self.completed_at else None
             ),
             "log_output": self.log_output,
+            # Progress tracking
+            "progress": self.progress,
+            "task_count": self.task_count,
+            "tasks_completed": self.tasks_completed,
+            # Error info
+            "error_category": self.error_category,
+            # Cancellation
+            "cancel_requested": self.cancel_requested,
+            "cancelled_at": (
+                self.cancelled_at.isoformat() if self.cancelled_at else None
+            ),
+            # Celery tracking
+            "celery_task_id": self.celery_task_id,
         }
 
     def __repr__(self):

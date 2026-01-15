@@ -1,0 +1,15 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: System Update
+description: Update system packages on Debian/Ubuntu
+type: object
+properties:
+  reboot_if_required:
+    type: boolean
+    description: Automatically reboot the system if kernel updates require it
+    default: false
+  autoremove:
+    type: boolean
+    description: Remove packages that are no longer needed
+    default: true
+required: []
+additionalProperties: false

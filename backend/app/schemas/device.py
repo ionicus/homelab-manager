@@ -54,3 +54,24 @@ class DeviceResponse(DeviceBase):
     metadata: Optional[Dict[str, Any]] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+
+
+class DeviceVariablesUpdate(BaseModel):
+    """Schema for updating device automation variables."""
+
+    variables: Dict[str, Any] = Field(
+        ..., description="Key-value pairs for automation variables"
+    )
+
+
+class DeviceVariablesResponse(BaseModel):
+    """Schema for device variables response."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    device_id: int
+    playbook_name: Optional[str] = None
+    variables: Dict[str, Any]
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None

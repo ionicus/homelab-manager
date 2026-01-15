@@ -39,7 +39,8 @@ class BaseExecutor(ABC):
         device_name: str,
         action_name: str,
         config: dict[str, Any] | None = None,
-    ) -> None:
+        extra_vars: dict[str, Any] | None = None,
+    ) -> str | None:
         """Execute an automation action in a background thread.
 
         Args:
@@ -48,6 +49,10 @@ class BaseExecutor(ABC):
             device_name: Target device name
             action_name: Name of the action to execute
             config: Optional action-specific configuration
+            extra_vars: Optional variables to pass to the action
+
+        Returns:
+            Task ID for tracking (if async), or None
         """
         pass
 

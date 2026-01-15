@@ -1,0 +1,7 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Ping
+description: Test connectivity to target host
+type: object
+properties: {}
+required: []
+additionalProperties: false

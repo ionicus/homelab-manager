@@ -14,7 +14,9 @@ function StatusBadge({ status, ...props }) {
       error: 'red',
       pending: 'blue',
       success: 'green',
+      completed: 'green',
       failed: 'red',
+      cancelled: 'orange',
       warning: 'yellow',
     };
 

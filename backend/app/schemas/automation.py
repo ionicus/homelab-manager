@@ -4,7 +4,10 @@ import re
 from datetime import datetime
 from typing import Any, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+# Valid job statuses
+VALID_STATUSES = ["pending", "running", "completed", "failed", "cancelled"]
 
 # Pattern for safe action names: alphanumeric, underscore, hyphen only
 SAFE_ACTION_NAME_PATTERN = re.compile(r"^[a-zA-Z0-9_-]+$")
@@ -51,16 +54,30 @@ class AutomationJobBase(BaseModel):
     @classmethod
     def validate_status(cls, v: str) -> str:
         """Validate job status."""
-        valid_statuses = ["pending", "running", "completed", "failed"]
-        if v.lower() not in valid_statuses:
-            raise ValueError(f"Status must be one of: {', '.join(valid_statuses)}")
+        if v.lower() not in VALID_STATUSES:
+            raise ValueError(f"Status must be one of: {', '.join(VALID_STATUSES)}")
         return v.lower()
 
 
 class AutomationJobCreate(AutomationJobBase):
     """Schema for creating a new automation job."""
 
-    device_id: int = Field(..., description="ID of the device to run automation on")
+    device_id: Optional[int] = Field(
+        default=None, description="ID of the device to run automation on"
+    )
+    device_ids: Optional[list[int]] = Field(
+        default=None, description="IDs of multiple devices for batch execution"
+    )
+    extra_vars: Optional[dict[str, Any]] = Field(
+        default=None, description="Extra variables to pass to the executor (e.g., Ansible extra-vars)"
+    )
+
+    @model_validator(mode="after")
+    def validate_device_ids(self) -> "AutomationJobCreate":
+        """Ensure at least one device ID is provided."""
+        if self.device_id is None and (self.device_ids is None or len(self.device_ids) == 0):
+            raise ValueError("Either device_id or device_ids must be provided")
+        return self
 
 
 class AutomationJobUpdate(BaseModel):
@@ -74,9 +91,8 @@ class AutomationJobUpdate(BaseModel):
         """Validate job status."""
         if v is None:
             return v
-        valid_statuses = ["pending", "running", "completed", "failed"]
-        if v.lower() not in valid_statuses:
-            raise ValueError(f"Status must be one of: {', '.join(valid_statuses)}")
+        if v.lower() not in VALID_STATUSES:
+            raise ValueError(f"Status must be one of: {', '.join(VALID_STATUSES)}")
         return v.lower()
 
 
@@ -90,9 +106,17 @@ class AutomationJobResponse(BaseModel):
     executor_type: str
     action_name: str
     action_config: Optional[dict[str, Any]] = None
+    extra_vars: Optional[dict[str, Any]] = None
     status: Optional[str] = None
+    progress: int = 0
+    task_count: int = 0
+    tasks_completed: int = 0
+    error_category: Optional[str] = None
+    cancel_requested: bool = False
+    celery_task_id: Optional[str] = None
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
+    cancelled_at: Optional[datetime] = None
     log_output: Optional[str] = None
 
 

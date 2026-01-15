@@ -1,0 +1,21 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Docker Install
+description: Install Docker CE on Debian/Ubuntu systems
+type: object
+properties:
+  docker_users:
+    type: array
+    items:
+      type: string
+    description: Users to add to the docker group (allows running docker without sudo)
+    default: []
+  install_compose:
+    type: boolean
+    description: Also install Docker Compose plugin
+    default: true
+  docker_data_root:
+    type: string
+    description: Custom Docker data directory (leave empty for default /var/lib/docker)
+    default: ""
+required: []
+additionalProperties: false

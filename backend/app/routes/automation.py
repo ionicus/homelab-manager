@@ -1,9 +1,10 @@
 """Automation routes with extensible executor support."""
 
-from flask import Blueprint, request
+from flask import Blueprint, request, Response
 from flask_jwt_extended import jwt_required
 
 from app import limiter
+from app.config import Config
 from app.models import AutomationJob, Device, JobStatus
 from app.schemas.automation import AutomationJobCreate
 from app.services.executors import registry
@@ -84,20 +85,26 @@ def trigger_automation():
         )
 
     with DatabaseSession() as db:
+        # Determine device ID (device_id takes precedence, otherwise use first from device_ids)
+        device_id = data.device_id
+        if device_id is None and data.device_ids:
+            device_id = data.device_ids[0]
+
         # Verify device exists
-        device = db.query(Device).filter(Device.id == data.device_id).first()
+        device = db.query(Device).filter(Device.id == device_id).first()
         if not device:
-            raise NotFoundError("Device", data.device_id)
+            raise NotFoundError("Device", device_id)
 
         # Validate device has IP address
         if not device.ip_address:
             raise ValidationError("Device must have an IP address for automation")
 
         job = AutomationJob(
-            device_id=data.device_id,
+            device_id=device_id,
             executor_type=data.executor_type,
             action_name=data.action_name,
             action_config=data.action_config,
+            extra_vars=data.extra_vars,
             status=JobStatus.PENDING,
         )
 
@@ -106,13 +113,20 @@ def trigger_automation():
         db.refresh(job)
 
         # Queue automation for background execution via Celery
-        executor.execute(
+        celery_task_id = executor.execute(
             job_id=job.id,
             device_ip=device.ip_address,
             device_name=device.name,
             action_name=data.action_name,
             config=data.action_config,
+            extra_vars=data.extra_vars,
         )
+
+        # Store the Celery task ID for tracking
+        if celery_task_id:
+            job.celery_task_id = celery_task_id
+            db.commit()
+            db.refresh(job)
 
         return success_response(job.to_dict(), status_code=201)
 
@@ -184,6 +198,171 @@ def get_job_logs(job_id: int):
             raise NotFoundError("Job", job_id)
 
         return success_response({"job_id": job.id, "log_output": job.log_output or ""})
+
+
+@automation_bp.route("/<int:job_id>/logs/stream", methods=["GET"])
+def stream_job_logs(job_id: int):
+    """Stream automation job logs in real-time via SSE.
+    ---
+    tags:
+      - Automation
+    parameters:
+      - name: job_id
+        in: path
+        type: integer
+        required: true
+        description: Job ID
+      - name: include_existing
+        in: query
+        type: boolean
+        default: true
+        description: Include existing logs before streaming
+    responses:
+      200:
+        description: SSE stream of log lines
+        content:
+          text/event-stream:
+            schema:
+              type: string
+      404:
+        description: Job not found
+    """
+    import redis
+
+    # Verify job exists first
+    with DatabaseSession() as db:
+        job = db.query(AutomationJob).filter(AutomationJob.id == job_id).first()
+        if not job:
+            raise NotFoundError("Job", job_id)
+
+        initial_status = job.status.value
+        initial_logs = job.log_output or ""
+        initial_progress = job.progress
+
+    include_existing = request.args.get("include_existing", "true").lower() == "true"
+
+    def event_stream():
+        # Send initial job info
+        import json
+        yield f"event: status\ndata: {json.dumps({'status': initial_status, 'progress': initial_progress})}\n\n"
+
+        # Send existing logs if requested
+        if include_existing and initial_logs:
+            for line in initial_logs.split("\n"):
+                yield f"data: {line}\n\n"
+
+        # If job already completed, send completion event and close
+        if initial_status in ("completed", "failed", "cancelled"):
+            yield "event: complete\ndata: {}\n\n"
+            return
+
+        # Connect to Redis for real-time streaming
+        try:
+            redis_client = redis.from_url(Config.CELERY_BROKER_URL)
+            pubsub = redis_client.pubsub()
+            pubsub.subscribe(f"job:{job_id}:logs")
+
+            # Listen for messages with timeout
+            for message in pubsub.listen():
+                if message["type"] == "message":
+                    data = message["data"]
+                    if isinstance(data, bytes):
+                        data = data.decode("utf-8")
+
+                    # Check for stream completion marker
+                    if data == "[[STREAM_COMPLETE]]":
+                        yield "event: complete\ndata: {}\n\n"
+                        break
+
+                    yield f"data: {data}\n\n"
+
+        except redis.ConnectionError:
+            # Redis not available, fall back to polling
+            yield "event: error\ndata: {\"message\": \"Real-time streaming unavailable\"}\n\n"
+        finally:
+            try:
+                pubsub.unsubscribe()
+                pubsub.close()
+            except Exception:
+                pass
+
+    return Response(
+        event_stream(),
+        mimetype="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",  # Disable nginx buffering
+        },
+    )
+
+
+@automation_bp.route("/<int:job_id>/cancel", methods=["POST"])
+@jwt_required()
+def cancel_job(job_id: int):
+    """Request cancellation of a running job.
+    ---
+    tags:
+      - Automation
+    parameters:
+      - name: job_id
+        in: path
+        type: integer
+        required: true
+        description: Job ID
+    responses:
+      200:
+        description: Cancellation requested
+        schema:
+          type: object
+          properties:
+            data:
+              type: object
+              properties:
+                job_id:
+                  type: integer
+                message:
+                  type: string
+      400:
+        description: Job cannot be cancelled (not running)
+      404:
+        description: Job not found
+    """
+    from datetime import datetime
+
+    with DatabaseSession() as db:
+        job = db.query(AutomationJob).filter(AutomationJob.id == job_id).first()
+        if not job:
+            raise NotFoundError("Job", job_id)
+
+        # Can only cancel running or pending jobs
+        if job.status not in (JobStatus.RUNNING, JobStatus.PENDING):
+            raise ValidationError(
+                f"Cannot cancel job with status '{job.status.value}'. "
+                "Only running or pending jobs can be cancelled."
+            )
+
+        # Mark cancellation requested
+        job.cancel_requested = True
+
+        # If pending, cancel immediately
+        if job.status == JobStatus.PENDING:
+            job.status = JobStatus.CANCELLED
+            job.cancelled_at = datetime.utcnow()
+            job.log_output = (job.log_output or "") + "\n\nJob cancelled before execution."
+            db.commit()
+            return success_response({
+                "job_id": job.id,
+                "message": "Job cancelled immediately (was pending)",
+                "status": "cancelled",
+            })
+
+        db.commit()
+
+        return success_response({
+            "job_id": job.id,
+            "message": "Cancellation requested. Job will stop at next checkpoint.",
+            "status": "cancellation_requested",
+        })
 
 
 @automation_bp.route("/executors", methods=["GET"])
@@ -281,6 +460,60 @@ def list_executor_actions(executor_type: str):
             for a in actions
         ]
     )
+
+
+@automation_bp.route("/executors/<executor_type>/actions/<action_name>/schema", methods=["GET"])
+@jwt_required()
+def get_action_schema(executor_type: str, action_name: str):
+    """Get variable schema for a specific action.
+    ---
+    tags:
+      - Automation
+    parameters:
+      - name: executor_type
+        in: path
+        type: string
+        required: true
+        description: Executor type identifier
+      - name: action_name
+        in: path
+        type: string
+        required: true
+        description: Action/playbook name
+    responses:
+      200:
+        description: Action variable schema (JSON Schema format)
+        schema:
+          type: object
+          properties:
+            data:
+              type: object
+              properties:
+                action_name:
+                  type: string
+                schema:
+                  type: object
+                  description: JSON Schema for action variables
+      404:
+        description: Executor or action not found
+    """
+    executor = registry.get_executor(executor_type)
+    if not executor:
+        raise NotFoundError("Executor", executor_type)
+
+    # Check if action exists
+    if not executor.validate_config(action_name, None):
+        raise NotFoundError("Action", action_name)
+
+    # Get schema if executor supports it
+    schema = {}
+    if hasattr(executor, "get_action_schema"):
+        schema = executor.get_action_schema(action_name) or {}
+
+    return success_response({
+        "action_name": action_name,
+        "schema": schema,
+    })
 
 
 @automation_bp.route("/jobs", methods=["GET"])

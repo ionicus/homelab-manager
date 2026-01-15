@@ -3,8 +3,8 @@
 from flask import Blueprint, request
 from flask_jwt_extended import jwt_required
 
-from app.models import Device, DeviceStatus, DeviceType
-from app.schemas.device import DeviceCreate, DeviceUpdate
+from app.models import Device, DeviceStatus, DeviceType, DeviceVariables
+from app.schemas.device import DeviceCreate, DeviceUpdate, DeviceVariablesUpdate
 from app.utils.errors import (
     ConflictError,
     DatabaseSession,
@@ -368,3 +368,264 @@ def get_device_metrics(device_id: int):
         metrics = device.metrics[-limit:] if device.metrics else []
 
         return success_response([metric.to_dict() for metric in metrics])
+
+
+# ===== Device Variables Endpoints =====
+
+
+@devices_bp.route("/<int:device_id>/variables", methods=["GET"])
+@jwt_required()
+def get_device_variables(device_id: int):
+    """Get all variable sets for a device.
+    ---
+    tags:
+      - Devices
+    parameters:
+      - name: device_id
+        in: path
+        type: integer
+        required: true
+        description: Device ID
+    responses:
+      200:
+        description: List of variable sets (device defaults + playbook-specific)
+        schema:
+          type: object
+          properties:
+            data:
+              type: object
+              properties:
+                device_defaults:
+                  type: object
+                  description: Device-wide default variables
+                playbook_overrides:
+                  type: object
+                  description: Playbook-specific variable overrides
+      404:
+        description: Device not found
+    """
+    with DatabaseSession() as db:
+        device = db.query(Device).filter(Device.id == device_id).first()
+        if not device:
+            raise NotFoundError("Device", device_id)
+
+        # Get all variable sets for this device
+        var_sets = db.query(DeviceVariables).filter(
+            DeviceVariables.device_id == device_id
+        ).all()
+
+        # Organize into defaults and playbook-specific
+        device_defaults = {}
+        playbook_overrides = {}
+
+        for var_set in var_sets:
+            if var_set.playbook_name is None:
+                device_defaults = var_set.variables or {}
+            else:
+                playbook_overrides[var_set.playbook_name] = var_set.variables or {}
+
+        return success_response({
+            "device_defaults": device_defaults,
+            "playbook_overrides": playbook_overrides,
+        })
+
+
+@devices_bp.route("/<int:device_id>/variables", methods=["PUT"])
+@jwt_required()
+@validate_request(DeviceVariablesUpdate)
+def update_device_variables(device_id: int):
+    """Update device-wide default variables.
+    ---
+    tags:
+      - Devices
+    parameters:
+      - name: device_id
+        in: path
+        type: integer
+        required: true
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          properties:
+            variables:
+              type: object
+              description: Key-value variable pairs
+    responses:
+      200:
+        description: Variables updated
+      404:
+        description: Device not found
+    """
+    data = request.validated_data
+
+    with DatabaseSession() as db:
+        device = db.query(Device).filter(Device.id == device_id).first()
+        if not device:
+            raise NotFoundError("Device", device_id)
+
+        # Find or create device defaults (playbook_name = NULL)
+        var_set = db.query(DeviceVariables).filter(
+            DeviceVariables.device_id == device_id,
+            DeviceVariables.playbook_name.is_(None),
+        ).first()
+
+        if var_set:
+            var_set.variables = data.variables
+        else:
+            var_set = DeviceVariables(
+                device_id=device_id,
+                playbook_name=None,
+                variables=data.variables,
+            )
+            db.add(var_set)
+
+        db.commit()
+        db.refresh(var_set)
+
+        return success_response(var_set.to_dict())
+
+
+@devices_bp.route("/<int:device_id>/variables/<playbook_name>", methods=["GET"])
+@jwt_required()
+def get_device_playbook_variables(device_id: int, playbook_name: str):
+    """Get playbook-specific variable overrides for a device.
+    ---
+    tags:
+      - Devices
+    parameters:
+      - name: device_id
+        in: path
+        type: integer
+        required: true
+      - name: playbook_name
+        in: path
+        type: string
+        required: true
+    responses:
+      200:
+        description: Playbook-specific variables
+      404:
+        description: Device or variables not found
+    """
+    with DatabaseSession() as db:
+        device = db.query(Device).filter(Device.id == device_id).first()
+        if not device:
+            raise NotFoundError("Device", device_id)
+
+        var_set = db.query(DeviceVariables).filter(
+            DeviceVariables.device_id == device_id,
+            DeviceVariables.playbook_name == playbook_name,
+        ).first()
+
+        if not var_set:
+            # Return empty if no overrides exist
+            return success_response({
+                "device_id": device_id,
+                "playbook_name": playbook_name,
+                "variables": {},
+            })
+
+        return success_response(var_set.to_dict())
+
+
+@devices_bp.route("/<int:device_id>/variables/<playbook_name>", methods=["PUT"])
+@jwt_required()
+@validate_request(DeviceVariablesUpdate)
+def update_device_playbook_variables(device_id: int, playbook_name: str):
+    """Update playbook-specific variable overrides for a device.
+    ---
+    tags:
+      - Devices
+    parameters:
+      - name: device_id
+        in: path
+        type: integer
+        required: true
+      - name: playbook_name
+        in: path
+        type: string
+        required: true
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          properties:
+            variables:
+              type: object
+    responses:
+      200:
+        description: Variables updated
+      404:
+        description: Device not found
+    """
+    data = request.validated_data
+
+    with DatabaseSession() as db:
+        device = db.query(Device).filter(Device.id == device_id).first()
+        if not device:
+            raise NotFoundError("Device", device_id)
+
+        # Find or create playbook-specific overrides
+        var_set = db.query(DeviceVariables).filter(
+            DeviceVariables.device_id == device_id,
+            DeviceVariables.playbook_name == playbook_name,
+        ).first()
+
+        if var_set:
+            var_set.variables = data.variables
+        else:
+            var_set = DeviceVariables(
+                device_id=device_id,
+                playbook_name=playbook_name,
+                variables=data.variables,
+            )
+            db.add(var_set)
+
+        db.commit()
+        db.refresh(var_set)
+
+        return success_response(var_set.to_dict())
+
+
+@devices_bp.route("/<int:device_id>/variables/<playbook_name>", methods=["DELETE"])
+@jwt_required()
+def delete_device_playbook_variables(device_id: int, playbook_name: str):
+    """Delete playbook-specific variable overrides for a device.
+    ---
+    tags:
+      - Devices
+    parameters:
+      - name: device_id
+        in: path
+        type: integer
+        required: true
+      - name: playbook_name
+        in: path
+        type: string
+        required: true
+    responses:
+      200:
+        description: Variables deleted
+      404:
+        description: Device or variables not found
+    """
+    with DatabaseSession() as db:
+        device = db.query(Device).filter(Device.id == device_id).first()
+        if not device:
+            raise NotFoundError("Device", device_id)
+
+        var_set = db.query(DeviceVariables).filter(
+            DeviceVariables.device_id == device_id,
+            DeviceVariables.playbook_name == playbook_name,
+        ).first()
+
+        if not var_set:
+            raise NotFoundError("Variables", f"{device_id}/{playbook_name}")
+
+        db.delete(var_set)
+        db.commit()
+
+        return success_response(message="Variables deleted successfully")

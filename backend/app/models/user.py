@@ -2,7 +2,16 @@
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, Column, DateTime, Integer, JSON, LargeBinary, String, Text
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Column,
+    DateTime,
+    Integer,
+    LargeBinary,
+    String,
+    Text,
+)
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from app.database import Base

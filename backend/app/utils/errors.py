@@ -6,7 +6,7 @@ for common error scenarios.
 """
 
 import logging
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 from flask import jsonify
 
@@ -20,14 +20,14 @@ class APIError(Exception):
         self,
         message: str,
         status_code: int = 400,
-        payload: Optional[Dict[str, Any]] = None,
+        payload: dict[str, Any] | None = None,
     ):
         super().__init__(message)
         self.message = message
         self.status_code = status_code
         self.payload = payload or {}
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert exception to dictionary for JSON response."""
         result = {"error": self.message}
         if self.payload:
@@ -38,7 +38,7 @@ class APIError(Exception):
 class ValidationError(APIError):
     """Exception for validation errors (400)."""
 
-    def __init__(self, message: str, field: Optional[str] = None):
+    def __init__(self, message: str, field: str | None = None):
         payload = {"field": field} if field else {}
         super().__init__(message, status_code=400, payload=payload)
 
@@ -46,7 +46,7 @@ class ValidationError(APIError):
 class NotFoundError(APIError):
     """Exception for resource not found errors (404)."""
 
-    def __init__(self, resource: str, identifier: Optional[Any] = None):
+    def __init__(self, resource: str, identifier: Any | None = None):
         message = f"{resource} not found"
         if identifier:
             message += f": {identifier}"
@@ -69,7 +69,7 @@ class DatabaseError(APIError):
 
 def error_response(
     message: str, status_code: int = 400, **kwargs
-) -> Tuple[Dict[str, Any], int]:
+) -> tuple[dict[str, Any], int]:
     """
     Create a standardized error response.
 
@@ -93,8 +93,8 @@ def error_response(
 
 
 def success_response(
-    data: Any = None, message: Optional[str] = None, status_code: int = 200
-) -> Tuple[Dict[str, Any], int]:
+    data: Any = None, message: str | None = None, status_code: int = 200
+) -> tuple[dict[str, Any], int]:
     """
     Create a standardized success response.
 
@@ -111,7 +111,7 @@ def success_response(
     Returns:
         Tuple of (response_dict, status_code)
     """
-    response: Dict[str, Any] = {}
+    response: dict[str, Any] = {}
 
     if data is not None:
         response["data"] = data
@@ -123,8 +123,8 @@ def success_response(
 
 
 def validation_error(
-    message: str, field: Optional[str] = None
-) -> Tuple[Dict[str, Any], int]:
+    message: str, field: str | None = None
+) -> tuple[dict[str, Any], int]:
     """
     Create a validation error response (400).
 
@@ -142,8 +142,8 @@ def validation_error(
 
 
 def not_found_error(
-    resource: str, identifier: Optional[Any] = None
-) -> Tuple[Dict[str, Any], int]:
+    resource: str, identifier: Any | None = None
+) -> tuple[dict[str, Any], int]:
     """
     Create a resource not found error response (404).
 
@@ -160,7 +160,7 @@ def not_found_error(
     return jsonify({"error": message}), 404
 
 
-def conflict_error(message: str) -> Tuple[Dict[str, Any], int]:
+def conflict_error(message: str) -> tuple[dict[str, Any], int]:
     """
     Create a resource conflict error response (409).
 
@@ -174,8 +174,8 @@ def conflict_error(message: str) -> Tuple[Dict[str, Any], int]:
 
 
 def database_error(
-    message: str = "Database operation failed", log_details: Optional[str] = None
-) -> Tuple[Dict[str, Any], int]:
+    message: str = "Database operation failed", log_details: str | None = None
+) -> tuple[dict[str, Any], int]:
     """
     Create a database error response (500).
 
@@ -194,7 +194,7 @@ def database_error(
     return jsonify({"error": message}), 500
 
 
-def handle_database_exception(e: Exception) -> Tuple[Dict[str, Any], int]:
+def handle_database_exception(e: Exception) -> tuple[dict[str, Any], int]:
     """
     Handle SQLAlchemy database exceptions.
 

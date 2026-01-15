@@ -2,7 +2,7 @@
 
 import re
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -28,11 +28,11 @@ class AutomationJobBase(BaseModel):
         max_length=100,
         description="Action to execute",
     )
-    action_config: Optional[dict[str, Any]] = Field(
+    action_config: dict[str, Any] | None = Field(
         default=None,
         description="Action-specific configuration",
     )
-    status: Optional[str] = Field(
+    status: str | None = Field(
         default="pending",
         description="Job status (pending, running, completed, failed)",
     )
@@ -62,13 +62,13 @@ class AutomationJobBase(BaseModel):
 class AutomationJobCreate(AutomationJobBase):
     """Schema for creating a new automation job."""
 
-    device_id: Optional[int] = Field(
+    device_id: int | None = Field(
         default=None, description="ID of the device to run automation on"
     )
-    device_ids: Optional[list[int]] = Field(
+    device_ids: list[int] | None = Field(
         default=None, description="IDs of multiple devices for batch execution"
     )
-    extra_vars: Optional[dict[str, Any]] = Field(
+    extra_vars: dict[str, Any] | None = Field(
         default=None, description="Extra variables to pass to the executor (e.g., Ansible extra-vars)"
     )
 
@@ -83,11 +83,11 @@ class AutomationJobCreate(AutomationJobBase):
 class AutomationJobUpdate(BaseModel):
     """Schema for updating an automation job."""
 
-    status: Optional[str] = Field(default=None)
+    status: str | None = Field(default=None)
 
     @field_validator("status")
     @classmethod
-    def validate_status(cls, v: Optional[str]) -> Optional[str]:
+    def validate_status(cls, v: str | None) -> str | None:
         """Validate job status."""
         if v is None:
             return v
@@ -105,19 +105,19 @@ class AutomationJobResponse(BaseModel):
     device_id: int
     executor_type: str
     action_name: str
-    action_config: Optional[dict[str, Any]] = None
-    extra_vars: Optional[dict[str, Any]] = None
-    status: Optional[str] = None
+    action_config: dict[str, Any] | None = None
+    extra_vars: dict[str, Any] | None = None
+    status: str | None = None
     progress: int = 0
     task_count: int = 0
     tasks_completed: int = 0
-    error_category: Optional[str] = None
+    error_category: str | None = None
     cancel_requested: bool = False
-    celery_task_id: Optional[str] = None
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
-    cancelled_at: Optional[datetime] = None
-    log_output: Optional[str] = None
+    celery_task_id: str | None = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    cancelled_at: datetime | None = None
+    log_output: str | None = None
 
 
 class ExecutorInfo(BaseModel):
@@ -134,6 +134,6 @@ class ActionInfo(BaseModel):
     name: str = Field(..., description="Action identifier")
     display_name: str = Field(..., description="Human-readable name")
     description: str = Field(default="", description="Action description")
-    config_schema: Optional[dict[str, Any]] = Field(
+    config_schema: dict[str, Any] | None = Field(
         default=None, description="JSON Schema for action config"
     )

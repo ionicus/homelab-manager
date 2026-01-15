@@ -10,7 +10,11 @@ from app.utils.errors import (
     NotFoundError,
     success_response,
 )
-from app.utils.pagination import get_pagination_params, paginate_query, paginated_response
+from app.utils.pagination import (
+    get_pagination_params,
+    paginate_query,
+    paginated_response,
+)
 from app.utils.validation import validate_request
 
 services_bp = Blueprint("services", __name__)

@@ -278,7 +278,7 @@ def _count_tasks_in_playbook(playbook_path: Path) -> int:
     """
     try:
         import yaml
-        with open(playbook_path, "r") as f:
+        with open(playbook_path) as f:
             playbook = yaml.safe_load(f)
 
         task_count = 0

@@ -1,6 +1,5 @@
 """Pydantic schemas for Service model."""
 
-from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -9,18 +8,18 @@ class ServiceBase(BaseModel):
     """Base schema for Service with common fields."""
 
     name: str = Field(..., min_length=1, max_length=255, description="Service name")
-    port: Optional[int] = Field(
+    port: int | None = Field(
         default=None, ge=1, le=65535, description="Service port (1-65535)"
     )
-    protocol: Optional[str] = Field(
+    protocol: str | None = Field(
         default=None,
         max_length=50,
         description="Service protocol (http, https, tcp, etc.)",
     )
-    status: Optional[str] = Field(
+    status: str | None = Field(
         default="stopped", description="Service status (running, stopped, error)"
     )
-    health_check_url: Optional[str] = Field(
+    health_check_url: str | None = Field(
         default=None, max_length=500, description="Health check endpoint URL"
     )
 
@@ -43,15 +42,15 @@ class ServiceCreate(ServiceBase):
 class ServiceUpdate(BaseModel):
     """Schema for updating an existing service."""
 
-    name: Optional[str] = Field(default=None, min_length=1, max_length=255)
-    port: Optional[int] = Field(default=None, ge=1, le=65535)
-    protocol: Optional[str] = Field(default=None, max_length=50)
-    status: Optional[str] = Field(default=None)
-    health_check_url: Optional[str] = Field(default=None, max_length=500)
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    port: int | None = Field(default=None, ge=1, le=65535)
+    protocol: str | None = Field(default=None, max_length=50)
+    status: str | None = Field(default=None)
+    health_check_url: str | None = Field(default=None, max_length=500)
 
     @field_validator("status")
     @classmethod
-    def validate_status(cls, v: Optional[str]) -> Optional[str]:
+    def validate_status(cls, v: str | None) -> str | None:
         """Validate service status."""
         if v is None:
             return v

@@ -7,7 +7,7 @@ from datetime import datetime
 from logging.handlers import RotatingFileHandler
 
 from flasgger import Swagger
-from flask import Flask, g, jsonify, request
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 from sqlalchemy.exc import SQLAlchemyError

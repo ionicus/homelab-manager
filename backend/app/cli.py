@@ -1,7 +1,6 @@
 """CLI commands for the Homelab Manager application."""
 
 import click
-from flask import current_app
 from flask.cli import with_appcontext
 
 from app.database import Session
@@ -57,7 +56,7 @@ def create_admin(username: str, email: str, password: str):
         click.echo(click.style(f"Admin user '{username}' created successfully!", fg="green"))
         click.echo(f"  Username: {username}")
         click.echo(f"  Email: {email}")
-        click.echo(f"  Admin: Yes")
+        click.echo("  Admin: Yes")
 
     except Exception as e:
         db.rollback()

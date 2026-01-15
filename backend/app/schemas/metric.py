@@ -1,7 +1,6 @@
 """Pydantic schemas for Metric model."""
 
 from datetime import datetime
-from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -9,25 +8,25 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 class MetricBase(BaseModel):
     """Base schema for Metric with common fields."""
 
-    cpu_usage: Optional[float] = Field(
+    cpu_usage: float | None = Field(
         default=None, ge=0, le=100, description="CPU usage percentage (0-100)"
     )
-    memory_usage: Optional[float] = Field(
+    memory_usage: float | None = Field(
         default=None, ge=0, le=100, description="Memory usage percentage (0-100)"
     )
-    disk_usage: Optional[float] = Field(
+    disk_usage: float | None = Field(
         default=None, ge=0, le=100, description="Disk usage percentage (0-100)"
     )
-    network_rx_bytes: Optional[int] = Field(
+    network_rx_bytes: int | None = Field(
         default=None, ge=0, description="Network received bytes"
     )
-    network_tx_bytes: Optional[int] = Field(
+    network_tx_bytes: int | None = Field(
         default=None, ge=0, description="Network transmitted bytes"
     )
 
     @field_validator("cpu_usage", "memory_usage", "disk_usage")
     @classmethod
-    def validate_percentage(cls, v: Optional[float]) -> Optional[float]:
+    def validate_percentage(cls, v: float | None) -> float | None:
         """Validate percentage values are within 0-100 range."""
         if v is not None and (v < 0 or v > 100):
             raise ValueError("Percentage must be between 0 and 100")
@@ -35,7 +34,7 @@ class MetricBase(BaseModel):
 
     @field_validator("network_rx_bytes", "network_tx_bytes")
     @classmethod
-    def validate_network_bytes(cls, v: Optional[int]) -> Optional[int]:
+    def validate_network_bytes(cls, v: int | None) -> int | None:
         """Validate network bytes are non-negative."""
         if v is not None and v < 0:
             raise ValueError("Network bytes must be non-negative")

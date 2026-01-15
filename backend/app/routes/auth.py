@@ -34,7 +34,6 @@ from app.utils.errors import (
 )
 from app.utils.validation import validate_request
 
-
 # Allowed MIME types for avatar uploads
 ALLOWED_AVATAR_MIME_TYPES = {
     "image/png",

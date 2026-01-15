@@ -1,6 +1,6 @@
 """Automation routes with extensible executor support."""
 
-from flask import Blueprint, request, Response
+from flask import Blueprint, Response, request
 from flask_jwt_extended import jwt_required
 
 from app import limiter
@@ -14,7 +14,11 @@ from app.utils.errors import (
     ValidationError,
     success_response,
 )
-from app.utils.pagination import get_pagination_params, paginate_query, paginated_response
+from app.utils.pagination import (
+    get_pagination_params,
+    paginate_query,
+    paginated_response,
+)
 from app.utils.validation import validate_request
 
 automation_bp = Blueprint("automation", __name__)

@@ -2,7 +2,6 @@
 
 import ipaddress
 import re
-from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -16,18 +15,18 @@ class NetworkInterfaceBase(BaseModel):
     mac_address: str = Field(
         ..., pattern=r"^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$", description="MAC address"
     )
-    ip_address: Optional[str] = Field(
+    ip_address: str | None = Field(
         default=None, description="IP address (IPv4 or IPv6)"
     )
-    subnet_mask: Optional[str] = Field(default=None, description="Subnet mask")
-    gateway: Optional[str] = Field(default=None, description="Gateway IP address")
-    vlan_id: Optional[int] = Field(
+    subnet_mask: str | None = Field(default=None, description="Subnet mask")
+    gateway: str | None = Field(default=None, description="Gateway IP address")
+    vlan_id: int | None = Field(
         default=None, ge=1, le=4094, description="VLAN ID (1-4094)"
     )
-    status: Optional[str] = Field(
+    status: str | None = Field(
         default="up", description="Interface status (up, down, disabled)"
     )
-    is_primary: Optional[bool] = Field(
+    is_primary: bool | None = Field(
         default=False, description="Whether this is the primary interface"
     )
 
@@ -42,7 +41,7 @@ class NetworkInterfaceBase(BaseModel):
 
     @field_validator("ip_address", "gateway", "subnet_mask")
     @classmethod
-    def validate_ip_format(cls, v: Optional[str]) -> Optional[str]:
+    def validate_ip_format(cls, v: str | None) -> str | None:
         """Validate IP address format."""
         if v is None:
             return v
@@ -69,20 +68,20 @@ class NetworkInterfaceCreate(NetworkInterfaceBase):
 class NetworkInterfaceUpdate(BaseModel):
     """Schema for updating an existing network interface."""
 
-    interface_name: Optional[str] = Field(default=None, min_length=1, max_length=50)
-    mac_address: Optional[str] = Field(
+    interface_name: str | None = Field(default=None, min_length=1, max_length=50)
+    mac_address: str | None = Field(
         default=None, pattern=r"^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$"
     )
-    ip_address: Optional[str] = Field(default=None)
-    subnet_mask: Optional[str] = Field(default=None)
-    gateway: Optional[str] = Field(default=None)
-    vlan_id: Optional[int] = Field(default=None, ge=1, le=4094)
-    status: Optional[str] = Field(default=None)
-    is_primary: Optional[bool] = Field(default=None)
+    ip_address: str | None = Field(default=None)
+    subnet_mask: str | None = Field(default=None)
+    gateway: str | None = Field(default=None)
+    vlan_id: int | None = Field(default=None, ge=1, le=4094)
+    status: str | None = Field(default=None)
+    is_primary: bool | None = Field(default=None)
 
     @field_validator("mac_address")
     @classmethod
-    def validate_mac_format(cls, v: Optional[str]) -> Optional[str]:
+    def validate_mac_format(cls, v: str | None) -> str | None:
         """Validate MAC address format."""
         if v is None:
             return v
@@ -93,7 +92,7 @@ class NetworkInterfaceUpdate(BaseModel):
 
     @field_validator("ip_address", "gateway", "subnet_mask")
     @classmethod
-    def validate_ip_format(cls, v: Optional[str]) -> Optional[str]:
+    def validate_ip_format(cls, v: str | None) -> str | None:
         """Validate IP address format."""
         if v is None:
             return v
@@ -105,7 +104,7 @@ class NetworkInterfaceUpdate(BaseModel):
 
     @field_validator("status")
     @classmethod
-    def validate_status(cls, v: Optional[str]) -> Optional[str]:
+    def validate_status(cls, v: str | None) -> str | None:
         """Validate interface status."""
         if v is None:
             return v

@@ -11,7 +11,11 @@ from app.utils.errors import (
     NotFoundError,
     success_response,
 )
-from app.utils.pagination import get_pagination_params, paginate_query, paginated_response
+from app.utils.pagination import (
+    get_pagination_params,
+    paginate_query,
+    paginated_response,
+)
 from app.utils.validation import validate_request
 
 devices_bp = Blueprint("devices", __name__)
@@ -285,7 +289,13 @@ def delete_device(device_id: int):
             raise NotFoundError("Device", device_id)
 
         # Manually cascade delete related records (in case DB constraints aren't set)
-        from app.models import AutomationJob, Service, Metric, NetworkInterface, HardwareSpec
+        from app.models import (
+            AutomationJob,
+            HardwareSpec,
+            Metric,
+            NetworkInterface,
+            Service,
+        )
         from app.models.device_variables import DeviceVariables
 
         db.query(AutomationJob).filter(AutomationJob.device_id == device_id).delete(synchronize_session=False)

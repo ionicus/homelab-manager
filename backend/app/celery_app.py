@@ -1,6 +1,5 @@
 """Celery application configuration and initialization."""
 
-import os
 
 from celery import Celery
 

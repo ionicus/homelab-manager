@@ -1,7 +1,6 @@
 """Executor registry for managing automation backends."""
 
 import logging
-from typing import Type
 
 from .base import BaseExecutor, ExecutorInfo
 
@@ -24,7 +23,7 @@ class ExecutorRegistry:
             cls._instance._executors = {}
         return cls._instance
 
-    def register(self, executor_class: Type[BaseExecutor]) -> None:
+    def register(self, executor_class: type[BaseExecutor]) -> None:
         """Register an executor class.
 
         Args:

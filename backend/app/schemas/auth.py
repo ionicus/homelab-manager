@@ -1,7 +1,6 @@
 """Pydantic schemas for authentication."""
 
 import re
-from typing import Optional
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
@@ -19,7 +18,7 @@ class UserCreate(BaseModel):
     username: str = Field(..., min_length=3, max_length=80, description="Username")
     email: EmailStr = Field(..., description="Email address")
     password: str = Field(..., min_length=8, max_length=128, description="Password")
-    display_name: Optional[str] = Field(
+    display_name: str | None = Field(
         default=None, max_length=100, description="Display name"
     )
     is_admin: bool = Field(default=False, description="Admin status")
@@ -52,16 +51,16 @@ class UserCreate(BaseModel):
 class UserUpdate(BaseModel):
     """Schema for updating an existing user."""
 
-    email: Optional[EmailStr] = Field(default=None, description="Email address")
-    display_name: Optional[str] = Field(
+    email: EmailStr | None = Field(default=None, description="Email address")
+    display_name: str | None = Field(
         default=None, max_length=100, description="Display name"
     )
-    avatar_url: Optional[str] = Field(
+    avatar_url: str | None = Field(
         default=None, max_length=500, description="Avatar URL"
     )
-    bio: Optional[str] = Field(default=None, max_length=500, description="Bio")
-    is_admin: Optional[bool] = Field(default=None, description="Admin status")
-    is_active: Optional[bool] = Field(default=None, description="Active status")
+    bio: str | None = Field(default=None, max_length=500, description="Bio")
+    is_admin: bool | None = Field(default=None, description="Admin status")
+    is_active: bool | None = Field(default=None, description="Active status")
 
 
 class PasswordChange(BaseModel):
@@ -126,28 +125,28 @@ class UserResponse(BaseModel):
     id: int
     username: str
     email: str
-    display_name: Optional[str] = None
-    avatar_url: Optional[str] = None
-    bio: Optional[str] = None
+    display_name: str | None = None
+    avatar_url: str | None = None
+    bio: str | None = None
     is_admin: bool
     is_active: bool
-    created_at: Optional[str] = None
-    last_login: Optional[str] = None
+    created_at: str | None = None
+    last_login: str | None = None
 
 
 class ThemePreferences(BaseModel):
     """Schema for updating user theme preferences."""
 
-    theme_preference: Optional[str] = Field(
+    theme_preference: str | None = Field(
         default=None, description="Theme name (dark, light, midnight)"
     )
-    page_accents: Optional[dict] = Field(
+    page_accents: dict | None = Field(
         default=None, description="Page-specific accent colors"
     )
 
     @field_validator("theme_preference")
     @classmethod
-    def validate_theme(cls, v: Optional[str]) -> Optional[str]:
+    def validate_theme(cls, v: str | None) -> str | None:
         """Validate theme is one of the allowed values."""
         if v is not None:
             allowed_themes = {"dark", "light", "midnight"}
@@ -157,7 +156,7 @@ class ThemePreferences(BaseModel):
 
     @field_validator("page_accents")
     @classmethod
-    def validate_accents(cls, v: Optional[dict]) -> Optional[dict]:
+    def validate_accents(cls, v: dict | None) -> dict | None:
         """Validate page accents have valid structure."""
         if v is not None:
             allowed_pages = {"dashboard", "devices", "services", "automation"}

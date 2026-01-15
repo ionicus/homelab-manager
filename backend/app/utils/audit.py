@@ -1,8 +1,8 @@
 """Audit logging utility for tracking security-relevant actions."""
 
 import logging
+from collections.abc import Callable
 from functools import wraps
-from typing import Any, Callable, Optional
 
 from flask import request
 
@@ -12,7 +12,7 @@ from app.utils.errors import DatabaseSession
 logger = logging.getLogger(__name__)
 
 
-def get_current_user_id() -> Optional[int]:
+def get_current_user_id() -> int | None:
     """Get the current user ID from JWT, if authenticated."""
     try:
         from flask_jwt_extended import get_jwt_identity
@@ -22,7 +22,7 @@ def get_current_user_id() -> Optional[int]:
         return None
 
 
-def get_current_username(db) -> Optional[str]:
+def get_current_username(db) -> str | None:
     """Get the current username from the database."""
     user_id = get_current_user_id()
     if user_id:
@@ -34,8 +34,8 @@ def get_current_username(db) -> Optional[str]:
 def audit_log(
     action: str,
     resource_type: str,
-    resource_id: Optional[int] = None,
-    details: Optional[dict] = None,
+    resource_id: int | None = None,
+    details: dict | None = None,
     status: str = "success",
 ) -> None:
     """
@@ -83,8 +83,8 @@ def audit_log(
 def audit_action(
     action: str,
     resource_type: str,
-    get_resource_id: Optional[Callable] = None,
-    get_details: Optional[Callable] = None,
+    get_resource_id: Callable | None = None,
+    get_details: Callable | None = None,
 ):
     """
     Decorator to automatically audit an action.
@@ -161,6 +161,6 @@ def log_logout(user_id: int, username: str) -> None:
     audit_log("LOGOUT", "User", user_id, {"username": username}, "success")
 
 
-def log_access_denied(resource_type: str, resource_id: Optional[int] = None) -> None:
+def log_access_denied(resource_type: str, resource_id: int | None = None) -> None:
     """Log an access denied event."""
     audit_log("ACCESS", resource_type, resource_id, None, "denied")

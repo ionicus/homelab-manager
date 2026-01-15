@@ -2,7 +2,6 @@
 
 import ipaddress
 import re
-from typing import Optional
 
 
 def validate_mac_address(mac: str) -> bool:
@@ -44,7 +43,7 @@ def validate_ip_address(ip: str) -> bool:
         return False
 
 
-def validate_vlan_id(vlan_id: Optional[int]) -> bool:
+def validate_vlan_id(vlan_id: int | None) -> bool:
     """
     Validate VLAN ID.
 
@@ -65,7 +64,7 @@ def validate_vlan_id(vlan_id: Optional[int]) -> bool:
     return 1 <= vlan_id <= 4094
 
 
-def ensure_single_primary(db, device_id: int, new_primary_id: Optional[int] = None):
+def ensure_single_primary(db, device_id: int, new_primary_id: int | None = None):
     """
     Ensure only one primary interface per device.
 

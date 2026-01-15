@@ -1,8 +1,9 @@
 """Request validation utilities using Pydantic schemas."""
 
 import logging
+from collections.abc import Callable
 from functools import wraps
-from typing import Any, Callable, Type
+from typing import Any
 
 from flask import request
 from pydantic import BaseModel, ValidationError
@@ -12,7 +13,7 @@ from app.utils.errors import APIError, error_response
 logger = logging.getLogger(__name__)
 
 
-def validate_request(schema: Type[BaseModel]):
+def validate_request(schema: type[BaseModel]):
     """
     Decorator to validate request JSON against a Pydantic schema.
 
@@ -73,7 +74,7 @@ def validate_request(schema: Type[BaseModel]):
     return decorator
 
 
-def validate_data(schema: Type[BaseModel], data: dict) -> tuple[Any, dict | None]:
+def validate_data(schema: type[BaseModel], data: dict) -> tuple[Any, dict | None]:
     """
     Validate data against a Pydantic schema.
 

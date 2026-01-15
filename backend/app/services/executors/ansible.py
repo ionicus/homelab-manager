@@ -130,7 +130,7 @@ class AnsibleExecutor(BaseExecutor):
             Description string or default message
         """
         try:
-            with open(playbook_path, "r") as f:
+            with open(playbook_path) as f:
                 content = f.read(500)  # Read first 500 chars
                 # Look for "# Description:" comment
                 for line in content.split("\n"):
@@ -164,7 +164,7 @@ class AnsibleExecutor(BaseExecutor):
             return None
 
         try:
-            with open(schema_path, "r") as f:
+            with open(schema_path) as f:
                 schema = yaml.safe_load(f)
                 return schema if isinstance(schema, dict) else None
         except Exception as e:

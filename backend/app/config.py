@@ -72,7 +72,10 @@ def validate_production_config():
         print("\n" + "=" * 60, file=sys.stderr)
         print("PRODUCTION CONFIGURATION ERROR", file=sys.stderr)
         print("=" * 60, file=sys.stderr)
-        print("The following required environment variables are not set:\n", file=sys.stderr)
+        print(
+            "The following required environment variables are not set:\n",
+            file=sys.stderr,
+        )
         print("\n".join(missing), file=sys.stderr)
         print("\n" + "=" * 60 + "\n", file=sys.stderr)
         raise RuntimeError("Missing required production configuration")
@@ -116,7 +119,9 @@ class Config:
     ]
 
     # JWT Configuration
-    JWT_SECRET_KEY = _get_secret("JWT_SECRET_KEY", "dev-only-jwt-key-not-for-production!")
+    JWT_SECRET_KEY = _get_secret(
+        "JWT_SECRET_KEY", "dev-only-jwt-key-not-for-production!"
+    )
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(
         seconds=int(os.getenv("JWT_ACCESS_TOKEN_EXPIRES", "3600"))
     )
@@ -133,7 +138,9 @@ class Config:
     PORT = int(os.getenv("PORT", "5000"))
 
     # Ansible
-    ANSIBLE_PLAYBOOK_DIR = os.getenv("ANSIBLE_PLAYBOOK_DIR", "automation/ansible/playbooks")
+    ANSIBLE_PLAYBOOK_DIR = os.getenv(
+        "ANSIBLE_PLAYBOOK_DIR", "automation/ansible/playbooks"
+    )
 
     # Logging - production defaults
     LOG_LEVEL = os.getenv("LOG_LEVEL", "WARNING")  # Conservative default
@@ -145,7 +152,9 @@ class Config:
 
     # Celery / Redis
     CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://127.0.0.1:6379/0")
-    CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "redis://127.0.0.1:6379/0")
+    CELERY_RESULT_BACKEND = os.getenv(
+        "CELERY_RESULT_BACKEND", "redis://127.0.0.1:6379/0"
+    )
     CELERY_TASK_SERIALIZER = "json"
     CELERY_RESULT_SERIALIZER = "json"
     CELERY_ACCEPT_CONTENT = ["json"]

@@ -32,13 +32,17 @@ def create_admin(username: str, email: str, password: str):
         # Check if username already exists
         existing_user = db.query(User).filter(User.username == username).first()
         if existing_user:
-            click.echo(click.style(f"Error: User '{username}' already exists.", fg="red"))
+            click.echo(
+                click.style(f"Error: User '{username}' already exists.", fg="red")
+            )
             return
 
         # Check if email already exists
         existing_email = db.query(User).filter(User.email == email).first()
         if existing_email:
-            click.echo(click.style(f"Error: Email '{email}' is already in use.", fg="red"))
+            click.echo(
+                click.style(f"Error: Email '{email}' is already in use.", fg="red")
+            )
             return
 
         # Create the admin user
@@ -53,7 +57,9 @@ def create_admin(username: str, email: str, password: str):
         db.add(admin)
         db.commit()
 
-        click.echo(click.style(f"Admin user '{username}' created successfully!", fg="green"))
+        click.echo(
+            click.style(f"Admin user '{username}' created successfully!", fg="green")
+        )
         click.echo(f"  Username: {username}")
         click.echo(f"  Email: {email}")
         click.echo("  Admin: Yes")
@@ -77,7 +83,9 @@ def list_users():
             click.echo("No users found.")
             return
 
-        click.echo(f"\n{'ID':<5} {'Username':<20} {'Email':<30} {'Admin':<7} {'Active':<7}")
+        click.echo(
+            f"\n{'ID':<5} {'Username':<20} {'Email':<30} {'Admin':<7} {'Active':<7}"
+        )
         click.echo("-" * 75)
         for user in users:
             click.echo(
@@ -112,7 +120,9 @@ def reset_password(username: str, password: str):
         user.set_password(password)
         db.commit()
 
-        click.echo(click.style(f"Password for '{username}' has been reset.", fg="green"))
+        click.echo(
+            click.style(f"Password for '{username}' has been reset.", fg="green")
+        )
 
     except Exception as e:
         db.rollback()

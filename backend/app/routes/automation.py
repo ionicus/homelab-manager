@@ -248,6 +248,7 @@ def stream_job_logs(job_id: int):
     def event_stream():
         # Send initial job info
         import json
+
         yield f"event: status\ndata: {json.dumps({'status': initial_status, 'progress': initial_progress})}\n\n"
 
         # Send existing logs if requested
@@ -282,7 +283,7 @@ def stream_job_logs(job_id: int):
 
         except redis.ConnectionError:
             # Redis not available, fall back to polling
-            yield "event: error\ndata: {\"message\": \"Real-time streaming unavailable\"}\n\n"
+            yield 'event: error\ndata: {"message": "Real-time streaming unavailable"}\n\n'
         finally:
             try:
                 pubsub.unsubscribe()
@@ -352,21 +353,27 @@ def cancel_job(job_id: int):
         if job.status == JobStatus.PENDING:
             job.status = JobStatus.CANCELLED
             job.cancelled_at = datetime.utcnow()
-            job.log_output = (job.log_output or "") + "\n\nJob cancelled before execution."
+            job.log_output = (
+                job.log_output or ""
+            ) + "\n\nJob cancelled before execution."
             db.commit()
-            return success_response({
-                "job_id": job.id,
-                "message": "Job cancelled immediately (was pending)",
-                "status": "cancelled",
-            })
+            return success_response(
+                {
+                    "job_id": job.id,
+                    "message": "Job cancelled immediately (was pending)",
+                    "status": "cancelled",
+                }
+            )
 
         db.commit()
 
-        return success_response({
-            "job_id": job.id,
-            "message": "Cancellation requested. Job will stop at next checkpoint.",
-            "status": "cancellation_requested",
-        })
+        return success_response(
+            {
+                "job_id": job.id,
+                "message": "Cancellation requested. Job will stop at next checkpoint.",
+                "status": "cancellation_requested",
+            }
+        )
 
 
 @automation_bp.route("/executors", methods=["GET"])
@@ -466,7 +473,9 @@ def list_executor_actions(executor_type: str):
     )
 
 
-@automation_bp.route("/executors/<executor_type>/actions/<action_name>/schema", methods=["GET"])
+@automation_bp.route(
+    "/executors/<executor_type>/actions/<action_name>/schema", methods=["GET"]
+)
 @jwt_required()
 def get_action_schema(executor_type: str, action_name: str):
     """Get variable schema for a specific action.
@@ -514,10 +523,12 @@ def get_action_schema(executor_type: str, action_name: str):
     if hasattr(executor, "get_action_schema"):
         schema = executor.get_action_schema(action_name) or {}
 
-    return success_response({
-        "action_name": action_name,
-        "schema": schema,
-    })
+    return success_response(
+        {
+            "action_name": action_name,
+            "schema": schema,
+        }
+    )
 
 
 @automation_bp.route("/jobs", methods=["GET"])
@@ -583,6 +594,5 @@ def list_jobs():
         jobs, total = paginate_query(query, page, per_page)
 
         return paginated_response(
-            [job.to_dict() for job in jobs],
-            total, page, per_page
+            [job.to_dict() for job in jobs], total, page, per_page
         )

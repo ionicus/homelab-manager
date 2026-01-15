@@ -161,8 +161,19 @@ class ThemePreferences(BaseModel):
         if v is not None:
             allowed_pages = {"dashboard", "devices", "services", "automation"}
             allowed_colors = {
-                "red", "pink", "grape", "violet", "indigo", "blue", "cyan",
-                "teal", "green", "lime", "yellow", "orange", "purple"
+                "red",
+                "pink",
+                "grape",
+                "violet",
+                "indigo",
+                "blue",
+                "cyan",
+                "teal",
+                "green",
+                "lime",
+                "yellow",
+                "orange",
+                "purple",
             }
             for page, color in v.items():
                 if page not in allowed_pages:

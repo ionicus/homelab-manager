@@ -107,7 +107,9 @@ def process_avatar_image(file_data: bytes) -> tuple[bytes, str]:
 
     # Resize if larger than max dimension
     if img.width > AVATAR_MAX_DIMENSION or img.height > AVATAR_MAX_DIMENSION:
-        img.thumbnail((AVATAR_MAX_DIMENSION, AVATAR_MAX_DIMENSION), Image.Resampling.LANCZOS)
+        img.thumbnail(
+            (AVATAR_MAX_DIMENSION, AVATAR_MAX_DIMENSION), Image.Resampling.LANCZOS
+        )
 
     # Save as PNG with optimization
     output = BytesIO()
@@ -210,7 +212,9 @@ def logout():
       200:
         description: Logout successful
     """
-    response = make_response(jsonify({"data": {"message": "Logged out successfully"}}), 200)
+    response = make_response(
+        jsonify({"data": {"message": "Logged out successfully"}}), 200
+    )
     unset_jwt_cookies(response)
     return response
 
@@ -298,9 +302,11 @@ def update_current_user():
         # Update allowed fields (non-admin can't change is_admin or is_active)
         if data.email is not None:
             # Check email uniqueness
-            existing = db.query(User).filter(
-                User.email == data.email, User.id != user_id
-            ).first()
+            existing = (
+                db.query(User)
+                .filter(User.email == data.email, User.id != user_id)
+                .first()
+            )
             if existing:
                 raise ConflictError("Email already in use")
             user.email = data.email
@@ -468,7 +474,9 @@ def upload_avatar():
     # Validate file signature (magic bytes) - more reliable than Content-Type
     detected_mime = validate_image_signature(file_data)
     if detected_mime is None:
-        raise ValidationError("Invalid file type. File signature does not match any allowed image format")
+        raise ValidationError(
+            "Invalid file type. File signature does not match any allowed image format"
+        )
 
     # Also check Content-Type matches for defense in depth
     if file.content_type not in ALLOWED_AVATAR_MIME_TYPES:
@@ -495,10 +503,12 @@ def upload_avatar():
         db.commit()
         db.refresh(user)
 
-        return success_response({
-            "avatar_url": f"/api/auth/users/{user_id}/avatar",
-            "user": user.to_dict(include_email=True),
-        })
+        return success_response(
+            {
+                "avatar_url": f"/api/auth/users/{user_id}/avatar",
+                "user": user.to_dict(include_email=True),
+            }
+        )
 
 
 @auth_bp.route("/me/avatar", methods=["DELETE"])
@@ -531,10 +541,12 @@ def delete_avatar():
         db.commit()
         db.refresh(user)
 
-        return success_response({
-            "message": "Avatar deleted successfully",
-            "user": user.to_dict(include_email=True),
-        })
+        return success_response(
+            {
+                "message": "Avatar deleted successfully",
+                "user": user.to_dict(include_email=True),
+            }
+        )
 
 
 @auth_bp.route("/users/<int:user_id>/avatar", methods=["GET"])
@@ -774,9 +786,11 @@ def update_user(user_id: int):
 
         # Update fields
         if data.email is not None:
-            existing = db.query(User).filter(
-                User.email == data.email, User.id != user_id
-            ).first()
+            existing = (
+                db.query(User)
+                .filter(User.email == data.email, User.id != user_id)
+                .first()
+            )
             if existing:
                 raise ConflictError("Email already in use")
             user.email = data.email

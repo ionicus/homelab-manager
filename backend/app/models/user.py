@@ -36,7 +36,9 @@ class User(Base):
 
     # Theme preferences
     theme_preference = Column(String(50), default="dark", nullable=False)
-    page_accents = Column(JSON, nullable=True)  # {"dashboard": "violet", "devices": "blue", ...}
+    page_accents = Column(
+        JSON, nullable=True
+    )  # {"dashboard": "violet", "devices": "blue", ...}
 
     # Permissions
     is_admin = Column(Boolean, default=False, nullable=False)

@@ -44,7 +44,9 @@ class AutomationJob(Base):
     executor_type = Column(String(50), nullable=False, default="ansible")
     action_name = Column(String(255), nullable=False)
     action_config = Column(JSON, nullable=True)
-    extra_vars = Column(JSON, nullable=True)  # Extra variables for executor (e.g., Ansible extra-vars)
+    extra_vars = Column(
+        JSON, nullable=True
+    )  # Extra variables for executor (e.g., Ansible extra-vars)
     status = Column(Enum(JobStatus), default=JobStatus.PENDING)
     started_at = Column(DateTime, nullable=True)
     completed_at = Column(DateTime, nullable=True)
@@ -78,9 +80,7 @@ class AutomationJob(Base):
             "action_config": self.action_config,
             "extra_vars": self.extra_vars,
             "status": self.status.value if self.status else None,
-            "started_at": (
-                self.started_at.isoformat() if self.started_at else None
-            ),
+            "started_at": (self.started_at.isoformat() if self.started_at else None),
             "completed_at": (
                 self.completed_at.isoformat() if self.completed_at else None
             ),

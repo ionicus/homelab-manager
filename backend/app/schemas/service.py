@@ -1,6 +1,5 @@
 """Pydantic schemas for Service model."""
 
-
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 

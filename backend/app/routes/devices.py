@@ -67,8 +67,7 @@ def list_devices():
         query = db.query(Device).order_by(Device.name)
         devices, total = paginate_query(query, page, per_page)
         return paginated_response(
-            [device.to_dict() for device in devices],
-            total, page, per_page
+            [device.to_dict() for device in devices], total, page, per_page
         )
 
 
@@ -298,12 +297,24 @@ def delete_device(device_id: int):
         )
         from app.models.device_variables import DeviceVariables
 
-        db.query(AutomationJob).filter(AutomationJob.device_id == device_id).delete(synchronize_session=False)
-        db.query(Service).filter(Service.device_id == device_id).delete(synchronize_session=False)
-        db.query(Metric).filter(Metric.device_id == device_id).delete(synchronize_session=False)
-        db.query(NetworkInterface).filter(NetworkInterface.device_id == device_id).delete(synchronize_session=False)
-        db.query(HardwareSpec).filter(HardwareSpec.device_id == device_id).delete(synchronize_session=False)
-        db.query(DeviceVariables).filter(DeviceVariables.device_id == device_id).delete(synchronize_session=False)
+        db.query(AutomationJob).filter(AutomationJob.device_id == device_id).delete(
+            synchronize_session=False
+        )
+        db.query(Service).filter(Service.device_id == device_id).delete(
+            synchronize_session=False
+        )
+        db.query(Metric).filter(Metric.device_id == device_id).delete(
+            synchronize_session=False
+        )
+        db.query(NetworkInterface).filter(
+            NetworkInterface.device_id == device_id
+        ).delete(synchronize_session=False)
+        db.query(HardwareSpec).filter(HardwareSpec.device_id == device_id).delete(
+            synchronize_session=False
+        )
+        db.query(DeviceVariables).filter(DeviceVariables.device_id == device_id).delete(
+            synchronize_session=False
+        )
 
         db.delete(device)
         db.commit()
@@ -431,9 +442,11 @@ def get_device_variables(device_id: int):
             raise NotFoundError("Device", device_id)
 
         # Get all variable sets for this device
-        var_sets = db.query(DeviceVariables).filter(
-            DeviceVariables.device_id == device_id
-        ).all()
+        var_sets = (
+            db.query(DeviceVariables)
+            .filter(DeviceVariables.device_id == device_id)
+            .all()
+        )
 
         # Organize into defaults and playbook-specific
         device_defaults = {}
@@ -445,10 +458,12 @@ def get_device_variables(device_id: int):
             else:
                 playbook_overrides[var_set.playbook_name] = var_set.variables or {}
 
-        return success_response({
-            "device_defaults": device_defaults,
-            "playbook_overrides": playbook_overrides,
-        })
+        return success_response(
+            {
+                "device_defaults": device_defaults,
+                "playbook_overrides": playbook_overrides,
+            }
+        )
 
 
 @devices_bp.route("/<int:device_id>/variables", methods=["PUT"])
@@ -487,10 +502,14 @@ def update_device_variables(device_id: int):
             raise NotFoundError("Device", device_id)
 
         # Find or create device defaults (playbook_name = NULL)
-        var_set = db.query(DeviceVariables).filter(
-            DeviceVariables.device_id == device_id,
-            DeviceVariables.playbook_name.is_(None),
-        ).first()
+        var_set = (
+            db.query(DeviceVariables)
+            .filter(
+                DeviceVariables.device_id == device_id,
+                DeviceVariables.playbook_name.is_(None),
+            )
+            .first()
+        )
 
         if var_set:
             var_set.variables = data.variables
@@ -535,18 +554,24 @@ def get_device_playbook_variables(device_id: int, playbook_name: str):
         if not device:
             raise NotFoundError("Device", device_id)
 
-        var_set = db.query(DeviceVariables).filter(
-            DeviceVariables.device_id == device_id,
-            DeviceVariables.playbook_name == playbook_name,
-        ).first()
+        var_set = (
+            db.query(DeviceVariables)
+            .filter(
+                DeviceVariables.device_id == device_id,
+                DeviceVariables.playbook_name == playbook_name,
+            )
+            .first()
+        )
 
         if not var_set:
             # Return empty if no overrides exist
-            return success_response({
-                "device_id": device_id,
-                "playbook_name": playbook_name,
-                "variables": {},
-            })
+            return success_response(
+                {
+                    "device_id": device_id,
+                    "playbook_name": playbook_name,
+                    "variables": {},
+                }
+            )
 
         return success_response(var_set.to_dict())
 
@@ -590,10 +615,14 @@ def update_device_playbook_variables(device_id: int, playbook_name: str):
             raise NotFoundError("Device", device_id)
 
         # Find or create playbook-specific overrides
-        var_set = db.query(DeviceVariables).filter(
-            DeviceVariables.device_id == device_id,
-            DeviceVariables.playbook_name == playbook_name,
-        ).first()
+        var_set = (
+            db.query(DeviceVariables)
+            .filter(
+                DeviceVariables.device_id == device_id,
+                DeviceVariables.playbook_name == playbook_name,
+            )
+            .first()
+        )
 
         if var_set:
             var_set.variables = data.variables
@@ -638,10 +667,14 @@ def delete_device_playbook_variables(device_id: int, playbook_name: str):
         if not device:
             raise NotFoundError("Device", device_id)
 
-        var_set = db.query(DeviceVariables).filter(
-            DeviceVariables.device_id == device_id,
-            DeviceVariables.playbook_name == playbook_name,
-        ).first()
+        var_set = (
+            db.query(DeviceVariables)
+            .filter(
+                DeviceVariables.device_id == device_id,
+                DeviceVariables.playbook_name == playbook_name,
+            )
+            .first()
+        )
 
         if not var_set:
             raise NotFoundError("Variables", f"{device_id}/{playbook_name}")

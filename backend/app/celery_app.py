@@ -1,6 +1,5 @@
 """Celery application configuration and initialization."""
 
-
 from celery import Celery
 
 from app.config import Config

@@ -57,7 +57,7 @@ class TextFormatter(logging.Formatter):
     def __init__(self):
         super().__init__(
             "[%(asctime)s] %(levelname)s in %(module)s: %(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S"
+            datefmt="%Y-%m-%d %H:%M:%S",
         )
 
 
@@ -183,8 +183,7 @@ def create_app(config_class=Config):
         """Log incoming request details (debug level)."""
         if app.debug:
             logger.debug(
-                f"Request: {request.method} {request.path} "
-                f"from {request.remote_addr}"
+                f"Request: {request.method} {request.path} from {request.remote_addr}"
             )
 
     @app.after_request

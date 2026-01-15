@@ -21,8 +21,12 @@ class AuditLog(Base):
     username = Column(String(80), nullable=True)  # Denormalized for query convenience
 
     # What action was performed
-    action = Column(String(50), nullable=False, index=True)  # CREATE, UPDATE, DELETE, LOGIN, etc.
-    resource_type = Column(String(50), nullable=False, index=True)  # Device, Service, User, etc.
+    action = Column(
+        String(50), nullable=False, index=True
+    )  # CREATE, UPDATE, DELETE, LOGIN, etc.
+    resource_type = Column(
+        String(50), nullable=False, index=True
+    )  # Device, Service, User, etc.
     resource_id = Column(Integer, nullable=True)
 
     # Request context

@@ -61,7 +61,9 @@ def audit_log(
                 resource_type=resource_type,
                 resource_id=resource_id,
                 ip_address=request.remote_addr if request else None,
-                user_agent=request.headers.get("User-Agent", "")[:500] if request else None,
+                user_agent=request.headers.get("User-Agent", "")[:500]
+                if request
+                else None,
                 details=details,
                 status=status,
             )
@@ -113,7 +115,11 @@ def audit_action(
                 if get_resource_id and result:
                     try:
                         # Handle Flask response tuples
-                        response_data = result[0].get_json() if hasattr(result[0], "get_json") else result
+                        response_data = (
+                            result[0].get_json()
+                            if hasattr(result[0], "get_json")
+                            else result
+                        )
                         resource_id = get_resource_id(response_data)
                     except Exception:
                         pass
@@ -133,7 +139,9 @@ def audit_action(
                 audit_log(
                     action,
                     resource_type,
-                    kwargs.get("device_id") or kwargs.get("service_id") or kwargs.get("user_id"),
+                    kwargs.get("device_id")
+                    or kwargs.get("service_id")
+                    or kwargs.get("user_id"),
                     {"error": str(e)},
                     "failure",
                 )
@@ -152,7 +160,9 @@ def log_login_success(user_id: int, username: str) -> None:
 
 def log_login_failure(username: str, reason: str = "invalid_credentials") -> None:
     """Log a failed login attempt."""
-    audit_log("LOGIN", "User", None, {"username": username, "reason": reason}, "failure")
+    audit_log(
+        "LOGIN", "User", None, {"username": username, "reason": reason}, "failure"
+    )
 
 
 def log_logout(user_id: int, username: str) -> None:

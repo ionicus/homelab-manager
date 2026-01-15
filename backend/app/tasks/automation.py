@@ -31,21 +31,50 @@ MAX_LOG_OUTPUT_SIZE = 100_000  # 100KB
 # Patterns to redact from log output (case-insensitive)
 SENSITIVE_PATTERNS = [
     # Passwords in various formats
-    (re.compile(r'(password|passwd|pwd)\s*[:=]\s*["\']?[^\s"\']+', re.IGNORECASE), r'\1=***REDACTED***'),
-    (re.compile(r'(ansible_password|ansible_become_pass|ansible_ssh_pass)\s*[:=]\s*[^\s]+', re.IGNORECASE), r'\1=***REDACTED***'),
+    (
+        re.compile(r'(password|passwd|pwd)\s*[:=]\s*["\']?[^\s"\']+', re.IGNORECASE),
+        r"\1=***REDACTED***",
+    ),
+    (
+        re.compile(
+            r"(ansible_password|ansible_become_pass|ansible_ssh_pass)\s*[:=]\s*[^\s]+",
+            re.IGNORECASE,
+        ),
+        r"\1=***REDACTED***",
+    ),
     # API keys and tokens
-    (re.compile(r'(api[_-]?key|api[_-]?secret|token|bearer)\s*[:=]\s*["\']?[^\s"\']+', re.IGNORECASE), r'\1=***REDACTED***'),
+    (
+        re.compile(
+            r'(api[_-]?key|api[_-]?secret|token|bearer)\s*[:=]\s*["\']?[^\s"\']+',
+            re.IGNORECASE,
+        ),
+        r"\1=***REDACTED***",
+    ),
     # AWS credentials
-    (re.compile(r'(aws_access_key_id|aws_secret_access_key)\s*[:=]\s*[^\s]+', re.IGNORECASE), r'\1=***REDACTED***'),
+    (
+        re.compile(
+            r"(aws_access_key_id|aws_secret_access_key)\s*[:=]\s*[^\s]+", re.IGNORECASE
+        ),
+        r"\1=***REDACTED***",
+    ),
     # Generic secrets
-    (re.compile(r'(secret|private[_-]?key)\s*[:=]\s*["\']?[^\s"\']+', re.IGNORECASE), r'\1=***REDACTED***'),
+    (
+        re.compile(r'(secret|private[_-]?key)\s*[:=]\s*["\']?[^\s"\']+', re.IGNORECASE),
+        r"\1=***REDACTED***",
+    ),
     # SSH private key content
-    (re.compile(r'-----BEGIN [A-Z ]+ PRIVATE KEY-----.*?-----END [A-Z ]+ PRIVATE KEY-----', re.DOTALL), '***PRIVATE KEY REDACTED***'),
+    (
+        re.compile(
+            r"-----BEGIN [A-Z ]+ PRIVATE KEY-----.*?-----END [A-Z ]+ PRIVATE KEY-----",
+            re.DOTALL,
+        ),
+        "***PRIVATE KEY REDACTED***",
+    ),
 ]
 
 # Pattern to detect Ansible TASK lines for progress tracking
-TASK_PATTERN = re.compile(r'^TASK \[(.+)\]')
-PLAY_PATTERN = re.compile(r'^PLAY \[(.+)\]')
+TASK_PATTERN = re.compile(r"^TASK \[(.+)\]")
+PLAY_PATTERN = re.compile(r"^PLAY \[(.+)\]")
 
 # Cancellation check interval (check every N lines)
 CANCELLATION_CHECK_INTERVAL = 10
@@ -53,6 +82,7 @@ CANCELLATION_CHECK_INTERVAL = 10
 
 class CancellationError(Exception):
     """Raised when a job is cancelled."""
+
     pass
 
 
@@ -79,7 +109,10 @@ def _redact_sensitive_data(text: str) -> str:
 
     # Truncate if too long
     if len(result) > MAX_LOG_OUTPUT_SIZE:
-        result = result[:MAX_LOG_OUTPUT_SIZE] + "\n\n... [OUTPUT TRUNCATED - exceeded 100KB limit]"
+        result = (
+            result[:MAX_LOG_OUTPUT_SIZE]
+            + "\n\n... [OUTPUT TRUNCATED - exceeded 100KB limit]"
+        )
 
     return result
 
@@ -242,12 +275,16 @@ def _sanitize_extra_vars(extra_vars: dict[str, Any] | None) -> dict[str, Any]:
             sanitized[key] = value
         elif isinstance(value, list):
             # Allow list of primitive types
-            sanitized[key] = [v for v in value if isinstance(v, (str, int, float, bool))]
+            sanitized[key] = [
+                v for v in value if isinstance(v, (str, int, float, bool))
+            ]
         elif isinstance(value, dict):
             # Recursively sanitize nested dicts
             sanitized[key] = _sanitize_extra_vars(value)
         else:
-            logger.warning(f"Skipping unsupported variable type for {key}: {type(value)}")
+            logger.warning(
+                f"Skipping unsupported variable type for {key}: {type(value)}"
+            )
 
     return sanitized
 
@@ -260,6 +297,7 @@ def _get_redis_client():
     """
     try:
         from redis import Redis
+
         redis_url = Config.CELERY_BROKER_URL
         if redis_url and redis_url.startswith("redis://"):
             return Redis.from_url(redis_url)
@@ -279,6 +317,7 @@ def _count_tasks_in_playbook(playbook_path: Path) -> int:
     """
     try:
         import yaml
+
         with open(playbook_path) as f:
             playbook = yaml.safe_load(f)
 
@@ -339,7 +378,7 @@ def _execute_with_streaming(
     )
 
     try:
-        for line in iter(process.stdout.readline, ''):
+        for line in iter(process.stdout.readline, ""):
             if not line:
                 break
 
@@ -358,7 +397,9 @@ def _execute_with_streaming(
             if TASK_PATTERN.match(line):
                 job.tasks_completed += 1
                 if job.task_count > 0:
-                    job.progress = min(int((job.tasks_completed / job.task_count) * 100), 99)
+                    job.progress = min(
+                        int((job.tasks_completed / job.task_count) * 100), 99
+                    )
                     # Don't commit on every task - batch updates
                     if job.tasks_completed % 3 == 0:
                         db.commit()
@@ -367,7 +408,9 @@ def _execute_with_streaming(
             if line_count % CANCELLATION_CHECK_INTERVAL == 0:
                 db.refresh(job)
                 if job.cancel_requested:
-                    logger.info(f"Job {job_id} cancellation detected, terminating process")
+                    logger.info(
+                        f"Job {job_id} cancellation detected, terminating process"
+                    )
                     process.terminate()
                     try:
                         process.wait(timeout=5)
@@ -460,7 +503,9 @@ def run_ansible_playbook(
         job.started_at = datetime.utcnow()
         job.celery_task_id = self.request.id
         db.commit()
-        logger.info(f"Job {job_id} status updated to RUNNING (Celery task: {self.request.id})")
+        logger.info(
+            f"Job {job_id} status updated to RUNNING (Celery task: {self.request.id})"
+        )
 
         # Get Redis client for streaming (optional)
         redis_client = _get_redis_client()
@@ -558,7 +603,9 @@ def run_ansible_playbook(
         if job:
             job.status = JobStatus.CANCELLED
             job.cancelled_at = datetime.utcnow()
-            job.log_output = (job.log_output or "") + "\n\n--- Job cancelled by user ---"
+            job.log_output = (
+                job.log_output or ""
+            ) + "\n\n--- Job cancelled by user ---"
             db.commit()
         return {"status": "cancelled", "job_id": job_id}
 

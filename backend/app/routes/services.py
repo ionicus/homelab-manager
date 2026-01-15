@@ -57,8 +57,7 @@ def list_services():
         query = db.query(Service).order_by(Service.name)
         services, total = paginate_query(query, page, per_page)
         return paginated_response(
-            [service.to_dict() for service in services],
-            total, page, per_page
+            [service.to_dict() for service in services], total, page, per_page
         )
 
 

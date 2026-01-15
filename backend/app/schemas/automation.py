@@ -69,13 +69,16 @@ class AutomationJobCreate(AutomationJobBase):
         default=None, description="IDs of multiple devices for batch execution"
     )
     extra_vars: dict[str, Any] | None = Field(
-        default=None, description="Extra variables to pass to the executor (e.g., Ansible extra-vars)"
+        default=None,
+        description="Extra variables to pass to the executor (e.g., Ansible extra-vars)",
     )
 
     @model_validator(mode="after")
     def validate_device_ids(self) -> "AutomationJobCreate":
         """Ensure at least one device ID is provided."""
-        if self.device_id is None and (self.device_ids is None or len(self.device_ids) == 0):
+        if self.device_id is None and (
+            self.device_ids is None or len(self.device_ids) == 0
+        ):
             raise ValueError("Either device_id or device_ids must be provided")
         return self
 

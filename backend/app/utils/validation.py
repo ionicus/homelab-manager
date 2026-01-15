@@ -4,10 +4,10 @@ import logging
 from functools import wraps
 from typing import Any, Callable, Type
 
-from flask import jsonify, request
+from flask import request
 from pydantic import BaseModel, ValidationError
 
-from app.utils.errors import APIError
+from app.utils.errors import APIError, error_response
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +37,7 @@ def validate_request(schema: Type[BaseModel]):
             json_data = request.get_json()
 
             if json_data is None:
-                return jsonify({"error": "Missing JSON request body"}), 400
+                return error_response("Missing JSON request body", 400)
 
             try:
                 # Validate using Pydantic schema
@@ -57,7 +57,7 @@ def validate_request(schema: Type[BaseModel]):
                     message = error["msg"]
                     errors.append({"field": field, "message": message})
 
-                return jsonify({"error": "Validation failed", "details": errors}), 400
+                return error_response("Validation failed", 400, details=errors)
 
             except APIError:
                 # Let our custom API errors propagate to Flask's error handler
@@ -66,7 +66,7 @@ def validate_request(schema: Type[BaseModel]):
             except Exception:
                 # Log full exception for debugging, return generic message to client
                 logger.exception("Unexpected error during request validation")
-                return jsonify({"error": "Invalid request data"}), 400
+                return error_response("Invalid request data", 400)
 
         return wrapper
 

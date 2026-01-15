@@ -8,7 +8,7 @@ from flask_limiter.util import get_remote_address
 # Use Redis for rate limiting storage (shared across workers, persists across restarts)
 # Falls back to memory:// in development if Redis unavailable
 RATE_LIMIT_STORAGE = os.getenv("RATE_LIMIT_STORAGE_URL") or os.getenv(
-    "CELERY_BROKER_URL", "redis://localhost:6379/0"
+    "CELERY_BROKER_URL", "redis://127.0.0.1:6379/0"
 )
 
 # Initialize rate limiter (attached to app in create_app)

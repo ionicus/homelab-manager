@@ -1,23 +1,96 @@
-FROM python:3.14-slim
+# Multi-stage Dockerfile for homelab-manager backend
+# Supports both development and production builds
+
+# =============================================================================
+# Base stage - common dependencies
+# =============================================================================
+FROM python:3.12-slim AS base
 
 WORKDIR /app
 
 # Install system dependencies
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     postgresql-client \
+    curl \
+    sshpass \
     && rm -rf /var/lib/apt/lists/*
 
-# Install UV
-RUN pip install uv
+# Install UV package manager
+RUN pip install --no-cache-dir uv
 
-# Copy application files
-COPY backend/ /app/
+# =============================================================================
+# Development stage - includes dev dependencies and source mounting
+# =============================================================================
+FROM base AS development
 
-# Install Python dependencies
+# Install development dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements first for caching
+COPY backend/pyproject.toml backend/uv.lock /app/
+
+# Install all dependencies including dev
 RUN uv pip install --system -e .
 
-# Expose port
+# Copy application (will be overridden by volume mount in dev)
+COPY backend/ /app/
+COPY automation/ /app/automation/
+
+# Development runs as root for convenience
 EXPOSE 5000
 
-# Run the application
 CMD ["python", "-m", "app.main"]
+
+# =============================================================================
+# Production builder - creates optimized package
+# =============================================================================
+FROM base AS builder
+
+# Copy only what's needed for installation
+COPY backend/pyproject.toml backend/uv.lock /app/
+
+# Install production dependencies only
+RUN uv pip install --system -e . --no-dev
+
+# =============================================================================
+# Production stage - minimal, secure image
+# =============================================================================
+FROM python:3.12-slim AS production
+
+WORKDIR /app
+
+# Install only runtime system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    postgresql-client \
+    curl \
+    sshpass \
+    && rm -rf /var/lib/apt/lists/* \
+    && rm -rf /root/.cache
+
+# Create non-root user for security
+RUN groupadd -r homelab && useradd -r -g homelab homelab
+
+# Copy installed packages from builder
+COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
+
+# Copy application code
+COPY backend/ /app/
+COPY automation/ /app/automation/
+
+# Set ownership
+RUN chown -R homelab:homelab /app
+
+# Switch to non-root user
+USER homelab
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:5000/health || exit 1
+
+EXPOSE 5000
+
+# Use gunicorn for production
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "4", "--threads", "2", "app.main:create_app()"]

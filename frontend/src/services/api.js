@@ -1,8 +1,10 @@
 import axios from 'axios';
 
-// Use environment variable or dynamically construct from current hostname
-const API_URL = import.meta.env.VITE_API_URL ||
-  `${window.location.protocol}//${window.location.hostname}:5000/api`;
+// API URL configuration:
+// 1. Use explicit VITE_API_URL if set (for development or non-standard deployments)
+// 2. Default to /api (works with nginx proxy in production)
+// 3. For development without proxy, set VITE_API_URL in .env.development.local
+const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 // Base URL for the backend server (without /api)
 const BACKEND_URL = API_URL.replace(/\/api$/, '');

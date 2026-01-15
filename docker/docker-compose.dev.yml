@@ -1,0 +1,97 @@
+# Development Docker Compose for homelab-manager
+# Usage: docker compose -f docker-compose.dev.yml up -d
+#
+# This configuration:
+#   - Mounts source code for hot reloading
+#   - Exposes all ports for debugging
+#   - Uses development-friendly defaults
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: homelab-postgres-dev
+    environment:
+      POSTGRES_USER: homelab
+      POSTGRES_PASSWORD: homelab
+      POSTGRES_DB: homelab_db
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U homelab"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: homelab-redis-dev
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data_dev:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+
+  backend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.backend
+      target: development
+    container_name: homelab-backend-dev
+    environment:
+      FLASK_ENV: development
+      DATABASE_URL: postgresql://homelab:homelab@postgres:5432/homelab_db
+      SECRET_KEY: dev-only-secret-key-not-for-production!
+      JWT_SECRET_KEY: dev-only-jwt-key-not-for-production!
+      CORS_ORIGINS: http://localhost:5173,http://localhost:3000
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      LOG_LEVEL: DEBUG
+      LOG_FORMAT: text
+    ports:
+      - "5000:5000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      # Mount source code for hot reloading
+      - ../backend:/app
+      - ../automation:/app/automation
+
+  celery:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.backend
+      target: development
+    container_name: homelab-celery-dev
+    command: celery -A app.celery_app worker --loglevel=DEBUG
+    environment:
+      FLASK_ENV: development
+      DATABASE_URL: postgresql://homelab:homelab@postgres:5432/homelab_db
+      SECRET_KEY: dev-only-secret-key-not-for-production!
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      LOG_LEVEL: DEBUG
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ../backend:/app
+      - ../automation:/app/automation
+
+  # Frontend runs separately with vite dev server
+  # Use: cd frontend && npm run dev
+
+volumes:
+  postgres_data_dev:
+  redis_data_dev:

@@ -123,3 +123,6 @@ backend/uploads/
 # AI assistant settings
 .claude/
 claude.md
+
+# Local development environment
+dev/

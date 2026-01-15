@@ -1,11 +1,13 @@
 """Homelab Manager Flask Application."""
 
+import json
 import logging
 import sys
+from datetime import datetime
 from logging.handlers import RotatingFileHandler
 
 from flasgger import Swagger
-from flask import Flask, jsonify
+from flask import Flask, g, jsonify, request
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 from sqlalchemy.exc import SQLAlchemyError
@@ -17,16 +19,61 @@ from app.utils.errors import APIError, handle_database_exception
 logger = logging.getLogger(__name__)
 
 
-def setup_logging(app):
-    """Configure application logging."""
-    log_level = getattr(logging, app.config.get("LOG_LEVEL", "INFO").upper(), logging.INFO)
-    log_file = app.config.get("LOG_FILE", "app.log")
+class JSONFormatter(logging.Formatter):
+    """JSON log formatter for production environments."""
 
-    # Create formatter
-    formatter = logging.Formatter(
-        "[%(asctime)s] %(levelname)s in %(module)s: %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S"
+    def format(self, record):
+        log_data = {
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "level": record.levelname,
+            "logger": record.name,
+            "message": record.getMessage(),
+        }
+
+        # Add extra fields if present
+        if hasattr(record, "request_id"):
+            log_data["request_id"] = record.request_id
+        if hasattr(record, "user_id"):
+            log_data["user_id"] = record.user_id
+
+        # Add exception info if present
+        if record.exc_info:
+            log_data["exception"] = self.formatException(record.exc_info)
+
+        # Add source location for errors
+        if record.levelno >= logging.ERROR:
+            log_data["source"] = {
+                "file": record.pathname,
+                "line": record.lineno,
+                "function": record.funcName,
+            }
+
+        return json.dumps(log_data)
+
+
+class TextFormatter(logging.Formatter):
+    """Human-readable log formatter for development."""
+
+    def __init__(self):
+        super().__init__(
+            "[%(asctime)s] %(levelname)s in %(module)s: %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S"
+        )
+
+
+def setup_logging(app):
+    """Configure application logging based on environment."""
+    log_level = getattr(
+        logging, app.config.get("LOG_LEVEL", "INFO").upper(), logging.INFO
     )
+    log_file = app.config.get("LOG_FILE")
+    log_format = app.config.get("LOG_FORMAT", "text")
+
+    # Select formatter based on environment
+    if log_format == "json":
+        formatter = JSONFormatter()
+    else:
+        formatter = TextFormatter()
 
     # Configure root logger
     root_logger = logging.getLogger()
@@ -47,7 +94,7 @@ def setup_logging(app):
             file_handler = RotatingFileHandler(
                 log_file,
                 maxBytes=10 * 1024 * 1024,  # 10 MB
-                backupCount=5
+                backupCount=10,
             )
             file_handler.setLevel(log_level)
             file_handler.setFormatter(formatter)
@@ -56,10 +103,16 @@ def setup_logging(app):
         except (OSError, PermissionError) as e:
             logger.warning(f"Could not create log file {log_file}: {e}")
 
-    # Set werkzeug logger level (Flask's internal logger)
+    # Set third-party logger levels
     logging.getLogger("werkzeug").setLevel(logging.WARNING)
+    logging.getLogger("urllib3").setLevel(logging.WARNING)
+    logging.getLogger("sqlalchemy.engine").setLevel(
+        logging.INFO if log_level <= logging.DEBUG else logging.WARNING
+    )
 
-    logger.info(f"Logging configured at level: {logging.getLevelName(log_level)}")
+    logger.info(
+        f"Logging configured: level={logging.getLevelName(log_level)}, format={log_format}"
+    )
 
 
 SWAGGER_TEMPLATE = {
@@ -105,8 +158,16 @@ def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
 
+    # Call init_app if the config class has one (production validation)
+    if hasattr(config_class, "init_app"):
+        config_class.init_app(app)
+
     # Set up logging first
     setup_logging(app)
+
+    # Log startup info
+    flask_env = app.config.get("FLASK_ENV", "development")
+    logger.info(f"Starting homelab-manager in {flask_env} mode")
 
     # Initialize extensions
     CORS(
@@ -119,7 +180,26 @@ def create_app(config_class=Config):
     jwt = JWTManager(app)
     limiter.init_app(app)
 
-    # JWT error handlers for better debugging
+    # Request logging middleware
+    @app.before_request
+    def log_request_info():
+        """Log incoming request details (debug level)."""
+        if app.debug:
+            logger.debug(
+                f"Request: {request.method} {request.path} "
+                f"from {request.remote_addr}"
+            )
+
+    @app.after_request
+    def log_response_info(response):
+        """Log response status for errors."""
+        if response.status_code >= 400:
+            logger.warning(
+                f"Response: {request.method} {request.path} -> {response.status_code}"
+            )
+        return response
+
+    # JWT error handlers
     @jwt.invalid_token_loader
     def invalid_token_callback(error_string):
         logger.warning(f"Invalid JWT token: {error_string}")
@@ -135,7 +215,9 @@ def create_app(config_class=Config):
         logger.warning(f"Expired JWT token for user: {jwt_payload.get('sub')}")
         return jsonify({"error": "Token has expired"}), 401
 
-    Swagger(app, template=SWAGGER_TEMPLATE, config=SWAGGER_CONFIG)
+    # Only enable Swagger in non-production
+    if flask_env != "production":
+        Swagger(app, template=SWAGGER_TEMPLATE, config=SWAGGER_CONFIG)
 
     # Late imports to avoid circular imports
     from app.cli import register_cli

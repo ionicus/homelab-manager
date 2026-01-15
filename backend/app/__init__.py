@@ -113,7 +113,7 @@ def create_app(config_class=Config):
         app,
         origins=app.config["CORS_ORIGINS"],
         supports_credentials=True,
-        allow_headers=["Content-Type", "Authorization"],
+        allow_headers=["Content-Type", "Authorization", "X-CSRF-TOKEN"],
         methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     )
     jwt = JWTManager(app)

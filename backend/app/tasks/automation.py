@@ -5,6 +5,7 @@ import logging
 import os
 import re
 import subprocess
+import tempfile
 from datetime import datetime
 from pathlib import Path
 
@@ -19,6 +20,52 @@ logger = logging.getLogger(__name__)
 
 # Pattern for valid playbook names: alphanumeric, underscore, hyphen only
 SAFE_ACTION_NAME_PATTERN = re.compile(r"^[a-zA-Z0-9_-]+$")
+
+# Maximum log output size (characters) to store
+MAX_LOG_OUTPUT_SIZE = 100_000  # 100KB
+
+# Patterns to redact from log output (case-insensitive)
+SENSITIVE_PATTERNS = [
+    # Passwords in various formats
+    (re.compile(r'(password|passwd|pwd)\s*[:=]\s*["\']?[^\s"\']+', re.IGNORECASE), r'\1=***REDACTED***'),
+    (re.compile(r'(ansible_password|ansible_become_pass|ansible_ssh_pass)\s*[:=]\s*[^\s]+', re.IGNORECASE), r'\1=***REDACTED***'),
+    # API keys and tokens
+    (re.compile(r'(api[_-]?key|api[_-]?secret|token|bearer)\s*[:=]\s*["\']?[^\s"\']+', re.IGNORECASE), r'\1=***REDACTED***'),
+    # AWS credentials
+    (re.compile(r'(aws_access_key_id|aws_secret_access_key)\s*[:=]\s*[^\s]+', re.IGNORECASE), r'\1=***REDACTED***'),
+    # Generic secrets
+    (re.compile(r'(secret|private[_-]?key)\s*[:=]\s*["\']?[^\s"\']+', re.IGNORECASE), r'\1=***REDACTED***'),
+    # SSH private key content
+    (re.compile(r'-----BEGIN [A-Z ]+ PRIVATE KEY-----.*?-----END [A-Z ]+ PRIVATE KEY-----', re.DOTALL), '***PRIVATE KEY REDACTED***'),
+]
+
+
+def _redact_sensitive_data(text: str) -> str:
+    """Redact sensitive information from text before logging/storing.
+
+    Removes or masks:
+    - Passwords and credentials
+    - API keys and tokens
+    - Private keys
+
+    Args:
+        text: Raw text that may contain sensitive data
+
+    Returns:
+        Text with sensitive data redacted
+    """
+    if not text:
+        return text
+
+    result = text
+    for pattern, replacement in SENSITIVE_PATTERNS:
+        result = pattern.sub(replacement, result)
+
+    # Truncate if too long
+    if len(result) > MAX_LOG_OUTPUT_SIZE:
+        result = result[:MAX_LOG_OUTPUT_SIZE] + "\n\n... [OUTPUT TRUNCATED - exceeded 100KB limit]"
+
+    return result
 
 
 def _sanitize_inventory_value(value: str) -> str:
@@ -58,10 +105,13 @@ def _validate_ip_address(ip_str: str) -> str:
 def _generate_inventory(device_ip: str, device_name: str, job_id: int) -> str:
     """Generate Ansible inventory for a single device.
 
+    Uses secure tempfile with restricted permissions to prevent
+    information disclosure and race condition attacks.
+
     Args:
         device_ip: Target device IP address
         device_name: Target device name
-        job_id: Job ID for unique naming
+        job_id: Job ID for unique naming (used in prefix for debugging)
 
     Returns:
         Path to the inventory file
@@ -97,11 +147,26 @@ def _generate_inventory(device_ip: str, device_name: str, job_id: int) -> str:
 ansible_python_interpreter=/usr/bin/python3
 """
 
-    inventory_file = f"/tmp/ansible_inventory_{job_id}.ini"
-    with open(inventory_file, "w") as f:
-        f.write(inventory_content)
+    # Use secure tempfile with:
+    # - Unpredictable filename (random suffix)
+    # - Restrictive permissions (0o600 - owner read/write only)
+    # - delete=False so we can pass path to ansible, cleanup manually later
+    fd = tempfile.NamedTemporaryFile(
+        mode="w",
+        prefix=f"ansible_inv_{job_id}_",
+        suffix=".ini",
+        delete=False,
+    )
+    try:
+        fd.write(inventory_content)
+        inventory_path = fd.name
+    finally:
+        fd.close()
 
-    return inventory_file
+    # Ensure restrictive permissions (NamedTemporaryFile already creates with 0o600)
+    os.chmod(inventory_path, 0o600)
+
+    return inventory_path
 
 
 @shared_task(
@@ -187,9 +252,9 @@ def run_ansible_playbook(
             timeout=500,  # 8+ minute timeout for subprocess
         )
 
-        # Capture output
+        # Capture and redact output before storing
         log_output = f"STDOUT:\n{result.stdout}\n\nSTDERR:\n{result.stderr}"
-        job.log_output = log_output
+        job.log_output = _redact_sensitive_data(log_output)
 
         # Update job status based on result
         job.completed_at = datetime.utcnow()
@@ -213,7 +278,9 @@ def run_ansible_playbook(
         if job:
             job.status = JobStatus.FAILED
             job.completed_at = datetime.utcnow()
-            job.log_output = (job.log_output or "") + "\n\nERROR: Task exceeded time limit"
+            # Redact any existing output and append error
+            existing = _redact_sensitive_data(job.log_output or "")
+            job.log_output = existing + "\n\nERROR: Task exceeded time limit"
             db.commit()
         raise  # Let Celery handle retry
 
@@ -222,7 +289,9 @@ def run_ansible_playbook(
         if job:
             job.status = JobStatus.FAILED
             job.completed_at = datetime.utcnow()
-            job.log_output = (job.log_output or "") + "\n\nERROR: Execution timed out"
+            # Redact any existing output and append error
+            existing = _redact_sensitive_data(job.log_output or "")
+            job.log_output = existing + "\n\nERROR: Execution timed out"
             db.commit()
         return {"status": "failed", "job_id": job_id, "error": "timeout"}
 
@@ -231,7 +300,10 @@ def run_ansible_playbook(
         if job:
             job.status = JobStatus.FAILED
             job.completed_at = datetime.utcnow()
-            job.log_output = (job.log_output or "") + f"\n\nERROR: {str(e)}"
+            # Redact any existing output and error message
+            existing = _redact_sensitive_data(job.log_output or "")
+            error_msg = _redact_sensitive_data(str(e))
+            job.log_output = existing + f"\n\nERROR: {error_msg}"
             db.commit()
 
         # Don't retry on validation errors

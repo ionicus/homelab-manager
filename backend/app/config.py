@@ -68,13 +68,20 @@ class Config:
     # CORS - restrict to specific origins (no wildcards in production)
     CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")
 
-    # JWT
+    # JWT - HttpOnly cookie configuration
     JWT_SECRET_KEY = _get_secret(
         "JWT_SECRET_KEY", "dev-only-jwt-key-not-for-production!"
     )
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(
         seconds=int(os.getenv("JWT_ACCESS_TOKEN_EXPIRES", "3600"))
     )
+    # Store JWT in HttpOnly cookies instead of localStorage (XSS protection)
+    JWT_TOKEN_LOCATION = ["cookies"]
+    JWT_ACCESS_COOKIE_NAME = "access_token"
+    JWT_COOKIE_SECURE = os.getenv("FLASK_ENV") == "production"  # HTTPS only in prod
+    JWT_COOKIE_SAMESITE = "Lax"  # CSRF protection
+    JWT_COOKIE_CSRF_PROTECT = True  # Enable CSRF protection for cookie auth
+    JWT_CSRF_IN_COOKIES = False  # Send CSRF token in response body, not cookie
 
     # API
     API_PREFIX = os.getenv("API_PREFIX", "/api")

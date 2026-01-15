@@ -18,20 +18,34 @@ export const getUploadUrl = (path) => {
   return `${BACKEND_URL}${path}`;
 };
 
+// CSRF token stored in memory (not localStorage - cleared on page close)
+let csrfToken = null;
+
+export const setCsrfToken = (token) => {
+  csrfToken = token;
+};
+
+export const getCsrfToken = () => csrfToken;
+
+export const clearCsrfToken = () => {
+  csrfToken = null;
+};
+
 const api = axios.create({
   baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
   },
   timeout: 10000,
+  withCredentials: true, // Enable cookie-based auth
 });
 
-// Request interceptor to add auth token
+// Request interceptor to add CSRF token for state-changing requests
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('homelab-token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    // Add CSRF token for non-GET requests (state-changing operations)
+    if (csrfToken && config.method !== 'get') {
+      config.headers['X-CSRF-TOKEN'] = csrfToken;
     }
     return config;
   },
@@ -55,7 +69,7 @@ api.interceptors.response.use(
     // Handle 401 Unauthorized - redirect to login (unless already there)
     if (status === 401) {
       if (!window.location.pathname.includes('/login')) {
-        localStorage.removeItem('homelab-token');
+        clearCsrfToken();
         localStorage.removeItem('homelab-user');
         window.location.href = '/login';
       }
@@ -153,6 +167,7 @@ export const setPrimaryInterface = (deviceId, interfaceId) =>
 // Authentication
 export const login = (username, password) =>
   api.post('/auth/login', { username, password });
+export const logout = () => api.post('/auth/logout');
 export const getCurrentUser = () => api.get('/auth/me');
 export const updateCurrentUser = (data) => api.put('/auth/me', data);
 export const changePassword = (currentPassword, newPassword) =>

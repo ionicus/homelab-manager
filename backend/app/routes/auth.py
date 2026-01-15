@@ -3,17 +3,27 @@
 from datetime import datetime
 from io import BytesIO
 
-from flask import Blueprint, Response, request
+from flask import Blueprint, Response, jsonify, make_response, request
 from flask_jwt_extended import (
     create_access_token,
+    get_csrf_token,
     get_jwt_identity,
     jwt_required,
+    set_access_cookies,
+    unset_jwt_cookies,
 )
 from PIL import Image
 
 from app.extensions import limiter
 from app.models import User
-from app.schemas.auth import LoginRequest, PasswordChange, ThemePreferences, UserCreate, UserUpdate
+from app.schemas.auth import (
+    AdminPasswordReset,
+    LoginRequest,
+    PasswordChange,
+    ThemePreferences,
+    UserCreate,
+    UserUpdate,
+)
 from app.utils.audit import log_login_failure, log_login_success
 from app.utils.errors import (
     ConflictError,
@@ -35,16 +45,62 @@ ALLOWED_AVATAR_MIME_TYPES = {
 MAX_AVATAR_SIZE = 5 * 1024 * 1024  # 5 MB
 AVATAR_MAX_DIMENSION = 256  # Max width/height for avatars
 
+# File signature (magic bytes) to MIME type mapping
+# More reliable than Content-Type header which can be spoofed
+FILE_SIGNATURES = {
+    b"\x89PNG\r\n\x1a\n": "image/png",
+    b"\xff\xd8\xff": "image/jpeg",  # JPEG starts with FFD8FF
+    b"GIF87a": "image/gif",
+    b"GIF89a": "image/gif",
+    b"RIFF": "image/webp",  # WebP starts with RIFF...WEBP
+}
+
+# Protect against decompression bombs
+Image.MAX_IMAGE_PIXELS = 25_000_000  # 25 megapixels max
+
+
+def validate_image_signature(file_data: bytes) -> str | None:
+    """Validate file by checking magic bytes signature.
+
+    Args:
+        file_data: Raw file bytes
+
+    Returns:
+        Detected MIME type if valid, None if no match
+    """
+    for signature, mime_type in FILE_SIGNATURES.items():
+        if file_data.startswith(signature):
+            return mime_type
+    # Special case for WebP: check for RIFF....WEBP pattern
+    if file_data[:4] == b"RIFF" and file_data[8:12] == b"WEBP":
+        return "image/webp"
+    return None
+
 
 def process_avatar_image(file_data: bytes) -> tuple[bytes, str]:
     """Process and optimize avatar image.
 
-    Resizes to max 256x256 while preserving aspect ratio,
-    converts to PNG for consistency, and optimizes file size.
+    Validates the image data, resizes to max 256x256 while preserving
+    aspect ratio, converts to PNG for consistency, and optimizes file size.
+
+    Args:
+        file_data: Raw image file bytes
 
     Returns:
         Tuple of (processed_image_bytes, mime_type)
+
+    Raises:
+        ValueError: If image data is invalid or corrupted
     """
+    # First, verify the image is valid using Pillow's verify()
+    # This catches corrupted or malformed image files
+    try:
+        verify_img = Image.open(BytesIO(file_data))
+        verify_img.verify()  # Checks for corruption/truncation
+    except Exception as e:
+        raise ValueError(f"Invalid or corrupted image file: {e}")
+
+    # Re-open the image for actual processing (verify() consumes the file)
     img = Image.open(BytesIO(file_data))
 
     # Handle different image modes
@@ -133,11 +189,35 @@ def login():
         # Create access token with user ID as identity (must be string for JWT)
         access_token = create_access_token(identity=str(user.id))
 
-        return success_response({
-            "access_token": access_token,
-            "token_type": "bearer",
-            "user": user.to_dict(include_email=True),
-        })
+        # Build response with user data and CSRF token
+        response_data = {
+            "data": {
+                "csrf_token": get_csrf_token(access_token),
+                "user": user.to_dict(include_email=True),
+            }
+        }
+        response = make_response(jsonify(response_data), 200)
+        # Set JWT in HttpOnly cookie
+        set_access_cookies(response, access_token)
+        return response
+
+
+@auth_bp.route("/logout", methods=["POST"])
+@jwt_required()
+def logout():
+    """Logout user and clear JWT cookie.
+    ---
+    tags:
+      - Authentication
+    security:
+      - Bearer: []
+    responses:
+      200:
+        description: Logout successful
+    """
+    response = make_response(jsonify({"data": {"message": "Logged out successfully"}}), 200)
+    unset_jwt_cookies(response)
+    return response
 
 
 @auth_bp.route("/me", methods=["GET"])
@@ -164,7 +244,20 @@ def get_current_user():
         if not user:
             raise NotFoundError("User", user_id)
 
-        return success_response(user.to_dict(include_email=True))
+        # Generate fresh access token to provide CSRF token for session refresh
+        # This is needed when the page is refreshed and CSRF token (in memory) is lost
+        access_token = create_access_token(identity=str(user.id))
+
+        response_data = {
+            "data": {
+                "csrf_token": get_csrf_token(access_token),
+                "user": user.to_dict(include_email=True),
+            }
+        }
+        response = make_response(jsonify(response_data), 200)
+        # Refresh the HttpOnly cookie with new token
+        set_access_cookies(response, access_token)
+        return response
 
 
 @auth_bp.route("/me", methods=["PUT"])
@@ -370,23 +463,29 @@ def upload_avatar():
     if file.filename == "":
         raise ValidationError("No file selected")
 
-    # Validate MIME type
-    mime_type = file.content_type
-    if mime_type not in ALLOWED_AVATAR_MIME_TYPES:
-        raise ValidationError("Invalid file type. Allowed: PNG, JPG, GIF, WebP")
-
-    # Read file data
+    # Read file data first for signature validation
     file_data = file.read()
 
     # Validate file size
     if len(file_data) > MAX_AVATAR_SIZE:
         raise ValidationError("File too large. Maximum size is 5MB")
 
-    # Process image: resize and optimize
+    # Validate file signature (magic bytes) - more reliable than Content-Type
+    detected_mime = validate_image_signature(file_data)
+    if detected_mime is None:
+        raise ValidationError("Invalid file type. File signature does not match any allowed image format")
+
+    # Also check Content-Type matches for defense in depth
+    if file.content_type not in ALLOWED_AVATAR_MIME_TYPES:
+        raise ValidationError("Invalid file type. Allowed: PNG, JPG, GIF, WebP")
+
+    # Process image: verify, resize, and optimize
     try:
         processed_data, processed_mime = process_avatar_image(file_data)
+    except ValueError as e:
+        raise ValidationError(str(e))
     except Exception:
-        raise ValidationError("Invalid image file")
+        raise ValidationError("Invalid or corrupted image file")
 
     with DatabaseSession() as db:
         user = db.query(User).filter(User.id == user_id).first()
@@ -755,7 +854,7 @@ def delete_user(user_id: int):
 
 @auth_bp.route("/users/<int:user_id>/reset-password", methods=["POST"])
 @jwt_required()
-@validate_request(PasswordChange)
+@validate_request(AdminPasswordReset)
 def admin_reset_password(user_id: int):
     """Reset a user's password (admin only).
     ---
@@ -779,6 +878,7 @@ def admin_reset_password(user_id: int):
             new_password:
               type: string
               minLength: 8
+              description: Must contain uppercase, lowercase, and digit
     responses:
       200:
         description: Password reset
@@ -790,6 +890,7 @@ def admin_reset_password(user_id: int):
         description: User not found
     """
     admin_id = int(get_jwt_identity())
+    data = request.validated_data
 
     with DatabaseSession() as db:
         current_user = db.query(User).filter(User.id == admin_id).first()
@@ -800,13 +901,8 @@ def admin_reset_password(user_id: int):
         if not user:
             raise NotFoundError("User", user_id)
 
-        # Get new password from request body
-        data = request.get_json()
-        new_password = data.get("new_password")
-        if not new_password or len(new_password) < 8:
-            raise ValidationError("New password must be at least 8 characters")
-
-        user.set_password(new_password)
+        # Password already validated by AdminPasswordReset schema
+        user.set_password(data.new_password)
         db.commit()
 
         return success_response(message="Password reset successfully")

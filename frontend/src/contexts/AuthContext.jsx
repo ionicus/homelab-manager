@@ -1,14 +1,20 @@
-import { createContext, useContext, useState, useCallback } from 'react';
-import api, { uploadAvatar as uploadAvatarApi, deleteAvatar as deleteAvatarApi } from '../services/api';
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import api, {
+  setCsrfToken,
+  clearCsrfToken,
+  getCsrfToken,
+  uploadAvatar as uploadAvatarApi,
+  deleteAvatar as deleteAvatarApi,
+  logout as logoutApi
+} from '../services/api';
 
 const AuthContext = createContext(null);
 
-const TOKEN_STORAGE_KEY = 'homelab-token';
 const USER_STORAGE_KEY = 'homelab-user';
 
 export function AuthProvider({ children }) {
-  // Initialize state from localStorage
-  const [token, setToken] = useState(() => localStorage.getItem(TOKEN_STORAGE_KEY));
+  // User info can be stored in localStorage (not sensitive)
+  // But auth state depends on HttpOnly cookie (checked via /auth/me)
   const [user, setUser] = useState(() => {
     const saved = localStorage.getItem(USER_STORAGE_KEY);
     if (saved) {
@@ -21,34 +27,62 @@ export function AuthProvider({ children }) {
     return null;
   });
   const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const isAuthenticated = !!token && !!user;
+  // Check if user is authenticated by verifying with backend
+  // This validates the HttpOnly cookie
+  const isAuthenticated = !!user && !!getCsrfToken();
   const isAdmin = user?.is_admin || false;
 
-  // Set axios header if we have a token
-  if (token) {
-    api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-  }
+  // On mount, verify authentication status with backend
+  useEffect(() => {
+    const verifyAuth = async () => {
+      // If we have cached user info, try to verify the session
+      if (user) {
+        try {
+          const response = await api.get('/auth/me');
+          const data = response.data?.data || response.data;
+          const { csrf_token, user: userData } = data;
+
+          // Store refreshed CSRF token (needed after page reload)
+          if (csrf_token) {
+            setCsrfToken(csrf_token);
+          }
+
+          setUser(userData || data);
+          localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userData || data));
+        } catch {
+          // Session invalid - clear local state
+          setUser(null);
+          clearCsrfToken();
+          localStorage.removeItem(USER_STORAGE_KEY);
+        }
+      }
+      setLoading(false);
+    };
+    verifyAuth();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const login = useCallback(async (username, password) => {
     setError(null);
     try {
       const response = await api.post('/auth/login', { username, password });
 
-      const { access_token, user: userData } = response.data;
-      if (!access_token || !userData) {
+      // Response now contains csrf_token and user in data envelope
+      const data = response.data?.data || response.data;
+      const { csrf_token, user: userData } = data;
+
+      if (!csrf_token || !userData) {
         throw new Error('Invalid response from server');
       }
 
-      // Save to localStorage
-      localStorage.setItem(TOKEN_STORAGE_KEY, access_token);
+      // Store CSRF token in memory (api.js)
+      setCsrfToken(csrf_token);
+
+      // Save user info to localStorage (not sensitive)
       localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userData));
 
-      // Set axios header
-      api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
-
       // Update state
-      setToken(access_token);
       setUser(userData);
 
       return { success: true };
@@ -59,11 +93,15 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  const logout = useCallback(() => {
-    localStorage.removeItem(TOKEN_STORAGE_KEY);
+  const logout = useCallback(async () => {
+    try {
+      // Call backend to clear the HttpOnly cookie
+      await logoutApi();
+    } catch {
+      // Continue with local logout even if API fails
+    }
+    clearCsrfToken();
     localStorage.removeItem(USER_STORAGE_KEY);
-    delete api.defaults.headers.common['Authorization'];
-    setToken(null);
     setUser(null);
     setError(null);
   }, []);
@@ -71,7 +109,7 @@ export function AuthProvider({ children }) {
   const updateProfile = useCallback(async (data) => {
     try {
       const response = await api.put('/auth/me', data);
-      const updatedUser = response.data;
+      const updatedUser = response.data?.data || response.data;
       setUser(updatedUser);
       localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(updatedUser));
       return { success: true, user: updatedUser };
@@ -97,23 +135,23 @@ export function AuthProvider({ children }) {
   }, []);
 
   const refreshUser = useCallback(async () => {
-    if (!token) return;
     try {
       const response = await api.get('/auth/me');
-      setUser(response.data);
-      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(response.data));
+      const userData = response.data?.data || response.data;
+      setUser(userData);
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userData));
     } catch {
       // Silently fail - user can retry manually
     }
-  }, [token]);
+  }, []);
 
   const uploadAvatar = useCallback(async (file) => {
     try {
       const response = await uploadAvatarApi(file);
-      const updatedUser = response.data.user;
+      const updatedUser = response.data?.data?.user || response.data.user;
       setUser(updatedUser);
       localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(updatedUser));
-      return { success: true, avatarUrl: response.data.avatar_url };
+      return { success: true, avatarUrl: response.data?.data?.avatar_url || response.data.avatar_url };
     } catch (err) {
       return { success: false, error: err.response?.data?.error || 'Failed to upload avatar' };
     }
@@ -122,7 +160,7 @@ export function AuthProvider({ children }) {
   const deleteAvatar = useCallback(async () => {
     try {
       const response = await deleteAvatarApi();
-      const updatedUser = response.data.user;
+      const updatedUser = response.data?.data?.user || response.data.user;
       setUser(updatedUser);
       localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(updatedUser));
       return { success: true };
@@ -134,8 +172,7 @@ export function AuthProvider({ children }) {
   return (
     <AuthContext.Provider value={{
       user,
-      token,
-      loading: false,
+      loading,
       error,
       isAuthenticated,
       isAdmin,

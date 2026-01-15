@@ -1,6 +1,6 @@
 # Homelab Manager API Documentation
 
-Version: 0.4.0
+Version: 0.4.1
 Base URL: `http://localhost:5000/api`
 
 ## Table of Contents
@@ -151,6 +151,13 @@ flask reset-password --username admin
 
 All API endpoints (except `/health` and `/api/auth/login`) require JWT authentication.
 
+### Security Features
+
+- **HttpOnly Cookies**: JWT tokens are stored in HttpOnly cookies (not accessible to JavaScript) to prevent XSS attacks
+- **CSRF Protection**: State-changing requests (POST, PUT, DELETE) require a CSRF token in the `X-CSRF-TOKEN` header
+- **Secure Cookies**: In production, cookies are sent only over HTTPS
+- **SameSite=Lax**: Cookies are not sent with cross-site requests to prevent CSRF
+
 ### Login
 
 ```http
@@ -168,27 +175,50 @@ POST /api/auth/login
 **Response** `200 OK`:
 ```json
 {
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "user": {
-    "id": 1,
-    "username": "admin",
-    "email": "admin@example.com",
-    "display_name": "Admin User",
-    "is_admin": true
+  "data": {
+    "csrf_token": "abc123-csrf-token-xyz",
+    "user": {
+      "id": 1,
+      "username": "admin",
+      "email": "admin@example.com",
+      "display_name": "Admin User",
+      "is_admin": true
+    }
   }
 }
 ```
+
+The response also sets an HttpOnly cookie (`access_token`) containing the JWT.
 
 **Errors:**
 - `401` - Invalid credentials
 - `429` - Too many login attempts (rate limited to 5/minute)
 
-### Using the Token
+### Using Authentication
 
-Include the JWT token in the `Authorization` header for all authenticated requests:
+Authentication is handled automatically via cookies. For state-changing requests, include the CSRF token:
 
 ```http
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+X-CSRF-TOKEN: abc123-csrf-token-xyz
+```
+
+**Important:** The CSRF token is required for all POST, PUT, and DELETE requests.
+
+### Logout
+
+```http
+POST /api/auth/logout
+```
+
+Clears the HttpOnly cookie and invalidates the session.
+
+**Response** `200 OK`:
+```json
+{
+  "data": {
+    "message": "Logged out successfully"
+  }
+}
 ```
 
 ### Get Current User
@@ -1258,6 +1288,22 @@ HTTP/1.1 429 Too Many Requests
 ---
 
 ## Changelog
+
+### Version 0.4.1 (2026-01-15)
+
+- **Security**: JWT tokens now stored in HttpOnly cookies (XSS protection)
+- **Security**: CSRF protection for state-changing requests via `X-CSRF-TOKEN` header
+- **Security**: Rate limiting storage moved to Redis (persists across restarts)
+- **Security**: Avatar upload validates file signatures (magic bytes) in addition to MIME type
+- **Security**: Pillow decompression bomb protection (`MAX_IMAGE_PIXELS` limit)
+- **Security**: Secure temp files for Ansible inventory (restrictive permissions, random names)
+- **Security**: Sensitive data redaction in automation logs (passwords, API keys, private keys)
+- **Security**: Dedicated `AdminPasswordReset` schema (admin reset doesn't require current password)
+- **API**: Login response now returns `csrf_token` in response body
+- **API**: `/auth/me` endpoint returns fresh `csrf_token` for session refresh after page reload
+- **API**: Added `/auth/logout` endpoint to clear HttpOnly cookies
+- **Frontend**: CSRF token stored in memory (not localStorage)
+- **Frontend**: Session verification on page load retrieves fresh CSRF token
 
 ### Version 0.4.0 (2026-01-14)
 

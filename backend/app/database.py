@@ -24,12 +24,3 @@ def init_db():
     import app.models  # noqa: F401
 
     Base.metadata.create_all(bind=engine)
-
-
-def get_db():
-    """Get database session."""
-    db = Session()
-    try:
-        yield db
-    finally:
-        db.close()

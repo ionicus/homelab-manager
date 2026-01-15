@@ -1,5 +1,6 @@
 """Request validation utilities using Pydantic schemas."""
 
+import logging
 from functools import wraps
 from typing import Any, Callable, Type
 
@@ -7,6 +8,8 @@ from flask import jsonify, request
 from pydantic import BaseModel, ValidationError
 
 from app.utils.errors import APIError
+
+logger = logging.getLogger(__name__)
 
 
 def validate_request(schema: Type[BaseModel]):
@@ -60,8 +63,10 @@ def validate_request(schema: Type[BaseModel]):
                 # Let our custom API errors propagate to Flask's error handler
                 raise
 
-            except Exception as e:
-                return jsonify({"error": f"Validation error: {str(e)}"}), 400
+            except Exception:
+                # Log full exception for debugging, return generic message to client
+                logger.exception("Unexpected error during request validation")
+                return jsonify({"error": "Invalid request data"}), 400
 
         return wrapper
 
@@ -92,5 +97,7 @@ def validate_data(schema: Type[BaseModel], data: dict) -> tuple[Any, dict | None
             errors.append({"field": field, "message": message})
 
         return None, {"error": "Validation failed", "details": errors}
-    except Exception as e:
-        return None, {"error": f"Validation error: {str(e)}"}
+    except Exception:
+        # Log full exception for debugging, return generic message
+        logger.exception("Unexpected error during data validation")
+        return None, {"error": "Invalid request data"}

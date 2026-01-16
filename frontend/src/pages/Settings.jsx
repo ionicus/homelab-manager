@@ -8,7 +8,7 @@ import { IconPalette, IconBrush, IconSettings, IconUsers, IconUser, IconTrash, I
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
-import { getUsers, createUser, updateUser, deleteUser, resetUserPassword, getUploadUrl } from '../services/api';
+import { getUsers, createUser, updateUser, deleteUser, resetUserPassword, getUploadUrl, getSettings, updateSetting } from '../services/api';
 
 function Settings() {
   const [activeSection, setActiveSection] = useState('profile');
@@ -58,6 +58,12 @@ function Settings() {
   const [resetPasswordUser, setResetPasswordUser] = useState(null);
   const [newPassword, setNewPassword] = useState('');
 
+  // Application settings state (admin only)
+  const [appSettingsForm, setAppSettingsForm] = useState({});
+  const [appSettingsLoading, setAppSettingsLoading] = useState(false);
+  const [appSettingsError, setAppSettingsError] = useState(null);
+  const [appSettingsSuccess, setAppSettingsSuccess] = useState(null);
+
   // Initialize profile form with current user data
   useEffect(() => {
     if (user) {
@@ -79,13 +85,40 @@ function Settings() {
     queryKey: ['users'],
     queryFn: async () => {
       const response = await getUsers();
-      return response.data.users || response.data;
+      // API returns { data: [...] } envelope
+      return response.data.data || response.data.users || response.data;
     },
     enabled: activeSection === 'users' && user?.is_admin,
   });
 
   const users = usersData || [];
   const usersError = usersQueryError?.userMessage || (usersQueryError ? 'Failed to load users' : null);
+
+  // Fetch application settings (admin only)
+  const {
+    data: appSettingsData,
+    isLoading: appSettingsQueryLoading,
+    error: appSettingsQueryError,
+  } = useQuery({
+    queryKey: ['appSettings'],
+    queryFn: async () => {
+      const response = await getSettings();
+      // API returns { data: [...] } envelope
+      return response.data.data || response.data.settings || response.data;
+    },
+    enabled: activeSection === 'appsettings' && user?.is_admin,
+  });
+
+  // Initialize form when settings are loaded
+  useEffect(() => {
+    if (appSettingsData && Array.isArray(appSettingsData)) {
+      const formData = {};
+      appSettingsData.forEach((setting) => {
+        formData[setting.key] = setting.value;
+      });
+      setAppSettingsForm(formData);
+    }
+  }, [appSettingsData]);
 
   // Mutations for user CRUD operations
   const createUserMutation = useMutation({
@@ -237,15 +270,36 @@ function Settings() {
 
   const userFormLoading = createUserMutation.isPending || updateUserMutation.isPending;
 
+  // Application settings handlers
+  const handleAppSettingUpdate = async (key, value) => {
+    setAppSettingsLoading(true);
+    setAppSettingsError(null);
+    setAppSettingsSuccess(null);
+    try {
+      await updateSetting(key, value);
+      setAppSettingsForm((prev) => ({ ...prev, [key]: value }));
+      queryClient.invalidateQueries({ queryKey: ['appSettings'] });
+      setAppSettingsSuccess(`Setting "${key}" updated successfully`);
+    } catch (err) {
+      setAppSettingsError(err.userMessage || 'Failed to update setting');
+    } finally {
+      setAppSettingsLoading(false);
+    }
+  };
+
   const baseSections = [
     { id: 'profile', label: 'Profile', icon: IconUser, description: 'Your account' },
     { id: 'theme', label: 'Theme', icon: IconPalette, description: 'Color scheme' },
     { id: 'accents', label: 'Page Accents', icon: IconBrush, description: 'Section colors' },
-    { id: 'general', label: 'General', icon: IconSettings, description: 'App preferences', disabled: true },
+  ];
+
+  const adminSections = [
+    { id: 'users', label: 'Users', icon: IconUsers, description: 'Manage users' },
+    { id: 'appsettings', label: 'Application', icon: IconSettings, description: 'App settings' },
   ];
 
   const sections = user?.is_admin
-    ? [...baseSections.slice(0, 1), { id: 'users', label: 'Users', icon: IconUsers, description: 'Manage users' }, ...baseSections.slice(1)]
+    ? [...baseSections.slice(0, 1), ...adminSections, ...baseSections.slice(1)]
     : baseSections;
 
   // Theme Section
@@ -436,20 +490,115 @@ function Settings() {
     </Stack>
   );
 
-  const renderGeneralSection = () => (
+  const settingDescriptions = {
+    session_timeout_minutes: 'How long until users are automatically logged out due to inactivity',
+    max_login_attempts: 'Number of failed login attempts before account is temporarily locked',
+    lockout_duration_minutes: 'How long an account stays locked after too many failed attempts',
+  };
+
+  const renderAppSettingsSection = () => (
     <Stack spacing="xl">
       <div>
-        <Title order={2} mb="xs">General Settings</Title>
-        <Text size="sm" color="dimmed">
-          Application preferences (Coming soon)
+        <Title order={2} mb="xs">Application Settings</Title>
+        <Text size="sm" c="dimmed">
+          Configure system-wide application settings
         </Text>
       </div>
 
+      {appSettingsError && <Alert color="red" mb="md">{appSettingsError}</Alert>}
+      {appSettingsSuccess && <Alert color="green" mb="md">{appSettingsSuccess}</Alert>}
+
       <Paper shadow="sm" p="lg" withBorder>
-        <Text color="dimmed" ta="center" py="xl">
-          Additional settings will be available here in future updates
-        </Text>
+        {appSettingsQueryLoading ? (
+          <Group justify="center" py="xl">
+            <Loader />
+          </Group>
+        ) : appSettingsQueryError ? (
+          <Alert color="red">
+            {appSettingsQueryError.userMessage || 'Failed to load settings'}
+          </Alert>
+        ) : (
+          <Stack spacing="lg">
+            <Title order={4}>Session & Security</Title>
+
+            <TextInput
+              label="Session Timeout (minutes)"
+              description={settingDescriptions.session_timeout_minutes}
+              value={appSettingsForm.session_timeout_minutes || '60'}
+              onChange={(e) => setAppSettingsForm((prev) => ({
+                ...prev,
+                session_timeout_minutes: e.target.value,
+              }))}
+              type="number"
+              min={1}
+              max={1440}
+              rightSection={
+                <Button
+                  size="xs"
+                  variant="light"
+                  onClick={() => handleAppSettingUpdate('session_timeout_minutes', appSettingsForm.session_timeout_minutes)}
+                  loading={appSettingsLoading}
+                >
+                  Save
+                </Button>
+              }
+              rightSectionWidth={70}
+            />
+
+            <TextInput
+              label="Max Login Attempts"
+              description={settingDescriptions.max_login_attempts}
+              value={appSettingsForm.max_login_attempts || '5'}
+              onChange={(e) => setAppSettingsForm((prev) => ({
+                ...prev,
+                max_login_attempts: e.target.value,
+              }))}
+              type="number"
+              min={1}
+              max={20}
+              rightSection={
+                <Button
+                  size="xs"
+                  variant="light"
+                  onClick={() => handleAppSettingUpdate('max_login_attempts', appSettingsForm.max_login_attempts)}
+                  loading={appSettingsLoading}
+                >
+                  Save
+                </Button>
+              }
+              rightSectionWidth={70}
+            />
+
+            <TextInput
+              label="Lockout Duration (minutes)"
+              description={settingDescriptions.lockout_duration_minutes}
+              value={appSettingsForm.lockout_duration_minutes || '15'}
+              onChange={(e) => setAppSettingsForm((prev) => ({
+                ...prev,
+                lockout_duration_minutes: e.target.value,
+              }))}
+              type="number"
+              min={1}
+              max={1440}
+              rightSection={
+                <Button
+                  size="xs"
+                  variant="light"
+                  onClick={() => handleAppSettingUpdate('lockout_duration_minutes', appSettingsForm.lockout_duration_minutes)}
+                  loading={appSettingsLoading}
+                >
+                  Save
+                </Button>
+              }
+              rightSectionWidth={70}
+            />
+          </Stack>
+        )}
       </Paper>
+
+      <Text size="xs" c="dimmed">
+        Changes take effect immediately. Session timeout applies to new logins.
+      </Text>
     </Stack>
   );
 
@@ -869,9 +1018,9 @@ function Settings() {
         <Grid.Col span={9}>
           {activeSection === 'profile' && renderProfileSection()}
           {activeSection === 'users' && user?.is_admin && renderUsersSection()}
+          {activeSection === 'appsettings' && user?.is_admin && renderAppSettingsSection()}
           {activeSection === 'theme' && renderThemeSection()}
           {activeSection === 'accents' && renderAccentsSection()}
-          {activeSection === 'general' && renderGeneralSection()}
         </Grid.Col>
       </Grid>
     </div>

@@ -16,7 +16,9 @@ function PlaybookSelector({ deviceId, onExecute }) {
     try {
       setLoading(true);
       const response = await getExecutorActions('ansible');
-      const playbookList = response.data.map(action => action.name);
+      // API returns { data: [...] } envelope
+      const actions = response.data.data || response.data;
+      const playbookList = actions.map(action => action.name);
       setPlaybooks(playbookList);
       setError(null);
     } catch (err) {

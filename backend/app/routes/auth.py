@@ -1,6 +1,6 @@
 """Authentication routes."""
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from io import BytesIO
 
 from flask import Blueprint, Response, jsonify, make_response, request
@@ -15,7 +15,7 @@ from flask_jwt_extended import (
 from PIL import Image
 
 from app.extensions import limiter
-from app.models import User
+from app.models import AppSetting, User
 from app.schemas.auth import (
     AdminPasswordReset,
     LoginRequest,
@@ -56,6 +56,33 @@ FILE_SIGNATURES = {
 
 # Protect against decompression bombs
 Image.MAX_IMAGE_PIXELS = 25_000_000  # 25 megapixels max
+
+
+def get_session_timeout() -> timedelta:
+    """Get session timeout from app settings.
+
+    Returns:
+        timedelta for JWT token expiration
+    """
+    from app.database import Session
+
+    db = Session()
+    try:
+        setting = (
+            db.query(AppSetting)
+            .filter(AppSetting.key == "session_timeout_minutes")
+            .first()
+        )
+        if setting:
+            minutes = int(setting.value)
+            return timedelta(minutes=minutes)
+    except Exception:
+        pass
+    finally:
+        db.close()
+
+    # Default to 60 minutes if setting not found
+    return timedelta(minutes=60)
 
 
 def validate_image_signature(file_data: bytes) -> str | None:
@@ -184,7 +211,9 @@ def login():
         log_login_success(user.id, user.username)
 
         # Create access token with user ID as identity (must be string for JWT)
-        access_token = create_access_token(identity=str(user.id))
+        access_token = create_access_token(
+            identity=str(user.id), expires_delta=get_session_timeout()
+        )
 
         # Build response with user data and CSRF token
         response_data = {
@@ -245,7 +274,9 @@ def get_current_user():
 
         # Generate fresh access token to provide CSRF token for session refresh
         # This is needed when the page is refreshed and CSRF token (in memory) is lost
-        access_token = create_access_token(identity=str(user.id))
+        access_token = create_access_token(
+            identity=str(user.id), expires_delta=get_session_timeout()
+        )
 
         response_data = {
             "data": {
@@ -915,3 +946,135 @@ def admin_reset_password(user_id: int):
         db.commit()
 
         return success_response(message="Password reset successfully")
+
+
+# =============================================================================
+# Application Settings Routes (Admin only)
+# =============================================================================
+
+
+@auth_bp.route("/settings", methods=["GET"])
+@jwt_required()
+def get_settings():
+    """Get all application settings.
+    ---
+    tags:
+      - Settings
+    responses:
+      200:
+        description: Application settings
+        schema:
+          type: object
+          properties:
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  key:
+                    type: string
+                  value:
+                    type: string
+                  description:
+                    type: string
+      401:
+        description: Not authenticated
+      403:
+        description: Admin access required
+    """
+    user_id = int(get_jwt_identity())
+
+    with DatabaseSession() as db:
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user or not user.is_admin:
+            raise ValidationError("Admin access required")
+
+        settings = db.query(AppSetting).order_by(AppSetting.key).all()
+        return success_response([s.to_dict() for s in settings])
+
+
+@auth_bp.route("/settings/<key>", methods=["PUT"])
+@jwt_required()
+@limiter.limit("10 per minute")
+def update_setting(key: str):
+    """Update an application setting.
+    ---
+    tags:
+      - Settings
+    parameters:
+      - name: key
+        in: path
+        type: string
+        required: true
+        description: Setting key
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          required:
+            - value
+          properties:
+            value:
+              type: string
+              description: New setting value
+    responses:
+      200:
+        description: Setting updated
+      400:
+        description: Invalid value
+      401:
+        description: Not authenticated
+      403:
+        description: Admin access required
+      404:
+        description: Setting not found
+    """
+    user_id = int(get_jwt_identity())
+    data = request.get_json()
+
+    if not data or "value" not in data:
+        raise ValidationError("Value is required")
+
+    with DatabaseSession() as db:
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user or not user.is_admin:
+            raise ValidationError("Admin access required")
+
+        setting = db.query(AppSetting).filter(AppSetting.key == key).first()
+        if not setting:
+            raise NotFoundError("Setting", key)
+
+        # Validate numeric settings
+        new_value = str(data["value"]).strip()
+        if key in (
+            "session_timeout_minutes",
+            "max_login_attempts",
+            "lockout_duration_minutes",
+        ):
+            try:
+                int_value = int(new_value)
+                if int_value < 1:
+                    raise ValidationError(f"{key} must be a positive integer")
+                # Reasonable limits
+                if key == "session_timeout_minutes" and int_value > 10080:  # 7 days max
+                    raise ValidationError(
+                        "Session timeout cannot exceed 7 days (10080 minutes)"
+                    )
+                if key == "max_login_attempts" and int_value > 100:
+                    raise ValidationError("Max login attempts cannot exceed 100")
+                if (
+                    key == "lockout_duration_minutes" and int_value > 1440
+                ):  # 24 hours max
+                    raise ValidationError(
+                        "Lockout duration cannot exceed 24 hours (1440 minutes)"
+                    )
+            except ValueError:
+                raise ValidationError(f"{key} must be a valid integer") from None
+
+        setting.value = new_value
+        setting.updated_by = user_id
+        db.commit()
+        db.refresh(setting)
+
+        return success_response(setting.to_dict())

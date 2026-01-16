@@ -40,7 +40,8 @@ function DeviceDetail() {
     queryKey: ['device', id],
     queryFn: async () => {
       const res = await getDevice(id);
-      return res.data || res;
+      // API returns { data: {...} } envelope
+      return res.data?.data || res.data || res;
     },
   });
 

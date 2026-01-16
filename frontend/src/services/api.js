@@ -258,4 +258,8 @@ export const deleteUser = (userId) => api.delete(`/auth/users/${userId}`);
 export const resetUserPassword = (userId, newPassword) =>
   api.post(`/auth/users/${userId}/reset-password`, { new_password: newPassword });
 
+// Application Settings (admin only)
+export const getSettings = () => api.get('/auth/settings');
+export const updateSetting = (key, value) => api.put(`/auth/settings/${key}`, { value });
+
 export default api;

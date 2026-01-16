@@ -14,6 +14,7 @@ import Services from './pages/Services'
 import ServiceDetail from './pages/ServiceDetail'
 import Automation from './pages/Automation'
 import JobDetail from './pages/JobDetail'
+import Workflows from './pages/Workflows'
 import Settings from './pages/Settings'
 import Login from './pages/Login'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -43,6 +44,7 @@ function AppContent() {
                   <li><NavLink to="/devices">Devices</NavLink></li>
                   <li><NavLink to="/services">Services</NavLink></li>
                   <li><NavLink to="/automation">Automation</NavLink></li>
+                  <li><NavLink to="/workflows">Workflows</NavLink></li>
                   <li><NavLink to="/settings">Settings</NavLink></li>
                 </ul>
                 <Group className="nav-user" gap="xs">
@@ -76,6 +78,7 @@ function AppContent() {
             <Route path="/services/:id" element={<ProtectedRoute><ServiceDetail /></ProtectedRoute>} />
             <Route path="/automation" element={<ProtectedRoute><Automation /></ProtectedRoute>} />
             <Route path="/automation/jobs/:id" element={<ProtectedRoute><JobDetail /></ProtectedRoute>} />
+            <Route path="/workflows" element={<ProtectedRoute><Workflows /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
           </Routes>
         </main>

@@ -176,6 +176,45 @@ export const deleteVaultSecret = (secretId) =>
 export const getJobLogStreamUrl = (jobId, includeExisting = true) =>
   `${API_URL}/automation/${jobId}/logs/stream?include_existing=${includeExisting}`;
 
+// Workflow Templates
+export const getWorkflowTemplates = (page = 1, perPage = 20) =>
+  api.get(`/workflows/templates?page=${page}&per_page=${perPage}`);
+export const getWorkflowTemplate = (templateId) =>
+  api.get(`/workflows/templates/${templateId}`);
+export const createWorkflowTemplate = (data) => api.post('/workflows/templates', data);
+export const updateWorkflowTemplate = (templateId, data) =>
+  api.put(`/workflows/templates/${templateId}`, data);
+export const deleteWorkflowTemplate = (templateId) =>
+  api.delete(`/workflows/templates/${templateId}`);
+
+// Workflow Instances
+export const startWorkflow = ({
+  templateId,
+  deviceIds,
+  rollbackOnFailure = false,
+  extraVars = null,
+  vaultSecretId = null,
+}) =>
+  api.post('/workflows', {
+    template_id: templateId,
+    device_ids: deviceIds,
+    rollback_on_failure: rollbackOnFailure,
+    extra_vars: extraVars,
+    vault_secret_id: vaultSecretId,
+  });
+export const getWorkflowInstances = ({ templateId = null, status = null, page = 1, perPage = 20 } = {}) => {
+  const params = new URLSearchParams();
+  params.append('page', page);
+  params.append('per_page', perPage);
+  if (templateId) params.append('template_id', templateId);
+  if (status) params.append('status', status);
+  return api.get(`/workflows?${params.toString()}`);
+};
+export const getWorkflowInstance = (instanceId, includeJobs = false) =>
+  api.get(`/workflows/${instanceId}?include_jobs=${includeJobs}`);
+export const cancelWorkflow = (instanceId) =>
+  api.post(`/workflows/${instanceId}/cancel`);
+
 // Network Interfaces
 export const getDeviceInterfaces = (deviceId) =>
   api.get(`/devices/${deviceId}/interfaces`);

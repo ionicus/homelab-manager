@@ -73,9 +73,22 @@ class AutomationJob(Base):
     # Vault secret for ansible-vault encrypted content
     vault_secret_id = Column(Integer, ForeignKey("vault_secrets.id"), nullable=True)
 
+    # Workflow integration
+    workflow_instance_id = Column(
+        Integer, ForeignKey("workflow_instances.id", ondelete="SET NULL"), nullable=True
+    )
+    step_order = Column(Integer, nullable=True)  # Order within workflow
+    depends_on_job_ids = Column(JSON, nullable=True)  # Job IDs this depends on
+    is_rollback = Column(Boolean, default=False)  # Whether this is a rollback action
+
     # Relationships
     device = relationship("Device", backref="automation_jobs")
     vault_secret = relationship("VaultSecret")
+    workflow_instance = relationship(
+        "WorkflowInstance",
+        back_populates="jobs",
+        foreign_keys=[workflow_instance_id],
+    )
 
     def to_dict(self):
         """Convert model to dictionary."""
@@ -108,6 +121,11 @@ class AutomationJob(Base):
             "celery_task_id": self.celery_task_id,
             # Vault
             "vault_secret_id": self.vault_secret_id,
+            # Workflow
+            "workflow_instance_id": self.workflow_instance_id,
+            "step_order": self.step_order,
+            "depends_on_job_ids": self.depends_on_job_ids,
+            "is_rollback": self.is_rollback,
         }
 
     def __repr__(self):

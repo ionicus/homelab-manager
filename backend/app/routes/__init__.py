@@ -8,6 +8,7 @@ from app.routes.devices import devices_bp
 from app.routes.metrics import metrics_bp
 from app.routes.network_interfaces import interfaces_bp
 from app.routes.services import services_bp
+from app.routes.workflows import workflows_bp
 
 
 def register_blueprints(app: Flask):
@@ -22,4 +23,5 @@ def register_blueprints(app: Flask):
     app.register_blueprint(services_bp, url_prefix=f"{api_prefix}/services")
     app.register_blueprint(metrics_bp, url_prefix=f"{api_prefix}/metrics")
     app.register_blueprint(automation_bp, url_prefix=f"{api_prefix}/automation")
+    app.register_blueprint(workflows_bp, url_prefix=f"{api_prefix}/workflows")
     app.register_blueprint(interfaces_bp, url_prefix=api_prefix)

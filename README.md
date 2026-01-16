@@ -7,6 +7,15 @@ A comprehensive system for managing homelab infrastructure with inventory tracki
 - **Inventory Management**: Track all physical servers, VMs, containers, and network devices
 - **Network Interface Management**: Multi-homed device support with multiple NICs, MAC addresses, VLANs, and IP addresses
 - **Automation**: Deploy and configure systems using Ansible playbooks
+  - Multi-device execution for parallel deployments
+  - Extra variables support with JSON Schema validation
+  - Real-time log streaming via Server-Sent Events
+  - Progress tracking and job cancellation
+- **Workflow Orchestration**: Define multi-step automation sequences
+  - Step dependencies and execution ordering
+  - Automatic rollback on failure
+  - Reusable workflow templates
+- **Vault Secrets**: Secure storage for sensitive data (encrypted at rest with Fernet)
 - **Real-time Monitoring**: Monitor CPU, memory, disk usage, and network traffic
 - **Service Management**: Track and control running services across your infrastructure
 - **Alert System**: Get notified when systems exceed defined thresholds
@@ -184,7 +193,9 @@ Comprehensive documentation covering all API endpoints, request/response formats
 - **Network Interfaces**: `/api/devices/{id}/interfaces` - Multi-homed network support
 - **Services**: `/api/services` - Service tracking and monitoring
 - **Metrics**: `/api/metrics` - Performance metrics collection
-- **Automation**: `/api/automation` - Ansible job triggering
+- **Automation**: `/api/automation` - Ansible job triggering (single/multi-device)
+- **Vault Secrets**: `/api/automation/vault/secrets` - Encrypted secret storage
+- **Workflows**: `/api/workflows` - Multi-step automation orchestration
 
 **Error Handling**: All errors return JSON with proper HTTP status codes (400, 401, 403, 404, 409, 429, 500)
 
@@ -397,6 +408,11 @@ CORS_ORIGINS=http://localhost:3000,http://localhost:5173
 - [ ] Phase 2: Inventory Management
 - [ ] Phase 3: Monitoring System
 - [x] Phase 4: Automation Integration
+  - [x] Extra variables and JSON Schema support
+  - [x] Real-time log streaming and progress tracking
+  - [x] Multi-device execution
+  - [x] Vault secrets (encrypted at rest)
+  - [x] Workflow orchestration with dependencies and rollback
 - [x] Phase 5: Authentication and Deployment
 
 ## License

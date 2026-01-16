@@ -10,6 +10,7 @@ from app.models.network_interface import InterfaceStatus, NetworkInterface
 from app.models.service import Service, ServiceStatus
 from app.models.user import User
 from app.models.vault_secret import VaultSecret
+from app.models.workflow import WorkflowInstance, WorkflowStatus, WorkflowTemplate
 
 __all__ = [
     "AuditLog",
@@ -27,4 +28,7 @@ __all__ = [
     "ServiceStatus",
     "User",
     "VaultSecret",
+    "WorkflowInstance",
+    "WorkflowStatus",
+    "WorkflowTemplate",
 ]

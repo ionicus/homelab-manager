@@ -88,7 +88,9 @@ class VaultService:
         try:
             return fernet.decrypt(encrypted).decode("utf-8")
         except InvalidToken as e:
-            logger.error("Failed to decrypt vault secret - invalid key or corrupted data")
+            logger.error(
+                "Failed to decrypt vault secret - invalid key or corrupted data"
+            )
             raise ValueError("Failed to decrypt secret") from e
 
     @classmethod

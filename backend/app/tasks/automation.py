@@ -225,9 +225,7 @@ ansible_python_interpreter=/usr/bin/python3
     return inventory_path
 
 
-def _generate_multi_device_inventory(
-    devices: list[dict[str, str]], job_id: int
-) -> str:
+def _generate_multi_device_inventory(devices: list[dict[str, str]], job_id: int) -> str:
     """Generate Ansible inventory for multiple devices.
 
     Creates an inventory file with all devices in the [homelab] group.
@@ -517,6 +515,26 @@ def _execute_with_streaming(
                 redis_client.publish(log_channel, "[[STREAM_COMPLETE]]")
 
 
+def _trigger_workflow_callback(db, job_id: int) -> None:
+    """Trigger workflow orchestrator callback for job completion.
+
+    This should be called after a workflow job completes to trigger
+    dependent jobs or handle rollback.
+
+    Args:
+        db: Database session
+        job_id: ID of the completed job
+    """
+    try:
+        from app.services.workflow_engine import WorkflowOrchestrator
+
+        orchestrator = WorkflowOrchestrator(db)
+        orchestrator.on_job_complete(job_id)
+        logger.info(f"Triggered workflow callback for job {job_id}")
+    except Exception as e:
+        logger.exception(f"Failed to trigger workflow callback for job {job_id}: {e}")
+
+
 @shared_task(
     bind=True,
     autoretry_for=(Exception,),
@@ -694,6 +712,10 @@ def run_ansible_playbook(
             logger.error(f"Job {job_id} failed with return code {return_code}")
 
         db.commit()
+
+        # Trigger workflow orchestrator if this job is part of a workflow
+        if job.workflow_instance_id:
+            _trigger_workflow_callback(db, job_id)
 
         return {
             "status": job.status.value,

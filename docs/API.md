@@ -1,6 +1,6 @@
 # Homelab Manager API Documentation
 
-Version: 0.4.1
+Version: 0.5.0
 Base URL: `http://localhost:5000/api`
 
 ## Table of Contents
@@ -17,6 +17,8 @@ Base URL: `http://localhost:5000/api`
 - [Services](#services)
 - [Metrics](#metrics)
 - [Automation](#automation)
+- [Vault Secrets](#vault-secrets)
+- [Workflows](#workflows)
 
 ---
 
@@ -1085,10 +1087,19 @@ The automation system supports multiple executor types (Ansible, SSH, etc.) thro
 {
   "id": 1,
   "device_id": 1,
+  "device_ids": [1, 2, 3],
   "executor_type": "ansible",
   "action_name": "ping",
   "action_config": null,
-  "status": "pending",
+  "extra_vars": {"key": "value"},
+  "status": "running",
+  "progress": 45,
+  "task_count": 10,
+  "tasks_completed": 4,
+  "error_category": null,
+  "cancel_requested": false,
+  "celery_task_id": "abc123",
+  "vault_secret_id": 1,
   "started_at": "2026-01-12T10:00:00",
   "completed_at": null,
   "log_output": null
@@ -1101,6 +1112,18 @@ The automation system supports multiple executor types (Ansible, SSH, etc.) thro
 - `running` - Job is currently executing
 - `completed` - Job finished successfully
 - `failed` - Job failed
+- `cancelled` - Job was cancelled by user
+
+### Error Categories
+
+When a job fails, the `error_category` field indicates the type of failure:
+
+- `connectivity` - Network/connection issues
+- `permission` - Permission denied errors
+- `timeout` - Execution timeout
+- `authentication` - Auth failures
+- `not_found` - Resource not found
+- `execution` - General execution errors
 
 ### List Available Executors
 
@@ -1183,38 +1206,84 @@ GET /api/automation/jobs?device_id=1&executor_type=ansible
 POST /api/automation
 ```
 
+Supports both single-device and multi-device execution modes.
+
 **Request Body**:
 ```json
 {
   "device_id": 1,
+  "device_ids": [1, 2, 3],
   "executor_type": "ansible",
-  "action_name": "ping",
-  "action_config": null
+  "action_name": "docker_install",
+  "action_config": null,
+  "extra_vars": {
+    "docker_version": "24.0",
+    "install_compose": true
+  },
+  "vault_secret_id": 1
 }
 ```
 
 **Required Fields**:
-- `device_id` (integer) - ID of the target device
 - `action_name` (string) - Action to execute
+- One of `device_id` or `device_ids` must be provided
 
 **Optional Fields**:
+- `device_id` (integer) - Single target device ID
+- `device_ids` (array of integers) - Multiple target device IDs for parallel execution
 - `executor_type` (string) - Executor type (default: "ansible")
 - `action_config` (object) - Action-specific configuration
+- `extra_vars` (object) - Variables to pass to the action (e.g., Ansible extra-vars)
+- `vault_secret_id` (integer) - ID of vault secret for encrypted content
 
 **Response** `201 Created`:
 ```json
 {
-  "id": 1,
-  "device_id": 1,
-  "executor_type": "ansible",
-  "action_name": "ping",
-  "status": "pending"
+  "data": {
+    "id": 1,
+    "device_id": 1,
+    "device_ids": [1, 2, 3],
+    "executor_type": "ansible",
+    "action_name": "docker_install",
+    "status": "pending",
+    "progress": 0
+  }
 }
 ```
 
 **Errors**:
 - `400` - Validation error (invalid executor type, action, or device has no IP)
-- `404` - Device not found
+- `404` - Device or vault secret not found
+
+### Get Action Schema
+
+```http
+GET /api/automation/executors/{executor_type}/actions/{action_name}/schema
+```
+
+Returns the JSON Schema for an action's variables.
+
+**Response** `200 OK`:
+```json
+{
+  "data": {
+    "action_name": "docker_install",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "docker_version": {
+          "type": "string",
+          "default": "latest"
+        },
+        "install_compose": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    }
+  }
+}
+```
 
 ### Get Job Status
 
@@ -1252,13 +1321,424 @@ GET /api/automation/{job_id}/logs
 **Response** `200 OK`:
 ```json
 {
-  "job_id": 1,
-  "log_output": "STDOUT:\nAnsible playbook execution logs...\n\nSTDERR:\n"
+  "data": {
+    "job_id": 1,
+    "log_output": "STDOUT:\nAnsible playbook execution logs...\n\nSTDERR:\n"
+  }
 }
 ```
 
 **Errors**:
 - `404` - Job not found
+
+### Stream Job Logs (SSE)
+
+```http
+GET /api/automation/{job_id}/logs/stream?include_existing=true
+```
+
+Real-time log streaming via Server-Sent Events (SSE).
+
+**Parameters**:
+- `job_id` (path, integer, required) - Job ID
+- `include_existing` (query, boolean, default: true) - Include existing logs before streaming
+
+**Event Types**:
+- `status` - Initial job status and progress
+- `data` - Log line
+- `complete` - Job finished
+- `error` - Streaming error
+
+**Example Usage** (JavaScript):
+```javascript
+const eventSource = new EventSource(`/api/automation/${jobId}/logs/stream`);
+eventSource.onmessage = (event) => console.log(event.data);
+eventSource.addEventListener('complete', () => eventSource.close());
+```
+
+### Cancel Job
+
+```http
+POST /api/automation/{job_id}/cancel
+```
+
+Request cancellation of a running or pending job.
+
+**Parameters**:
+- `job_id` (path, integer, required) - Job ID
+
+**Response** `200 OK`:
+```json
+{
+  "data": {
+    "job_id": 1,
+    "message": "Cancellation requested. Job will stop at next checkpoint.",
+    "status": "cancellation_requested"
+  }
+}
+```
+
+**Errors**:
+- `400` - Job cannot be cancelled (not running or pending)
+- `404` - Job not found
+
+**Note**: Pending jobs are cancelled immediately. Running jobs are cancelled at the next checkpoint (typically between Ansible tasks).
+
+---
+
+## Vault Secrets
+
+Securely store encrypted secrets (e.g., Ansible Vault passwords) for use in automation jobs.
+
+### Vault Secret Object
+
+```json
+{
+  "id": 1,
+  "name": "production_vault",
+  "description": "Vault password for production playbooks",
+  "created_at": "2026-01-15T10:00:00",
+  "updated_at": "2026-01-15T10:00:00"
+}
+```
+
+**Note**: The encrypted content is never returned in API responses.
+
+### List Vault Secrets
+
+```http
+GET /api/automation/vault/secrets
+```
+
+**Response** `200 OK`:
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "name": "production_vault",
+      "description": "Vault password for production playbooks",
+      "created_at": "2026-01-15T10:00:00"
+    }
+  ]
+}
+```
+
+### Create Vault Secret
+
+```http
+POST /api/automation/vault/secrets
+```
+
+**Request Body**:
+```json
+{
+  "name": "production_vault",
+  "description": "Vault password for production playbooks",
+  "content": "my-secret-vault-password"
+}
+```
+
+**Required Fields**:
+- `name` (string, 1-100 chars) - Unique identifier (alphanumeric, underscore, hyphen)
+- `content` (string) - The secret content to encrypt
+
+**Optional Fields**:
+- `description` (string) - Human-readable description
+
+**Response** `201 Created`:
+```json
+{
+  "data": {
+    "id": 1,
+    "name": "production_vault",
+    "description": "Vault password for production playbooks"
+  }
+}
+```
+
+**Errors**:
+- `400` - Invalid name format or missing required fields
+- `409` - Secret with this name already exists
+
+### Get Vault Secret
+
+```http
+GET /api/automation/vault/secrets/{secret_id}
+```
+
+Returns secret metadata (never the encrypted content).
+
+### Update Vault Secret
+
+```http
+PUT /api/automation/vault/secrets/{secret_id}
+```
+
+**Request Body**:
+```json
+{
+  "description": "Updated description",
+  "content": "new-secret-content"
+}
+```
+
+Both fields are optional. Only provided fields are updated.
+
+### Delete Vault Secret
+
+```http
+DELETE /api/automation/vault/secrets/{secret_id}
+```
+
+**Response** `200 OK`:
+```json
+{
+  "data": {
+    "message": "Secret 'production_vault' deleted"
+  }
+}
+```
+
+---
+
+## Workflows
+
+Workflows allow you to define and execute multi-step automation sequences with dependencies and rollback support.
+
+### Workflow Template Object
+
+```json
+{
+  "id": 1,
+  "name": "Full Server Setup",
+  "description": "Complete server provisioning workflow",
+  "steps": [
+    {
+      "order": 0,
+      "action_name": "ping",
+      "executor_type": "ansible",
+      "depends_on": [],
+      "rollback_action": null,
+      "extra_vars": {}
+    },
+    {
+      "order": 1,
+      "action_name": "docker_install",
+      "executor_type": "ansible",
+      "depends_on": [0],
+      "rollback_action": "docker_uninstall",
+      "extra_vars": {"docker_version": "24.0"}
+    }
+  ],
+  "created_at": "2026-01-15T10:00:00",
+  "updated_at": "2026-01-15T10:00:00"
+}
+```
+
+### Workflow Instance Object
+
+```json
+{
+  "id": 1,
+  "template_id": 1,
+  "template_name": "Full Server Setup",
+  "status": "running",
+  "device_ids": [1, 2],
+  "rollback_on_failure": true,
+  "extra_vars": {"environment": "production"},
+  "started_at": "2026-01-15T10:00:00",
+  "completed_at": null,
+  "error_message": null,
+  "jobs": [...]
+}
+```
+
+### Workflow Status
+
+- `pending` - Workflow is queued
+- `running` - Workflow is executing
+- `completed` - All steps completed successfully
+- `failed` - A step failed (no rollback or rollback disabled)
+- `cancelled` - Workflow was cancelled
+- `rolling_back` - Running rollback actions
+- `rolled_back` - Rollback completed successfully
+
+### List Workflow Templates
+
+```http
+GET /api/workflows/templates?page=1&per_page=20
+```
+
+**Response** `200 OK`:
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "name": "Full Server Setup",
+      "steps": [...],
+      ...
+    }
+  ],
+  "pagination": {...}
+}
+```
+
+### Create Workflow Template
+
+```http
+POST /api/workflows/templates
+```
+
+**Request Body**:
+```json
+{
+  "name": "Full Server Setup",
+  "description": "Complete server provisioning workflow",
+  "steps": [
+    {
+      "order": 0,
+      "action_name": "ping",
+      "executor_type": "ansible",
+      "depends_on": [],
+      "rollback_action": null
+    },
+    {
+      "order": 1,
+      "action_name": "docker_install",
+      "executor_type": "ansible",
+      "depends_on": [0],
+      "rollback_action": "docker_uninstall"
+    }
+  ]
+}
+```
+
+**Required Fields**:
+- `name` (string, 1-100 chars) - Unique template name
+- `steps` (array) - At least one step required
+
+**Step Fields**:
+- `order` (integer, required) - Unique step order (0-indexed)
+- `action_name` (string, required) - Action to execute
+- `executor_type` (string, default: "ansible") - Executor type
+- `depends_on` (array of integers) - Step orders this step depends on
+- `rollback_action` (string) - Action to run on rollback
+- `extra_vars` (object) - Step-specific variables
+
+**Response** `201 Created`
+
+**Errors**:
+- `400` - Validation error (duplicate orders, invalid dependencies)
+- `409` - Template with this name already exists
+
+### Get Workflow Template
+
+```http
+GET /api/workflows/templates/{template_id}
+```
+
+### Update Workflow Template
+
+```http
+PUT /api/workflows/templates/{template_id}
+```
+
+### Delete Workflow Template
+
+```http
+DELETE /api/workflows/templates/{template_id}
+```
+
+**Errors**:
+- `400` - Cannot delete template with running instances
+- `404` - Template not found
+
+### Start Workflow
+
+```http
+POST /api/workflows
+```
+
+**Request Body**:
+```json
+{
+  "template_id": 1,
+  "device_ids": [1, 2, 3],
+  "rollback_on_failure": true,
+  "extra_vars": {"environment": "production"},
+  "vault_secret_id": 1
+}
+```
+
+**Required Fields**:
+- `template_id` (integer) - ID of the workflow template
+- `device_ids` (array of integers) - Target device IDs
+
+**Optional Fields**:
+- `rollback_on_failure` (boolean, default: false) - Run rollback actions if any step fails
+- `extra_vars` (object) - Variables passed to all steps
+- `vault_secret_id` (integer) - Vault secret for encrypted content
+
+**Response** `201 Created`:
+```json
+{
+  "data": {
+    "id": 1,
+    "template_id": 1,
+    "status": "running",
+    "device_ids": [1, 2, 3],
+    "jobs": [
+      {"id": 1, "step_order": 0, "status": "running", ...},
+      {"id": 2, "step_order": 1, "status": "pending", ...}
+    ]
+  }
+}
+```
+
+### List Workflow Instances
+
+```http
+GET /api/workflows?template_id=1&status=running&page=1&per_page=20
+```
+
+**Query Parameters**:
+- `template_id` (integer) - Filter by template
+- `status` (string) - Filter by status
+- `page`, `per_page` - Pagination
+
+### Get Workflow Instance
+
+```http
+GET /api/workflows/{instance_id}?include_jobs=true
+```
+
+**Query Parameters**:
+- `include_jobs` (boolean, default: false) - Include job details
+
+### Cancel Workflow
+
+```http
+POST /api/workflows/{instance_id}/cancel
+```
+
+Cancels a running workflow. Pending jobs are marked as cancelled, running jobs receive a cancellation request.
+
+**Response** `200 OK`:
+```json
+{
+  "data": {
+    "id": 1,
+    "status": "cancelled",
+    "jobs": [...]
+  }
+}
+```
+
+**Errors**:
+- `400` - Workflow cannot be cancelled (already completed/failed)
+- `404` - Instance not found
 
 ---
 
@@ -1288,6 +1768,33 @@ HTTP/1.1 429 Too Many Requests
 ---
 
 ## Changelog
+
+### Version 0.5.0 (2026-01-15)
+
+- **Workflows**: Multi-step automation with dependencies and rollback support
+- **Workflows**: Workflow templates for reusable automation sequences
+- **Workflows**: Automatic rollback on failure (optional per-instance)
+- **Workflows**: Step dependency management (steps wait for dependencies to complete)
+- **Vault Secrets**: Encrypted storage for sensitive data (Ansible Vault passwords)
+- **Vault Secrets**: Fernet symmetric encryption at rest
+- **Multi-device**: Execute automation on multiple devices in parallel
+- **Multi-device**: Dynamic inventory generation for multi-host playbooks
+- **Variables**: Extra variables support for Ansible playbooks (`extra_vars`)
+- **Variables**: JSON Schema support for playbook variable definitions
+- **Variables**: Dynamic variable forms in frontend based on schemas
+- **Execution**: Real-time log streaming via Server-Sent Events (SSE)
+- **Execution**: Progress tracking with task count and percentage
+- **Execution**: Job cancellation support (graceful termination)
+- **Execution**: Error categorization (connectivity, permission, timeout, etc.)
+- **API**: New `/api/workflows/*` endpoints for workflow management
+- **API**: New `/api/automation/vault/secrets` endpoints for secret management
+- **API**: Added `device_ids`, `extra_vars`, `vault_secret_id` to automation jobs
+- **API**: Added SSE endpoint `/api/automation/{id}/logs/stream`
+- **API**: Added cancel endpoint `/api/automation/{id}/cancel`
+- **Frontend**: Workflow builder UI for creating templates
+- **Frontend**: Workflow execution and monitoring
+- **Frontend**: Vault secret management
+- **Frontend**: Multi-device selection for automation
 
 ### Version 0.4.1 (2026-01-15)
 

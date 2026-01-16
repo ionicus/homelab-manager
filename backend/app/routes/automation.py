@@ -181,7 +181,7 @@ def trigger_automation():
             raise APIError(
                 "Task queue unavailable. Please ensure Celery and RabbitMQ are running.",
                 status_code=503,
-            )
+            ) from None
 
         # Store the Celery task ID for tracking
         if celery_task_id:
@@ -542,7 +542,7 @@ def rerun_job(job_id: int):
             raise APIError(
                 "Task queue unavailable. Please ensure Celery is running.",
                 status_code=503,
-            )
+            ) from None
 
         # Store Celery task ID
         if celery_task_id:

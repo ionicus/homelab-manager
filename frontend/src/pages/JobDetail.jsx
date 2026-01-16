@@ -2,11 +2,12 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Button, Group, Progress, Badge, Text, Paper, Tooltip } from '@mantine/core';
 import { IconPlayerStop, IconRefresh, IconArrowLeft } from '@tabler/icons-react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   getJobStatus,
   getJobLogs,
   getDevice,
-  triggerAutomation,
+  rerunJob,
   cancelJob,
   getJobLogStreamUrl,
 } from '../services/api';
@@ -17,6 +18,7 @@ import StatusBadge from '../components/StatusBadge';
 
 function JobDetail() {
   const { id } = useParams();
+  const queryClient = useQueryClient();
   const [job, setJob] = useState(null);
   const [device, setDevice] = useState(null);
   const [logs, setLogs] = useState('');
@@ -96,14 +98,14 @@ function JobDetail() {
     try {
       const [jobRes, logsRes] = await Promise.all([getJobStatus(id), getJobLogs(id)]);
 
-      const jobData = jobRes.data;
+      const jobData = jobRes.data.data;
       setJob(jobData);
-      setLogs(logsRes.data.log_output || '');
+      setLogs(logsRes.data.data?.log_output || '');
 
       // Fetch device info
       if (jobData.device_id) {
         const deviceRes = await getDevice(jobData.device_id);
-        setDevice(deviceRes.data || deviceRes);
+        setDevice(deviceRes.data.data || deviceRes.data);
       }
 
       // Start streaming if job is running
@@ -139,13 +141,11 @@ function JobDetail() {
 
     try {
       setRerunning(true);
-      await triggerAutomation({
-        deviceId: job.device_ids ? null : job.device_id,
-        deviceIds: job.device_ids || null,
-        actionName: job.action_name || job.playbook_name,
-        executorType: job.executor_type || 'ansible',
-      });
-      alert('New job created successfully! Refresh the page to see it.');
+      await rerunJob(job.id);
+      // Invalidate the jobs list so it refreshes when user navigates back
+      queryClient.invalidateQueries({ queryKey: ['automation-jobs'] });
+      // Refresh job data to show the updated status
+      await fetchJobData(false);
     } catch (err) {
       console.error('Failed to re-run job:', err);
       alert('Failed to re-run job: ' + (err.userMessage || err.message));
@@ -167,7 +167,7 @@ function JobDetail() {
     try {
       setCancelling(true);
       const response = await cancelJob(job.id);
-      const data = response.data;
+      const data = response.data.data;
 
       // Update local state
       if (data.status === 'cancelled') {
@@ -230,7 +230,7 @@ function JobDetail() {
             disabled={rerunning || isRunning || isPending}
             leftSection={<IconRefresh size={16} />}
           >
-            {rerunning ? 'Creating...' : 'Re-run'}
+            {rerunning ? 'Re-running...' : 'Re-run'}
           </Button>
           <Button variant="outline" component={Link} to="/automation" leftSection={<IconArrowLeft size={16} />}>
             Back

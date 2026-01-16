@@ -13,9 +13,9 @@ from pathlib import Path
 from subprocess import PIPE, STDOUT
 from typing import Any
 
-from celery import shared_task
 from celery.exceptions import SoftTimeLimitExceeded
 
+from app.celery_app import celery_app
 from app.config import Config
 from app.database import Session
 from app.models import AutomationJob, JobStatus
@@ -535,7 +535,7 @@ def _trigger_workflow_callback(db, job_id: int) -> None:
         logger.exception(f"Failed to trigger workflow callback for job {job_id}: {e}")
 
 
-@shared_task(
+@celery_app.task(
     bind=True,
     autoretry_for=(Exception,),
     retry_backoff=True,

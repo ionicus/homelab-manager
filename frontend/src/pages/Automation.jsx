@@ -19,7 +19,7 @@ function Automation() {
   const [showAutomationForm, setShowAutomationForm] = useState(false);
   const [selectedDeviceIds, setSelectedDeviceIds] = useState([]);
 
-  // Jobs query
+  // Jobs query - staleTime: 0 ensures fresh data on every navigation
   const {
     data: jobs = [],
     isLoading: jobsLoading,
@@ -28,6 +28,7 @@ function Automation() {
   } = useQuery({
     queryKey: ['automation-jobs'],
     queryFn: async () => safeGetArray(await getAutomationJobs()),
+    staleTime: 0,
   });
 
   // Devices query

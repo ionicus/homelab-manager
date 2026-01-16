@@ -4,6 +4,7 @@ import re
 
 from flask import Blueprint, Response, request
 from flask_jwt_extended import jwt_required
+from kombu.exceptions import OperationalError as KombuOperationalError
 
 from app import limiter
 from app.config import Config
@@ -12,6 +13,7 @@ from app.schemas.automation import AutomationJobCreate
 from app.services.executors import registry
 from app.services.vault import VaultService
 from app.utils.errors import (
+    APIError,
     DatabaseSession,
     NotFoundError,
     ValidationError,
@@ -160,16 +162,26 @@ def trigger_automation():
         db.refresh(job)
 
         # Queue automation for background execution via Celery
-        celery_task_id = executor.execute(
-            job_id=job.id,
-            device_ip=primary_device.ip_address,
-            device_name=primary_device.name,
-            action_name=data.action_name,
-            config=data.action_config,
-            extra_vars=data.extra_vars,
-            devices=devices_list if len(devices_list) > 1 else None,
-            vault_password=vault_password,
-        )
+        try:
+            celery_task_id = executor.execute(
+                job_id=job.id,
+                device_ip=primary_device.ip_address,
+                device_name=primary_device.name,
+                action_name=data.action_name,
+                config=data.action_config,
+                extra_vars=data.extra_vars,
+                devices=devices_list if len(devices_list) > 1 else None,
+                vault_password=vault_password,
+            )
+        except KombuOperationalError:
+            # Celery/RabbitMQ not available - update job status and return error
+            job.status = JobStatus.FAILED
+            job.log_output = "Task queue (Celery/RabbitMQ) is not available."
+            db.commit()
+            raise APIError(
+                "Task queue unavailable. Please ensure Celery and RabbitMQ are running.",
+                status_code=503,
+            )
 
         # Store the Celery task ID for tracking
         if celery_task_id:
@@ -419,6 +431,126 @@ def cancel_job(job_id: int):
                 "status": "cancellation_requested",
             }
         )
+
+
+@automation_bp.route("/<int:job_id>/rerun", methods=["POST"])
+@jwt_required()
+@limiter.limit("10 per minute")
+def rerun_job(job_id: int):
+    """Re-run an existing job by resetting its status and re-queuing.
+    ---
+    tags:
+      - Automation
+    parameters:
+      - name: job_id
+        in: path
+        type: integer
+        required: true
+        description: Job ID
+    responses:
+      200:
+        description: Job re-queued successfully
+        schema:
+          type: object
+          properties:
+            data:
+              $ref: '#/definitions/AutomationJob'
+      400:
+        description: Job cannot be re-run (still running or pending)
+      404:
+        description: Job not found
+    """
+    from kombu.exceptions import OperationalError as KombuOperationalError
+
+    from app.services.vault import VaultService
+
+    with DatabaseSession() as db:
+        job = db.query(AutomationJob).filter(AutomationJob.id == job_id).first()
+        if not job:
+            raise NotFoundError("Job", job_id)
+
+        # Cannot re-run jobs that are still in progress
+        if job.status in (JobStatus.RUNNING, JobStatus.PENDING):
+            raise ValidationError(
+                f"Cannot re-run job with status '{job.status.value}'. "
+                "Wait for it to complete or cancel it first."
+            )
+
+        # Get the device
+        device = db.query(Device).filter(Device.id == job.device_id).first()
+        if not device:
+            raise NotFoundError("Device", job.device_id)
+
+        if not device.ip_address:
+            raise ValidationError("Device must have an IP address for automation")
+
+        # Get executor
+        executor = registry.get_executor(job.executor_type)
+        if not executor:
+            raise ValidationError(f"Unknown executor type: {job.executor_type}")
+
+        # Build device list for multi-device jobs
+        devices_list = []
+        if job.device_ids and len(job.device_ids) > 1:
+            devices = db.query(Device).filter(Device.id.in_(job.device_ids)).all()
+            for d in devices:
+                if d.ip_address:
+                    devices_list.append({"ip": d.ip_address, "name": d.name})
+
+        # Get vault password if needed
+        vault_password = None
+        if job.vault_secret_id:
+            vault_secret = (
+                db.query(VaultSecret)
+                .filter(VaultSecret.id == job.vault_secret_id)
+                .first()
+            )
+            if vault_secret:
+                vault_password = VaultService.decrypt(vault_secret.encrypted_content)
+
+        # Reset job state
+        job.status = JobStatus.PENDING
+        job.started_at = None
+        job.completed_at = None
+        job.cancelled_at = None
+        job.log_output = None
+        job.progress = 0
+        job.tasks_completed = 0
+        job.task_count = 0
+        job.error_category = None
+        job.cancel_requested = False
+        job.celery_task_id = None
+
+        db.commit()
+
+        # Re-queue the job
+        try:
+            celery_task_id = executor.execute(
+                job_id=job.id,
+                device_ip=device.ip_address,
+                device_name=device.name,
+                action_name=job.action_name,
+                config=job.action_config,
+                extra_vars=job.extra_vars,
+                devices=devices_list if len(devices_list) > 1 else None,
+                vault_password=vault_password,
+            )
+        except KombuOperationalError:
+            job.status = JobStatus.FAILED
+            job.log_output = "Task queue (Celery) is not available."
+            db.commit()
+            raise APIError(
+                "Task queue unavailable. Please ensure Celery is running.",
+                status_code=503,
+            )
+
+        # Store Celery task ID
+        if celery_task_id:
+            job.celery_task_id = celery_task_id
+            db.commit()
+            db.refresh(job)
+
+        return success_response(job.to_dict())
 
 
 @automation_bp.route("/executors", methods=["GET"])

@@ -163,6 +163,7 @@ export const triggerAutomation = ({
 export const getJobStatus = (jobId) => api.get(`/automation/${jobId}`);
 export const getJobLogs = (jobId) => api.get(`/automation/${jobId}/logs`);
 export const cancelJob = (jobId) => api.post(`/automation/${jobId}/cancel`);
+export const rerunJob = (jobId) => api.post(`/automation/${jobId}/rerun`);
 
 // Vault Secrets
 export const getVaultSecrets = () => api.get('/automation/vault/secrets');

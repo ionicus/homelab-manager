@@ -16,6 +16,7 @@ A comprehensive system for managing homelab infrastructure with inventory tracki
   - Automatic rollback on failure
   - Reusable workflow templates
 - **Vault Secrets**: Secure storage for sensitive data (encrypted at rest with Fernet)
+- **Admin Settings**: Configurable session timeout, login attempt limits, and lockout duration
 - **Real-time Monitoring**: Monitor CPU, memory, disk usage, and network traffic
 - **Service Management**: Track and control running services across your infrastructure
 - **Alert System**: Get notified when systems exceed defined thresholds
@@ -140,38 +141,37 @@ docker-compose down
 homelab-manager/
 ├── backend/              # Flask backend application
 │   ├── app/
-│   │   ├── models/      # SQLAlchemy models (Device, NetworkInterface, Service, etc.)
-│   │   ├── routes/      # API endpoints (devices, interfaces, services, metrics)
-│   │   ├── services/    # Business logic
+│   │   ├── models/      # SQLAlchemy models (Device, User, AutomationJob, etc.)
+│   │   ├── routes/      # API endpoints (devices, auth, automation, workflows)
+│   │   ├── services/    # Business logic and executors
 │   │   ├── tasks/       # Celery background tasks
 │   │   ├── utils/       # Helper functions (validators, etc.)
 │   │   ├── main.py      # Application entry point
 │   │   ├── celery_app.py # Celery configuration
 │   │   ├── config.py    # Configuration
 │   │   └── database.py  # Database connection
-│   ├── migrations/      # Alembic migrations
-│   ├── automation/      # Automation resources
-│   │   └── ansible/     # Ansible playbooks and config
-│   ├── worker.py        # Celery worker entry point
+│   ├── automation/
+│   │   └── ansible/
+│   │       └── playbooks/  # Ansible playbooks and schemas
+│   ├── migrations/      # Alembic database migrations
 │   ├── tests/           # Backend tests
+│   ├── worker.py        # Celery worker entry point
 │   └── pyproject.toml   # Python dependencies
 ├── frontend/            # React frontend application
 │   ├── src/
 │   │   ├── pages/       # Page components (Dashboard, DeviceDetail, Settings, etc.)
 │   │   ├── components/  # Reusable components (StatusBadge, ServiceList, etc.)
-│   │   ├── contexts/    # React contexts (ThemeContext)
+│   │   ├── contexts/    # React contexts (ThemeContext, AuthContext)
 │   │   ├── theme/       # Mantine theme configuration
 │   │   ├── services/    # API client (api.js)
 │   │   ├── utils/       # Utility functions (formatting, validation)
 │   │   ├── App.jsx      # Main app component
-│   │   ├── App.css      # Global styles
 │   │   └── main.jsx     # Entry point
 │   └── package.json     # Node dependencies
-├── docker/              # Docker configuration
-│   ├── docker-compose.yml
-│   ├── Dockerfile.backend
-│   └── Dockerfile.frontend
-└── docs/                # Documentation
+├── docker/              # Docker configuration (production)
+├── dev/                 # Development docker-compose
+├── docs/                # API documentation
+└── .github/             # GitHub templates and workflows
 ```
 
 ## API Documentation
@@ -196,6 +196,7 @@ Comprehensive documentation covering all API endpoints, request/response formats
 - **Automation**: `/api/automation` - Ansible job triggering (single/multi-device)
 - **Vault Secrets**: `/api/automation/vault/secrets` - Encrypted secret storage
 - **Workflows**: `/api/workflows` - Multi-step automation orchestration
+- **Settings**: `/api/auth/settings` - Configurable application settings (admin)
 
 **Error Handling**: All errors return JSON with proper HTTP status codes (400, 401, 403, 404, 409, 429, 500)
 

@@ -1,6 +1,6 @@
 # Homelab Manager API Documentation
 
-Version: 0.5.0
+Version: 0.5.1
 Base URL: `http://localhost:5000/api`
 
 ## Table of Contents
@@ -17,6 +17,7 @@ Base URL: `http://localhost:5000/api`
 - [Services](#services)
 - [Metrics](#metrics)
 - [Automation](#automation)
+- [Device Variables](#device-variables)
 - [Vault Secrets](#vault-secrets)
 - [Workflows](#workflows)
 
@@ -316,6 +317,129 @@ POST /api/auth/users/{user_id}/reset-password
   "new_password": "NewSecurePass123"
 }
 ```
+
+### Application Settings (Admin Only)
+
+Manage system-wide configuration settings.
+
+#### List Settings
+
+```http
+GET /api/auth/settings
+```
+
+**Response** `200 OK`:
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "key": "session_timeout_minutes",
+      "value": "60",
+      "description": "Session timeout in minutes (default: 60)",
+      "updated_at": "2026-01-16T10:00:00"
+    },
+    {
+      "id": 2,
+      "key": "max_login_attempts",
+      "value": "5",
+      "description": "Maximum failed login attempts before lockout"
+    },
+    {
+      "id": 3,
+      "key": "lockout_duration_minutes",
+      "value": "15",
+      "description": "Account lockout duration in minutes"
+    }
+  ]
+}
+```
+
+#### Update Setting
+
+```http
+PUT /api/auth/settings/{key}
+```
+
+**Request Body:**
+```json
+{
+  "value": "120"
+}
+```
+
+**Response** `200 OK`:
+```json
+{
+  "data": {
+    "key": "session_timeout_minutes",
+    "value": "120",
+    "updated_at": "2026-01-16T10:30:00"
+  }
+}
+```
+
+**Errors:**
+- `400` - Invalid value
+- `403` - Admin access required
+- `404` - Setting not found
+
+### Avatar Management
+
+#### Upload Avatar
+
+```http
+POST /api/auth/me/avatar
+Content-Type: multipart/form-data
+```
+
+**Request Body:**
+- `avatar` (file, required) - Image file (JPEG, PNG, GIF, or WebP, max 5MB)
+
+**Response** `200 OK`:
+```json
+{
+  "data": {
+    "avatar_url": "/uploads/avatars/abc123.jpg",
+    "user": { ... }
+  }
+}
+```
+
+**Errors:**
+- `400` - No file provided, invalid file type, or file too large
+
+#### Delete Avatar
+
+```http
+DELETE /api/auth/me/avatar
+```
+
+**Response** `200 OK`:
+```json
+{
+  "data": {
+    "message": "Avatar deleted",
+    "user": { ... }
+  }
+}
+```
+
+### Update Preferences
+
+```http
+PUT /api/auth/me/preferences
+```
+
+**Request Body:**
+```json
+{
+  "theme": "dark",
+  "notifications_enabled": true
+}
+```
+
+Stores arbitrary JSON preferences for the user.
 
 ---
 
@@ -1384,6 +1508,114 @@ Request cancellation of a running or pending job.
 
 **Note**: Pending jobs are cancelled immediately. Running jobs are cancelled at the next checkpoint (typically between Ansible tasks).
 
+### Rerun Job
+
+```http
+POST /api/automation/{job_id}/rerun
+```
+
+Create a new job with the same parameters as the original.
+
+**Parameters**:
+- `job_id` (path, integer, required) - Original job ID
+
+**Response** `201 Created`:
+```json
+{
+  "data": {
+    "id": 2,
+    "original_job_id": 1,
+    "device_id": 1,
+    "action_name": "docker_install",
+    "status": "pending"
+  }
+}
+```
+
+**Errors**:
+- `404` - Original job not found
+
+---
+
+## Device Variables
+
+Store default variables per device for automation actions.
+
+### Get Device Variables
+
+```http
+GET /api/devices/{device_id}/variables
+```
+
+Returns all variables stored for a device.
+
+**Response** `200 OK`:
+```json
+{
+  "data": {
+    "device_id": 1,
+    "variables": [
+      {
+        "id": 1,
+        "playbook_name": null,
+        "variables": {"ansible_user": "admin"}
+      },
+      {
+        "id": 2,
+        "playbook_name": "docker_install",
+        "variables": {"docker_version": "24.0"}
+      }
+    ]
+  }
+}
+```
+
+### Set Device Default Variables
+
+```http
+PUT /api/devices/{device_id}/variables
+```
+
+Set default variables that apply to all playbooks for this device.
+
+**Request Body:**
+```json
+{
+  "variables": {
+    "ansible_user": "admin",
+    "ansible_become": true
+  }
+}
+```
+
+### Get Playbook-Specific Variables
+
+```http
+GET /api/devices/{device_id}/variables/{playbook_name}
+```
+
+### Set Playbook-Specific Variables
+
+```http
+PUT /api/devices/{device_id}/variables/{playbook_name}
+```
+
+**Request Body:**
+```json
+{
+  "variables": {
+    "docker_version": "24.0",
+    "install_compose": true
+  }
+}
+```
+
+### Delete Playbook Variables
+
+```http
+DELETE /api/devices/{device_id}/variables/{playbook_name}
+```
+
 ---
 
 ## Vault Secrets
@@ -1768,6 +2000,19 @@ HTTP/1.1 429 Too Many Requests
 ---
 
 ## Changelog
+
+### Version 0.5.1 (2026-01-16)
+
+- **Settings**: Configurable application settings (session timeout, login attempts, lockout duration)
+- **Settings**: Admin-only endpoints for viewing and updating app settings
+- **Auth**: Session timeout is now configurable via database settings
+- **Automation**: Job rerun endpoint to re-execute failed/completed jobs
+- **API**: Added `GET/PUT /api/auth/settings` endpoints
+- **API**: Added `POST /api/automation/{id}/rerun` endpoint
+- **API**: Added device variables endpoints for per-device automation defaults
+- **API**: Added avatar upload/delete endpoints (`POST/DELETE /api/auth/me/avatar`)
+- **API**: Added user preferences endpoint (`PUT /api/auth/me/preferences`)
+- **Docs**: Comprehensive API documentation updates
 
 ### Version 0.5.0 (2026-01-15)
 

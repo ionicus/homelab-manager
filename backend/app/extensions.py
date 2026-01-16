@@ -13,7 +13,11 @@ RATE_LIMIT_STORAGE = os.getenv("RATE_LIMIT_STORAGE_URL") or os.getenv(
 
 # Use higher limits in development
 IS_DEVELOPMENT = os.getenv("FLASK_ENV") == "development"
-DEFAULT_LIMITS = ["10000 per day", "5000 per hour"] if IS_DEVELOPMENT else ["200 per day", "50 per hour"]
+DEFAULT_LIMITS = (
+    ["10000 per day", "5000 per hour"]
+    if IS_DEVELOPMENT
+    else ["200 per day", "50 per hour"]
+)
 
 # Initialize rate limiter (attached to app in create_app)
 limiter = Limiter(

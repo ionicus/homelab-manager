@@ -1999,12 +1999,6 @@ HTTP/1.1 429 Too Many Requests
 
 ---
 
-## Changelog
-
-For the complete version history, see [CHANGELOG.md](../CHANGELOG.md) in the project root.
-
----
-
 ## Support
 
 For issues, questions, or contributions, please visit the GitHub repository.

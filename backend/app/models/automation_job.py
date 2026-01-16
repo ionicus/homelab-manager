@@ -70,8 +70,12 @@ class AutomationJob(Base):
     # Celery task tracking
     celery_task_id = Column(String(255), nullable=True)
 
-    # Relationship
+    # Vault secret for ansible-vault encrypted content
+    vault_secret_id = Column(Integer, ForeignKey("vault_secrets.id"), nullable=True)
+
+    # Relationships
     device = relationship("Device", backref="automation_jobs")
+    vault_secret = relationship("VaultSecret")
 
     def to_dict(self):
         """Convert model to dictionary."""
@@ -102,6 +106,8 @@ class AutomationJob(Base):
             ),
             # Celery tracking
             "celery_task_id": self.celery_task_id,
+            # Vault
+            "vault_secret_id": self.vault_secret_id,
         }
 
     def __repr__(self):

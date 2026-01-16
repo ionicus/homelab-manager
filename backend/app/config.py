@@ -142,6 +142,13 @@ class Config:
         "ANSIBLE_PLAYBOOK_DIR", "automation/ansible/playbooks"
     )
 
+    # Vault encryption key for storing secrets (Fernet key, 32 bytes base64-encoded)
+    # Generate with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+    VAULT_ENCRYPTION_KEY = _get_secret(
+        "VAULT_ENCRYPTION_KEY",
+        "ZGV2LW9ubHktdmF1bHQta2V5LW5vdC1mb3ItcHJvZHVjdGlvbg==",  # Dev only placeholder
+    )
+
     # Logging - production defaults
     LOG_LEVEL = os.getenv("LOG_LEVEL", "WARNING")  # Conservative default
     LOG_FILE = os.getenv("LOG_FILE")  # No file logging by default

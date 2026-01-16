@@ -9,6 +9,7 @@ from app.models.metric import Metric
 from app.models.network_interface import InterfaceStatus, NetworkInterface
 from app.models.service import Service, ServiceStatus
 from app.models.user import User
+from app.models.vault_secret import VaultSecret
 
 __all__ = [
     "AuditLog",
@@ -25,4 +26,5 @@ __all__ = [
     "Service",
     "ServiceStatus",
     "User",
+    "VaultSecret",
 ]

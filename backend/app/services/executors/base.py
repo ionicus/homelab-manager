@@ -41,6 +41,7 @@ class BaseExecutor(ABC):
         config: dict[str, Any] | None = None,
         extra_vars: dict[str, Any] | None = None,
         devices: list[dict[str, str]] | None = None,
+        vault_password: str | None = None,
     ) -> str | None:
         """Execute an automation action in a background thread.
 
@@ -55,6 +56,7 @@ class BaseExecutor(ABC):
             extra_vars: Optional variables to pass to the action
             devices: Optional list of device dicts for multi-device execution
                      Each dict contains 'ip' and 'name' keys
+            vault_password: Optional vault password for ansible-vault encrypted content
 
         Returns:
             Task ID for tracking (if async), or None

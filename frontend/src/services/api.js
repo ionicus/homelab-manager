@@ -148,6 +148,7 @@ export const triggerAutomation = ({
   executorType = 'ansible',
   actionConfig = null,
   extraVars = null,
+  vaultSecretId = null,
 }) =>
   api.post('/automation', {
     device_id: deviceId,
@@ -156,11 +157,20 @@ export const triggerAutomation = ({
     executor_type: executorType,
     action_config: actionConfig,
     extra_vars: extraVars,
+    vault_secret_id: vaultSecretId,
   });
 
 export const getJobStatus = (jobId) => api.get(`/automation/${jobId}`);
 export const getJobLogs = (jobId) => api.get(`/automation/${jobId}/logs`);
 export const cancelJob = (jobId) => api.post(`/automation/${jobId}/cancel`);
+
+// Vault Secrets
+export const getVaultSecrets = () => api.get('/automation/vault/secrets');
+export const createVaultSecret = (data) => api.post('/automation/vault/secrets', data);
+export const updateVaultSecret = (secretId, data) =>
+  api.put(`/automation/vault/secrets/${secretId}`, data);
+export const deleteVaultSecret = (secretId) =>
+  api.delete(`/automation/vault/secrets/${secretId}`);
 
 // Get the URL for SSE log streaming (for EventSource)
 export const getJobLogStreamUrl = (jobId, includeExisting = true) =>

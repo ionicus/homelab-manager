@@ -534,6 +534,7 @@ def run_ansible_playbook(
     playbook_name: str,
     extra_vars: dict[str, Any] | None = None,
     devices: list[dict[str, str]] | None = None,
+    vault_password: str | None = None,
 ) -> dict:
     """Execute an Ansible playbook as a Celery task.
 
@@ -552,6 +553,7 @@ def run_ansible_playbook(
         playbook_name: Name of the playbook to execute (without .yml)
         extra_vars: Optional extra variables to pass to ansible-playbook
         devices: Optional list of device dicts for multi-device execution
+        vault_password: Optional vault password for ansible-vault encrypted content
 
     Returns:
         Dict with job status and details
@@ -560,6 +562,7 @@ def run_ansible_playbook(
     job = None
     inventory_file = None
     extra_vars_file = None
+    vault_password_file = None
     redis_client = None
 
     try:
@@ -649,6 +652,24 @@ def run_ansible_playbook(
                 fd.close()
             os.chmod(extra_vars_file, 0o600)
             cmd.extend(["--extra-vars", f"@{extra_vars_file}"])
+
+        # Add vault password file if provided
+        if vault_password:
+            fd = tempfile.NamedTemporaryFile(  # noqa: SIM115
+                mode="w",
+                prefix=f"ansible_vault_{job_id}_",
+                suffix=".txt",
+                delete=False,  # Need to pass path to ansible subprocess
+            )
+            try:
+                fd.write(vault_password)
+                vault_password_file = fd.name
+            finally:
+                fd.close()
+            # Restrictive permissions - only owner can read
+            os.chmod(vault_password_file, 0o600)
+            cmd.extend(["--vault-password-file", vault_password_file])
+            logger.info(f"Using vault password file for job {job_id}")
 
         logger.info(f"Executing command: {' '.join(cmd)}")
 
@@ -746,3 +767,8 @@ def run_ansible_playbook(
                 Path(extra_vars_file).unlink(missing_ok=True)
             except Exception as e:
                 logger.warning(f"Failed to delete extra vars file: {e}")
+        if vault_password_file:
+            try:
+                Path(vault_password_file).unlink(missing_ok=True)
+            except Exception as e:
+                logger.warning(f"Failed to delete vault password file: {e}")

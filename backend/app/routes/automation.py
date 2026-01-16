@@ -1,13 +1,16 @@
 """Automation routes with extensible executor support."""
 
+import re
+
 from flask import Blueprint, Response, request
 from flask_jwt_extended import jwt_required
 
 from app import limiter
 from app.config import Config
-from app.models import AutomationJob, Device, JobStatus
+from app.models import AutomationJob, Device, JobStatus, VaultSecret
 from app.schemas.automation import AutomationJobCreate
 from app.services.executors import registry
+from app.services.vault import VaultService
 from app.utils.errors import (
     DatabaseSession,
     NotFoundError,
@@ -127,6 +130,19 @@ def trigger_automation():
             primary_device = device
             all_device_ids = [device_id]
 
+        # Validate vault secret if provided
+        vault_password = None
+        if data.vault_secret_id:
+            vault_secret = (
+                db.query(VaultSecret)
+                .filter(VaultSecret.id == data.vault_secret_id)
+                .first()
+            )
+            if not vault_secret:
+                raise NotFoundError("VaultSecret", data.vault_secret_id)
+            # Decrypt the vault password for passing to executor
+            vault_password = VaultService.decrypt(vault_secret.encrypted_content)
+
         # Create the job
         job = AutomationJob(
             device_id=primary_device.id,
@@ -135,6 +151,7 @@ def trigger_automation():
             action_name=data.action_name,
             action_config=data.action_config,
             extra_vars=data.extra_vars,
+            vault_secret_id=data.vault_secret_id,
             status=JobStatus.PENDING,
         )
 
@@ -151,6 +168,7 @@ def trigger_automation():
             config=data.action_config,
             extra_vars=data.extra_vars,
             devices=devices_list if len(devices_list) > 1 else None,
+            vault_password=vault_password,
         )
 
         # Store the Celery task ID for tracking
@@ -623,3 +641,232 @@ def list_jobs():
         return paginated_response(
             [job.to_dict() for job in jobs], total, page, per_page
         )
+
+
+# =============================================================================
+# Vault Secrets Routes
+# =============================================================================
+
+
+@automation_bp.route("/vault/secrets", methods=["GET"])
+@jwt_required()
+def list_vault_secrets():
+    """List all vault secrets (without content).
+    ---
+    tags:
+      - Vault
+    responses:
+      200:
+        description: List of vault secrets
+        schema:
+          type: object
+          properties:
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  name:
+                    type: string
+                  description:
+                    type: string
+                  created_at:
+                    type: string
+                  updated_at:
+                    type: string
+    """
+    with DatabaseSession() as db:
+        secrets = db.query(VaultSecret).order_by(VaultSecret.name).all()
+        return success_response([s.to_dict() for s in secrets])
+
+
+@automation_bp.route("/vault/secrets", methods=["POST"])
+@jwt_required()
+@limiter.limit("10 per minute")
+def create_vault_secret():
+    """Create a new vault secret.
+    ---
+    tags:
+      - Vault
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          required:
+            - name
+            - content
+          properties:
+            name:
+              type: string
+              description: Unique name for the secret
+              example: ssh_key_prod
+            description:
+              type: string
+              description: Optional description
+              example: SSH private key for production servers
+            content:
+              type: string
+              description: The secret content to encrypt
+    responses:
+      201:
+        description: Vault secret created
+      400:
+        description: Validation error
+      409:
+        description: Secret with this name already exists
+    """
+    data = request.get_json()
+
+    if not data or not data.get("name") or not data.get("content"):
+        raise ValidationError("Name and content are required")
+
+    name = data["name"].strip()
+    content = data["content"]
+    description = data.get("description", "").strip() or None
+
+    # Validate name format (alphanumeric, underscore, hyphen)
+    if not re.match(r"^[a-zA-Z][a-zA-Z0-9_-]*$", name):
+        raise ValidationError(
+            "Name must start with a letter and contain only letters, numbers, underscores, and hyphens"
+        )
+
+    if len(name) > 100:
+        raise ValidationError("Name must be 100 characters or less")
+
+    with DatabaseSession() as db:
+        # Check for existing secret with same name
+        existing = db.query(VaultSecret).filter(VaultSecret.name == name).first()
+        if existing:
+            raise ValidationError(f"Secret with name '{name}' already exists")
+
+        # Encrypt the content
+        encrypted_content = VaultService.encrypt(content)
+
+        secret = VaultSecret(
+            name=name,
+            description=description,
+            encrypted_content=encrypted_content,
+        )
+        db.add(secret)
+        db.commit()
+        db.refresh(secret)
+
+        return success_response(secret.to_dict(), status_code=201)
+
+
+@automation_bp.route("/vault/secrets/<int:secret_id>", methods=["GET"])
+@jwt_required()
+def get_vault_secret(secret_id: int):
+    """Get a vault secret by ID (without content).
+    ---
+    tags:
+      - Vault
+    parameters:
+      - name: secret_id
+        in: path
+        type: integer
+        required: true
+        description: Secret ID
+    responses:
+      200:
+        description: Vault secret details
+      404:
+        description: Secret not found
+    """
+    with DatabaseSession() as db:
+        secret = db.query(VaultSecret).filter(VaultSecret.id == secret_id).first()
+        if not secret:
+            raise NotFoundError("VaultSecret", secret_id)
+
+        return success_response(secret.to_dict())
+
+
+@automation_bp.route("/vault/secrets/<int:secret_id>", methods=["PUT"])
+@jwt_required()
+@limiter.limit("10 per minute")
+def update_vault_secret(secret_id: int):
+    """Update a vault secret.
+    ---
+    tags:
+      - Vault
+    parameters:
+      - name: secret_id
+        in: path
+        type: integer
+        required: true
+        description: Secret ID
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          properties:
+            description:
+              type: string
+              description: Updated description
+            content:
+              type: string
+              description: New secret content (if changing)
+    responses:
+      200:
+        description: Vault secret updated
+      400:
+        description: Validation error
+      404:
+        description: Secret not found
+    """
+    data = request.get_json()
+    if not data:
+        raise ValidationError("No data provided")
+
+    with DatabaseSession() as db:
+        secret = db.query(VaultSecret).filter(VaultSecret.id == secret_id).first()
+        if not secret:
+            raise NotFoundError("VaultSecret", secret_id)
+
+        # Update description if provided
+        if "description" in data:
+            secret.description = data["description"].strip() or None
+
+        # Update content if provided
+        if "content" in data and data["content"]:
+            secret.encrypted_content = VaultService.encrypt(data["content"])
+
+        db.commit()
+        db.refresh(secret)
+
+        return success_response(secret.to_dict())
+
+
+@automation_bp.route("/vault/secrets/<int:secret_id>", methods=["DELETE"])
+@jwt_required()
+def delete_vault_secret(secret_id: int):
+    """Delete a vault secret.
+    ---
+    tags:
+      - Vault
+    parameters:
+      - name: secret_id
+        in: path
+        type: integer
+        required: true
+        description: Secret ID
+    responses:
+      200:
+        description: Vault secret deleted
+      404:
+        description: Secret not found
+    """
+    with DatabaseSession() as db:
+        secret = db.query(VaultSecret).filter(VaultSecret.id == secret_id).first()
+        if not secret:
+            raise NotFoundError("VaultSecret", secret_id)
+
+        db.delete(secret)
+        db.commit()
+
+        return success_response({"message": f"Secret '{secret.name}' deleted"})

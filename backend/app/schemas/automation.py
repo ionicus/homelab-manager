@@ -72,6 +72,10 @@ class AutomationJobCreate(AutomationJobBase):
         default=None,
         description="Extra variables to pass to the executor (e.g., Ansible extra-vars)",
     )
+    vault_secret_id: int | None = Field(
+        default=None,
+        description="ID of vault secret to use as Ansible vault password",
+    )
 
     @model_validator(mode="after")
     def validate_device_ids(self) -> "AutomationJobCreate":

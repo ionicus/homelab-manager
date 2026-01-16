@@ -51,6 +51,7 @@ class AnsibleExecutor(BaseExecutor):
         config: dict[str, Any] | None = None,
         extra_vars: dict[str, Any] | None = None,
         devices: list[dict[str, str]] | None = None,
+        vault_password: str | None = None,
     ) -> str:
         """Queue an Ansible playbook for execution via Celery.
 
@@ -64,6 +65,7 @@ class AnsibleExecutor(BaseExecutor):
             config: Optional extra configuration (not used for Ansible)
             extra_vars: Optional variables to pass to the playbook
             devices: Optional list of device dicts for multi-device execution
+            vault_password: Optional vault password for encrypted content
 
         Returns:
             Celery task ID for tracking
@@ -75,6 +77,7 @@ class AnsibleExecutor(BaseExecutor):
             playbook_name=action_name,
             extra_vars=extra_vars,
             devices=devices,
+            vault_password=vault_password,
         )
         device_count = len(devices) if devices else 1
         logger.info(

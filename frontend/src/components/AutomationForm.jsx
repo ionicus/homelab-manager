@@ -11,7 +11,7 @@ import {
   Paper,
 } from '@mantine/core';
 import { IconChevronDown, IconChevronUp } from '@tabler/icons-react';
-import { getExecutorActions, getActionSchema, triggerAutomation } from '../services/api';
+import { getExecutorActions, getActionSchema, triggerAutomation, getVaultSecrets } from '../services/api';
 import ErrorDisplay from './ErrorDisplay';
 import DynamicVariableForm from './DynamicVariableForm';
 
@@ -32,8 +32,13 @@ function AutomationForm({ deviceId, deviceIds, devices = [], onSuccess, onCancel
   const [extraVars, setExtraVars] = useState({});
   const [showAdvanced, setShowAdvanced] = useState(false);
 
+  // Vault secrets state
+  const [vaultSecrets, setVaultSecrets] = useState([]);
+  const [selectedVaultSecret, setSelectedVaultSecret] = useState(null);
+
   useEffect(() => {
     fetchPlaybooks();
+    fetchVaultSecrets();
   }, []);
 
   // Fetch schema when playbook changes
@@ -97,6 +102,18 @@ function AutomationForm({ deviceId, deviceIds, devices = [], onSuccess, onCancel
     }
   };
 
+  const fetchVaultSecrets = async () => {
+    try {
+      const response = await getVaultSecrets();
+      const secrets = response.data.data || [];
+      setVaultSecrets(secrets.map(s => ({ value: String(s.id), label: s.name, description: s.description })));
+    } catch (err) {
+      // Vault secrets are optional, don't show error
+      console.debug('Failed to fetch vault secrets:', err);
+      setVaultSecrets([]);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -119,6 +136,7 @@ function AutomationForm({ deviceId, deviceIds, devices = [], onSuccess, onCancel
         executorType: 'ansible',
         actionConfig: null,
         extraVars: varsToSend,
+        vaultSecretId: selectedVaultSecret ? parseInt(selectedVaultSecret) : null,
       });
       if (onSuccess) {
         onSuccess(response.data.data);
@@ -195,8 +213,8 @@ function AutomationForm({ deviceId, deviceIds, devices = [], onSuccess, onCancel
               </Group>
             )}
 
-            {/* Advanced options with schema-based form */}
-            {!fetchingSchema && hasSchema && (
+            {/* Advanced options with schema-based form and vault */}
+            {!fetchingSchema && (hasSchema || vaultSecrets.length > 0) && (
               <Paper withBorder p="sm" radius="sm">
                 <Group
                   justify="space-between"
@@ -209,14 +227,28 @@ function AutomationForm({ deviceId, deviceIds, devices = [], onSuccess, onCancel
                   {showAdvanced ? <IconChevronUp size={18} /> : <IconChevronDown size={18} />}
                 </Group>
                 <Collapse in={showAdvanced}>
-                  <div style={{ marginTop: '1rem' }}>
-                    <DynamicVariableForm
-                      schema={schema}
-                      values={extraVars}
-                      onChange={setExtraVars}
-                      disabled={loading}
-                    />
-                  </div>
+                  <Stack gap="md" style={{ marginTop: '1rem' }}>
+                    {hasSchema && (
+                      <DynamicVariableForm
+                        schema={schema}
+                        values={extraVars}
+                        onChange={setExtraVars}
+                        disabled={loading}
+                      />
+                    )}
+                    {vaultSecrets.length > 0 && (
+                      <Select
+                        label="Vault Password"
+                        description="Select a vault secret for encrypted playbook content"
+                        placeholder="No vault password"
+                        data={vaultSecrets}
+                        value={selectedVaultSecret}
+                        onChange={setSelectedVaultSecret}
+                        clearable
+                        disabled={loading}
+                      />
+                    )}
+                  </Stack>
                 </Collapse>
               </Paper>
             )}

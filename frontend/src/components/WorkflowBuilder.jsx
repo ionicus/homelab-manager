@@ -8,8 +8,6 @@ import {
   Text,
   TextInput,
   Textarea,
-  NumberInput,
-  Switch,
   Paper,
   ActionIcon,
   Badge,
@@ -211,7 +209,7 @@ function WorkflowBuilder({ template = null, onSave, onCancel }) {
               </Group>
             ) : steps.length === 0 ? (
               <Text c="dimmed" ta="center" py="md">
-                No steps added yet. Click "Add Step" to begin.
+                No steps added yet. Click &quot;Add Step&quot; to begin.
               </Text>
             ) : (
               <Stack gap="sm">
